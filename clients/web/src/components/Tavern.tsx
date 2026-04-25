@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { type GameState, type ActiveMission, type MissionType, saveGameState } from '../core/gameState';
+import { type GameState, type ActiveMission, type MissionType } from '../core/gameState';
+import { useAction } from '../hooks/useAction';
 import { generateEquipment } from '../core/equipmentGenerator';
 import { checkLevelUp } from '../core/mathCore';
 import { XP_TABLE } from '../data/xpTable';
@@ -472,10 +473,11 @@ function QuestRewardModal({
 
 // ─── 主组件：客栈大厅 ─────────────────────────────────────────────────────────
 export function Tavern({ gameState, setGameState }: TavernProps) {
+  const { dispatchAction } = useAction(setGameState as any);
   const [scene, setScene] = useState<TavernScene>(() =>
     gameState.activeMission ? 'travel' : 'hall'
   );
-  const [missions, setMissions] = useState<MissionData[]>([]);
+  
   const [timeLeft, setTimeLeft] = useState(0);
   const [rewardInfo, setRewardInfo] = useState<QuestRewardInfo | null>(null);
   const [levelUpShow, setLevelUpShow] = useState<number | null>(null);
@@ -862,7 +864,7 @@ export function Tavern({ gameState, setGameState }: TavernProps) {
       {showGambler && <GamblerPanel onClose={() => setShowGambler(false)} />}
       {scene === 'quest-select' && (
         <QuestSelectPanel
-          missions={missions}
+          missions={gameState.availableMissions}
           gameState={gameState}
           onAccept={mission => { handleAccept(mission); }}
           onClose={() => { setScene('hall'); generateMissions(); }}

@@ -1,7 +1,6 @@
 import { ShoppingBag, Coins, Gem, RefreshCw } from 'lucide-react';
 import type { GameState, Equipment } from '../core/gameState';
-import { saveGameState } from '../core/gameState';
-import { generateShopItems } from '../core/equipmentGenerator';
+import { useAction } from '../hooks/useAction';
 
 interface BlackMarketProps {
   gameState: GameState;
@@ -9,52 +8,18 @@ interface BlackMarketProps {
 }
 
 export function BlackMarket({ gameState, setGameState }: BlackMarketProps) {
+  const { dispatchAction } = useAction(setGameState as any);
   const { copper, tokens } = gameState.resources;
   const items = gameState.blackMarket.items;
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     if (tokens < 1) return;
-    
-    const newItems = generateShopItems(gameState.playerLevel, 6);
-    const newState = {
-      ...gameState,
-      resources: {
-        ...gameState.resources,
-        tokens: gameState.resources.tokens - 1
-      },
-      blackMarket: {
-        ...gameState.blackMarket,
-        items: newItems,
-        lastRefresh: Date.now()
-      }
-    };
-    
-    setGameState(newState);
-    saveGameState(newState);
+    await dispatchAction('BLACK_MARKET_REFRESH');
   };
 
-  const handleBuy = (item: Equipment, index: number) => {
+  const handleBuy = async (item: Equipment, index: number) => {
     if (!item.price || copper < item.price) return;
-
-    // Remove from shop, add to inventory, subtract copper
-    const newItems = [...items];
-    newItems[index] = null;
-
-    const newState = {
-      ...gameState,
-      resources: {
-        ...gameState.resources,
-        copper: gameState.resources.copper - item.price
-      },
-      inventory: [...gameState.inventory, item],
-      blackMarket: {
-        ...gameState.blackMarket,
-        items: newItems
-      }
-    };
-
-    setGameState(newState);
-    saveGameState(newState);
+    await dispatchAction('BLACK_MARKET_BUY', { itemIndex: index });
   };
 
   const QualityColors = {

@@ -66,6 +66,7 @@ export interface GameState {
   equipped: Record<EquipmentSlot, Equipment | null>;
   inventory: Equipment[];
   activeMission: ActiveMission | null;
+  availableMissions: ActiveMission[];
   blackMarket: {
     items: (Equipment | null)[];
     lastRefresh: number;
@@ -120,6 +121,7 @@ export function getInitialGameState(): GameState {
     },
     inventory: [],
     activeMission: null,
+    availableMissions: [],
     blackMarket: { items: Array(6).fill(null), lastRefresh: 0 },
     dungeonProgress: { chapter_1: 0 },
     dungeonDailyAttempt: { date: '', used: 0 },

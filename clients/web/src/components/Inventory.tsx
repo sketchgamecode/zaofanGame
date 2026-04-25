@@ -1,4 +1,5 @@
-import { type EquipmentSlot, type GameState, type Equipment, saveGameState } from '../core/gameState';
+import { type EquipmentSlot, type GameState, type Equipment } from '../core/gameState';
+import { useAction } from '../hooks/useAction';
 
 const SLOTS: { id: EquipmentSlot; label: string }[] = [
   { id: 'head', label: '头部' },
@@ -19,9 +20,10 @@ interface InventoryProps {
 }
 
 export function Inventory({ gameState, setGameState }: InventoryProps) {
+  const { dispatchAction } = useAction(setGameState as any);
 
-  const handleEquip = (itemToEquip: Equipment, itemIndex: number) => {
-    // 职业对副手的限制逻辑
+  const handleEquip = async (itemToEquip: Equipment, itemIndex: number) => {
+    // 职业对副手的限制逻辑可以在前端保留一份以快速反馈
     if (itemToEquip.slot === 'offHand') {
       if (gameState.classId === 'CLASS_A' && itemToEquip.subType !== 'shield') {
         alert('猛将的副手只能装备盾牌！');
@@ -37,46 +39,11 @@ export function Inventory({ gameState, setGameState }: InventoryProps) {
       }
     }
 
-    setGameState(prev => {
-      const slot = itemToEquip.slot;
-      const currentEquipped = prev.equipped[slot];
-      
-      const newInventory = [...prev.inventory];
-      newInventory.splice(itemIndex, 1); // remove item from inventory
-      
-      if (currentEquipped) {
-        newInventory.push(currentEquipped); // put back old item
-      }
-
-      const newState = {
-        ...prev,
-        inventory: newInventory,
-        equipped: {
-          ...prev.equipped,
-          [slot]: itemToEquip
-        }
-      };
-      saveGameState(newState);
-      return newState;
-    });
+    await dispatchAction('EQUIP_ITEM', { slot: itemToEquip.slot, itemIndex });
   };
 
-  const handleUnequip = (slot: EquipmentSlot) => {
-    const currentEquipped = gameState.equipped[slot];
-    if (!currentEquipped) return;
-
-    setGameState(prev => {
-      const newState = {
-        ...prev,
-        inventory: [...prev.inventory, currentEquipped],
-        equipped: {
-          ...prev.equipped,
-          [slot]: null
-        }
-      };
-      saveGameState(newState);
-      return newState;
-    });
+  const handleUnequip = async (slot: EquipmentSlot) => {
+    await dispatchAction('UNEQUIP_ITEM', { slot });
   };
 
   return (
