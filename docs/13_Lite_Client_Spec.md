@@ -64,7 +64,18 @@ const API_URL = 'https://api.sketchgame.net';
 GET https://api.sketchgame.net/api/save
 Header: Authorization: Bearer <token>
 
-Response: { save: GameState, isNewPlayer: bool }
+// 新玩家（无存档）
+Response: { save: null, isNewPlayer: true }
+
+// 老玩家（有存档）
+Response: { save: GameState, saveVersion: number, updatedAt: string }
+
+// 判断逻辑：
+if (data.isNewPlayer || !data.save) {
+  // 新玩家：立即调用 GENERATE_MISSIONS 初始化
+} else {
+  gs = data.save; // 直接使用
+}
 ```
 
 ### 4.2 执行游戏动作（唯一写入接口）
@@ -107,24 +118,27 @@ Response: { success: bool, gameState: GameState, log: [...], error?: string, dat
 ## 六、GameState 数据结构
 
 ```typescript
-{
+// 以下是完整字段集，以 server/src/types/gameState.ts 为准
+GameState = {
   playerLevel: number,
   classId: 'CLASS_A' | 'CLASS_B' | 'CLASS_C' | 'CLASS_D',
   exp: number,
-  attributes: { strength, intelligence, agility, constitution, luck },
+  attributes: { strength, intelligence, agility, constitution, luck },  // 基础属性（不含装备加成）
   resources: { copper, prestige, rations, tokens, hourglasses },
   equipped: { head, chest, hands, feet, neck, belt, ring, trinket, mainHand, offHand },  // Equipment | null
   inventory: Equipment[],
-  activeMission: { id, name, endTime, coinReward, expReward, foodCost, durationSec } | null,
-  availableMissions: Mission[],  // 3选1任务池
+  activeMission: { id, name, endTime, coinReward, expReward, foodCost, durationSec, type, dropRate } | null,
+  availableMissions: ActiveMission[],  // 3选扩1任务池，类型同 ActiveMission
   blackMarket: { items: (Equipment | null)[], lastRefresh: number },
-  dungeonProgress: { chapter_1: number, ... },
+  dungeonProgress: { chapter_1: number, chapter_2: number, ... },
   dungeonDailyAttempt: { date: string, used: number },
+  lastRationsRefill: number,       // 干粮上次回复时间（timestamp ms）
   arenaWins: number,
   arenaDailyXP: { date: string, wins: number },
-  arenaCooldownEndTime: number,  // timestamp ms
+  arenaCooldownEndTime: number,    // 竞技场冷却结束时间（timestamp ms）
   tavernDailyDrinks: { date: string, count: number },
   activeGuardWork: { endTime: number, coinReward: number } | null,
+  lastUpdated: number,             // 存档最后更新时间（timestamp ms）
 }
 ```
 
@@ -185,7 +199,7 @@ if (res.success) {
 1. **人物** — 显示等级/经验/属性，按钮升级属性（显示升级费用），显示已装备列表
 2. **行囊** — 显示背包物品列表，点击装备
 3. **客栈** — 显示精力值，生成/选择任务，任务进行中显示倒计时，完成后弹出奖励
-4. **竞技场** — 生成随机对手，显示双方属性，战斗按钮，结算胜负
+4. **竞技场** — 点击「出战」按钮触发 `ARENA_FIGHT`，等待响应后显示 `data.npcName/npcLevel` 和胜负结果，**不要本地生成NPC或计算属性**
 5. **州府** — 选章节，挑战Boss，显示进度
 6. **黑市** — 刷新物品列表，购买按钮
 
@@ -205,8 +219,12 @@ if (res.success) {
 ## 十一、参考文件路径
 
 ```
-clients/lite/          ← 你的工作目录
-server/src/types/gameState.ts   ← 完整 GameState 类型定义
-server/src/engine/index.ts      ← 所有 Action 注册表
-docs/00_Architecture_Overview.md ← 整体架构说明
+clients/lite/                    ← 你的工作目录（从空白开始！）
+server/src/types/gameState.ts    ← 完整 GameState 类型定义（仅供查阅字段名）
+server/src/engine/index.ts       ← 所有 Action 注册表（仅供查阅支持的动作名）
+docs/00_Architecture_Overview.md ← 整体架戶说明
 ```
+
+> [!IMPORTANT]
+> 参考以上文件时，**仅用于确认字段名和 Action 名称**。
+> 严禁将服务端类型文件中的公式、算法、常量复刻到客户端。所有计算均在服务端完成，客户端只读取并展示结果。
