@@ -4,6 +4,13 @@
 
 ---
 
+> [!CAUTION]
+> **严禁复用 `clients/lite/src/` 目录下的任何现有代码！**
+> 该目录中的旧代码大量依赖本地 `@core`、`@data`、`setGameState(...)` 本地演算，与服务端权威原则完全冲突。
+> **请从空白 HTML 文件开始重写。**
+
+---
+
 ## 一、项目背景
 
 游戏后端已完成，所有游戏逻辑都在服务端。客户端**只负责展示和发请求**，不做任何业务逻辑计算。
@@ -88,11 +95,11 @@ Response: { success: bool, gameState: GameState, log: [...], error?: string, dat
 | `UNEQUIP_ITEM` | `{ slot }` | 脱下装备 |
 | `BLACK_MARKET_REFRESH` | `{}` | 刷新黑市（花1通宝） |
 | `BLACK_MARKET_BUY` | `{ itemIndex }` | 购买黑市第 itemIndex 个物品 |
-| `ARENA_FIGHT` | `{ npcLevel, npcPrestige, playerWon }` | 竞技场战斗结算（客户端算胜负后上报） |
+| `ARENA_FIGHT` | `{}` | **服务端自动生成NPC、模拟战斗、结算状态**，响应 `data` 里包含 `playerWon/npcName/npcLevel/coinGain` 等供客户端展示动画 |
 | `ARENA_SKIP_COOLDOWN` | `{}` | 花1通宝跳过竞技场冷却 |
 | `GUARD_WORK_START` | `{ hours }` | 开始押镖（1-10小时） |
 | `GUARD_WORK_CLAIM` | `{}` | 领取押镖报酬 |
-| `DUNGEON_FIGHT` | `{ chapterId, playerWon }` | 副本战斗结算 |
+| `DUNGEON_FIGHT` | `{ chapterId }` | **服务端模拟与Boss战斗、结算进度**，响应 `data` 里包含 `playerWon/bossName/coinGain` 等 |
 | `DEBUG_CHEAT` | `{ preset?: "money"\|"tokens"\|"xp"\|"food" }` | 开发作弊（生产环境已禁用） |
 
 ---
@@ -131,36 +138,28 @@ Response: { success: bool, gameState: GameState, log: [...], error?: string, dat
 
 ---
 
-## 七、战斗逻辑（仅供客户端参考）
+## 七、战斗展示（客户端仅做UI动画）
 
-Arena 和 Dungeon 的**战斗动画可以是纯文字展示**，不需要动画。但必须有胜负判定。
-
-极简战斗算法（可直接用）：
+> [!IMPORTANT]
+> **客户端不做任何胜负判定。** 调用 `ARENA_FIGHT` 或 `DUNGEON_FIGHT` 后，从响应的 `data.playerWon` 读取结果，根据这个值播放胜利或失败的动画/文字。
 
 ```js
-function quickBattle(player, enemy) {
-  // player/enemy: { hp, atk, def }
-  let pHP = player.hp, eHP = enemy.hp;
-  let turn = 0;
-  while (pHP > 0 && eHP > 0 && turn < 100) {
-    eHP -= Math.max(1, player.atk - enemy.def * 0.3);
-    if (eHP <= 0) break;
-    pHP -= Math.max(1, enemy.atk - player.def * 0.3);
-    turn++;
-  }
-  return pHP > 0;  // true = 玩家胜
+// Arena 战斗示例
+const res = await callAction('ARENA_FIGHT', {});
+if (res.success) {
+  const { playerWon, npcName, npcLevel, coinGain, prestigeDiff } = res.data;
+  showBattleResult(playerWon, `对手：${npcName} Lv.${npcLevel}`, coinGain);
 }
 
-// 从 gameState 计算玩家战力
-function getPlayerCombat(gs) {
-  const a = gs.attributes;
-  const mainHand = gs.equipped.mainHand;
-  const atk = (a.strength + a.agility) * gs.playerLevel * 2 + (mainHand?.weaponDamage?.max || 0);
-  const def = a.constitution * gs.playerLevel + Object.values(gs.equipped).reduce((s,e) => s + (e?.armor || 0), 0);
-  const hp = a.constitution * gs.playerLevel * 5;
-  return { hp, atk, def };
+// Dungeon 战斗示例  
+const res = await callAction('DUNGEON_FIGHT', { chapterId: 'chapter_1' });
+if (res.success) {
+  const { playerWon, bossName, coinGain, xpGain } = res.data;
+  showBattleResult(playerWon, `Boss：${bossName}`, coinGain);
 }
 ```
+
+客户端**不需要**实现任何战斗算法，只需根据 `data.playerWon` 显示对应界面。
 
 ---
 
