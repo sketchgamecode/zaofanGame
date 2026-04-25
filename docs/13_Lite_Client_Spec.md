@@ -1,0 +1,213 @@
+# 大宋造反模拟器 — Lite 客户端开发规范
+
+> 本文档供独立开发Agent使用。目标：用最少代码实现一个可玩的极简Web客户端。
+
+---
+
+## 一、项目背景
+
+游戏后端已完成，所有游戏逻辑都在服务端。客户端**只负责展示和发请求**，不做任何业务逻辑计算。
+
+- **后端 API**：`https://api.sketchgame.net`
+- **现有主客户端**（参考用）：`https://game.sketchgame.net`（React + TypeScript，可参考但不要抄代码结构）
+- **本次目标路径**：`clients/lite/` 目录下
+
+---
+
+## 二、技术要求
+
+| 项目 | 要求 |
+|---|---|
+| 框架 | **纯 HTML + Vanilla JS**（无框架，无 npm 构建），单 `index.html` 文件即可 |
+| 样式 | 引用 CDN Tailwind CSS v3 |
+| 认证 | 引用 CDN `@supabase/supabase-js` 做登录 |
+| 部署 | 静态文件，放到 `clients/lite/` 即可，CI/CD 会自动上传 |
+
+---
+
+## 三、认证流程
+
+使用 **Supabase** 登录（邮箱+密码）。
+
+```js
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// 登录
+await supabase.auth.signInWithPassword({ email, password });
+
+// 获取 JWT token（每次请求都要带）
+const { data: { session } } = await supabase.auth.getSession();
+const token = session.access_token;
+```
+
+**Supabase 配置**（直接写在代码里，是公开 key，安全）：
+```js
+const SUPABASE_URL = 'https://iwxvwdckxbpqjicuvkbp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHZ3ZGNreGJwcWppY3V2a2JwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5MzU3NDEsImV4cCI6MjA2MDUxMTc0MX0.7PQP3CWCK8bHBEdLSSBvgXZkNp5-zW79smDVJb6y4KM';
+const API_URL = 'https://api.sketchgame.net';
+```
+
+---
+
+## 四、核心API调用
+
+### 4.1 加载存档
+
+```
+GET https://api.sketchgame.net/api/save
+Header: Authorization: Bearer <token>
+
+Response: { save: GameState, isNewPlayer: bool }
+```
+
+### 4.2 执行游戏动作（唯一写入接口）
+
+```
+POST https://api.sketchgame.net/api/action
+Header: Authorization: Bearer <token>
+Body: { "action": "ACTION_NAME", "payload": {} }
+
+Response: { success: bool, gameState: GameState, log: [...], error?: string, data?: any }
+```
+
+> **每次成功的 action 响应里都包含最新的 gameState，直接用来更新 UI，不要自己算！**
+
+---
+
+## 五、所有支持的 Action
+
+| Action | payload | 说明 |
+|---|---|---|
+| `GENERATE_MISSIONS` | `{}` | 生成3个任务选项（存在 gameState.availableMissions） |
+| `START_MISSION` | `{ missionId }` | 开始任务（扣精力，记录 endTime） |
+| `COMPLETE_MISSION` | `{ forceDrop?: bool }` | 完成任务结算 |
+| `SKIP_MISSION` | `{}` | 花1通宝立即完成任务 |
+| `UPGRADE_ATTRIBUTE` | `{ attribute: "strength"\|"intelligence"\|"agility"\|"constitution"\|"luck" }` | 升属性（扣铜钱） |
+| `TAVERN_DRINK` | `{}` | 买酒恢复精力（每日上限10次，每次1通宝） |
+| `EQUIP_ITEM` | `{ slot, itemIndex }` | 装备背包里第 itemIndex 个物品到 slot |
+| `UNEQUIP_ITEM` | `{ slot }` | 脱下装备 |
+| `BLACK_MARKET_REFRESH` | `{}` | 刷新黑市（花1通宝） |
+| `BLACK_MARKET_BUY` | `{ itemIndex }` | 购买黑市第 itemIndex 个物品 |
+| `ARENA_FIGHT` | `{ npcLevel, npcPrestige, playerWon }` | 竞技场战斗结算（客户端算胜负后上报） |
+| `ARENA_SKIP_COOLDOWN` | `{}` | 花1通宝跳过竞技场冷却 |
+| `GUARD_WORK_START` | `{ hours }` | 开始押镖（1-10小时） |
+| `GUARD_WORK_CLAIM` | `{}` | 领取押镖报酬 |
+| `DUNGEON_FIGHT` | `{ chapterId, playerWon }` | 副本战斗结算 |
+| `DEBUG_CHEAT` | `{ preset?: "money"\|"tokens"\|"xp"\|"food" }` | 开发作弊（生产环境已禁用） |
+
+---
+
+## 六、GameState 数据结构
+
+```typescript
+{
+  playerLevel: number,
+  classId: 'CLASS_A' | 'CLASS_B' | 'CLASS_C' | 'CLASS_D',
+  exp: number,
+  attributes: { strength, intelligence, agility, constitution, luck },
+  resources: { copper, prestige, rations, tokens, hourglasses },
+  equipped: { head, chest, hands, feet, neck, belt, ring, trinket, mainHand, offHand },  // Equipment | null
+  inventory: Equipment[],
+  activeMission: { id, name, endTime, coinReward, expReward, foodCost, durationSec } | null,
+  availableMissions: Mission[],  // 3选1任务池
+  blackMarket: { items: (Equipment | null)[], lastRefresh: number },
+  dungeonProgress: { chapter_1: number, ... },
+  dungeonDailyAttempt: { date: string, used: number },
+  arenaWins: number,
+  arenaDailyXP: { date: string, wins: number },
+  arenaCooldownEndTime: number,  // timestamp ms
+  tavernDailyDrinks: { date: string, count: number },
+  activeGuardWork: { endTime: number, coinReward: number } | null,
+}
+```
+
+### 职业说明
+| classId | 名称 | 主属性 |
+|---|---|---|
+| CLASS_A | 猛将 | 力量 |
+| CLASS_B | 游侠 | 敏捷 |
+| CLASS_C | 谋士 | 智谋 |
+| CLASS_D | 刺客 | 敏捷（双持） |
+
+---
+
+## 七、战斗逻辑（仅供客户端参考）
+
+Arena 和 Dungeon 的**战斗动画可以是纯文字展示**，不需要动画。但必须有胜负判定。
+
+极简战斗算法（可直接用）：
+
+```js
+function quickBattle(player, enemy) {
+  // player/enemy: { hp, atk, def }
+  let pHP = player.hp, eHP = enemy.hp;
+  let turn = 0;
+  while (pHP > 0 && eHP > 0 && turn < 100) {
+    eHP -= Math.max(1, player.atk - enemy.def * 0.3);
+    if (eHP <= 0) break;
+    pHP -= Math.max(1, enemy.atk - player.def * 0.3);
+    turn++;
+  }
+  return pHP > 0;  // true = 玩家胜
+}
+
+// 从 gameState 计算玩家战力
+function getPlayerCombat(gs) {
+  const a = gs.attributes;
+  const mainHand = gs.equipped.mainHand;
+  const atk = (a.strength + a.agility) * gs.playerLevel * 2 + (mainHand?.weaponDamage?.max || 0);
+  const def = a.constitution * gs.playerLevel + Object.values(gs.equipped).reduce((s,e) => s + (e?.armor || 0), 0);
+  const hp = a.constitution * gs.playerLevel * 5;
+  return { hp, atk, def };
+}
+```
+
+---
+
+## 八、Dungeon 章节数据
+
+章节列表（对应 `gameState.dungeonProgress` 的 key）：
+
+| chapterId | 名称 | 解锁等级 | Boss数 |
+|---|---|---|---|
+| chapter_1 | 第一章 | 1 | 10 |
+| chapter_2 | 第二章 | 15 | 10 |
+| chapter_3 | 第三章 | 25 | 10 |
+| chapter_4 | 第四章 | 35 | 10 |
+| chapter_5 | 第五章 | 45 | 10 |
+| chapter_6 | 第六章 | 55 | 10 |
+
+---
+
+## 九、UI 最低要求（6个页面/Tab）
+
+> 极简即可，文字列表比图形更省时间。
+
+1. **人物** — 显示等级/经验/属性，按钮升级属性（显示升级费用），显示已装备列表
+2. **行囊** — 显示背包物品列表，点击装备
+3. **客栈** — 显示精力值，生成/选择任务，任务进行中显示倒计时，完成后弹出奖励
+4. **竞技场** — 生成随机对手，显示双方属性，战斗按钮，结算胜负
+5. **州府** — 选章节，挑战Boss，显示进度
+6. **黑市** — 刷新物品列表，购买按钮
+
+---
+
+## 十、注意事项
+
+1. **所有状态改变必须通过 `/api/action`**，不能本地修改后直接用
+2. **每次 action 成功后，用响应里的 `gameState` 替换本地变量**，重新渲染 UI
+3. **任务完成判断**：`Date.now() >= gameState.activeMission.endTime`
+4. **升级属性费用公式**：`Math.floor(10 * Math.pow(1.1, 当前属性值))`（仅供展示，扣费在服务端）
+5. **新玩家注册**：`supabase.auth.signUp({ email, password })`，注册后自动登录
+6. 不需要支持离线、不需要 localStorage、不需要 Service Worker
+
+---
+
+## 十一、参考文件路径
+
+```
+clients/lite/          ← 你的工作目录
+server/src/types/gameState.ts   ← 完整 GameState 类型定义
+server/src/engine/index.ts      ← 所有 Action 注册表
+docs/00_Architecture_Overview.md ← 整体架构说明
+```
