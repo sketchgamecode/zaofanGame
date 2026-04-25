@@ -2,14 +2,991 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#0a0a0c" />
-    <title>大宋造反 · 极简版</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>大宋造反模拟器 Lite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: '#1f2937',
+              mist: '#f8f5ef',
+              accent: '#9a3412',
+              pine: '#14532d',
+              wine: '#7f1d1d',
+            },
+            boxShadow: {
+              card: '0 12px 30px rgba(15, 23, 42, 0.08)',
+            },
+          },
+        },
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+  <body class="min-h-screen bg-stone-100 text-stone-900">
+    <div id="app"></div>
+
+    <script>
+      const SUPABASE_URL = 'https://iwxvwdckxbpqjicuvkbp.supabase.co';
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHZ3ZGNreGJwcWppY3V2a2JwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5MzU3NDEsImV4cCI6MjA2MDUxMTc0MX0.7PQP3CWCK8bHBEdLSSBvgXZkNp5-zW79smDVJb6y4KM';
+      const API_URL = 'https://api.sketchgame.net';
+
+      const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      const TABS = [
+        { key: 'character', label: '人物' },
+        { key: 'inventory', label: '行囊' },
+        { key: 'tavern', label: '客栈' },
+        { key: 'arena', label: '竞技场' },
+        { key: 'prefecture', label: '州府' },
+        { key: 'market', label: '黑市' },
+      ];
+
+      const ATTRIBUTES = [
+        ['strength', '力量'],
+        ['intelligence', '智谋'],
+        ['agility', '敏捷'],
+        ['constitution', '体魄'],
+        ['luck', '气运'],
+      ];
+
+      const SLOTS = [
+        ['head', '头部'],
+        ['chest', '胸甲'],
+        ['hands', '护手'],
+        ['feet', '足具'],
+        ['neck', '项链'],
+        ['belt', '腰带'],
+        ['ring', '戒指'],
+        ['trinket', '饰物'],
+        ['mainHand', '主手'],
+        ['offHand', '副手'],
+      ];
+
+      const CLASS_NAMES = {
+        CLASS_A: '猛将',
+        CLASS_B: '游侠',
+        CLASS_C: '谋士',
+        CLASS_D: '刺客',
+      };
+
+      const CHAPTERS = [
+        { id: 'chapter_1', name: '第一章', unlockLevel: 1, bosses: 10 },
+        { id: 'chapter_2', name: '第二章', unlockLevel: 15, bosses: 10 },
+        { id: 'chapter_3', name: '第三章', unlockLevel: 25, bosses: 10 },
+        { id: 'chapter_4', name: '第四章', unlockLevel: 35, bosses: 10 },
+        { id: 'chapter_5', name: '第五章', unlockLevel: 45, bosses: 10 },
+        { id: 'chapter_6', name: '第六章', unlockLevel: 55, bosses: 10 },
+      ];
+
+      const state = {
+        authMode: 'login',
+        session: null,
+        gameState: null,
+        activeTab: 'character',
+        selectedChapter: 'chapter_1',
+        busy: false,
+        busyLabel: '',
+        authBusy: false,
+        notice: '',
+        error: '',
+        lastActionLog: [],
+        arenaResult: null,
+        dungeonResult: null,
+        modal: null,
+        booting: true,
+        loadingSave: false,
+      };
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function formatNumber(value) {
+        return Number(value ?? 0).toLocaleString('zh-CN');
+      }
+
+      function formatTime(ms) {
+        if (!ms || ms <= 0) return '00:00:00';
+        const totalSeconds = Math.ceil(ms / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':');
+      }
+
+      function formatDate(ts) {
+        if (!ts) return '--';
+        return new Date(ts).toLocaleString('zh-CN', { hour12: false });
+      }
+
+      function qualityBadge(quality) {
+        const styles = {
+          white: 'bg-stone-200 text-stone-700',
+          green: 'bg-emerald-100 text-emerald-700',
+          blue: 'bg-sky-100 text-sky-700',
+        };
+        return styles[quality] || 'bg-stone-200 text-stone-700';
+      }
+
+      function upgradeCost(currentValue) {
+        return Math.floor(10 * Math.pow(1.1, currentValue));
+      }
+
+      async function getAccessToken() {
+        const { data, error } = await supabaseClient.auth.getSession();
+        if (error) throw error;
+        if (!data.session) throw new Error('当前未登录');
+        return data.session.access_token;
+      }
+
+      async function apiFetch(path, options) {
+        const token = await getAccessToken();
+        const response = await fetch(API_URL + path, {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + token,
+            ...(options && options.headers ? options.headers : {}),
+          },
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || data.detail || ('请求失败：' + response.status));
+        }
+        return data;
+      }
+
+      async function loadSave() {
+        if (state.loadingSave) return;
+        state.loadingSave = true;
+        state.error = '';
+        state.notice = '';
+        render();
+        try {
+          const data = await apiFetch('/api/save', { method: 'GET' });
+          if (data.isNewPlayer || !data.save) {
+            const result = await callAction('GENERATE_MISSIONS', {}, { quiet: true });
+            if (result && result.success) {
+              state.notice = '已为新角色生成初始任务。';
+            }
+            return;
+          }
+
+          state.gameState = data.save;
+        } finally {
+          state.loadingSave = false;
+          render();
+        }
+      }
+
+      async function callAction(action, payload, options = {}) {
+        state.busy = !options.quiet;
+        state.busyLabel = options.label || action;
+        state.error = '';
+        if (!options.keepNotice) state.notice = '';
+        render();
+
+        try {
+          const result = await apiFetch('/api/action', {
+            method: 'POST',
+            body: JSON.stringify({ action, payload: payload || {} }),
+          });
+
+          state.lastActionLog = Array.isArray(result.log) ? result.log : [];
+          if (result.success && result.gameState) {
+            state.gameState = result.gameState;
+          }
+
+          if (!result.success) {
+            state.error = result.error || '操作失败';
+          }
+
+          if (options.onSuccess && result.success) {
+            options.onSuccess(result);
+          }
+
+          render();
+          return result;
+        } catch (error) {
+          state.error = error.message || '请求失败';
+          render();
+          return null;
+        } finally {
+          state.busy = false;
+          state.busyLabel = '';
+          render();
+        }
+      }
+
+      function setTab(tabKey) {
+        state.activeTab = tabKey;
+        render();
+      }
+
+      function setAuthMode(mode) {
+        state.authMode = mode;
+        state.error = '';
+        state.notice = '';
+        render();
+      }
+
+      function setChapter(chapterId) {
+        state.selectedChapter = chapterId;
+        render();
+      }
+
+      async function submitAuth() {
+        const email = document.getElementById('email-input').value.trim();
+        const password = document.getElementById('password-input').value;
+
+        if (!email || !password) {
+          state.error = '请输入邮箱和密码。';
+          render();
+          return;
+        }
+
+        state.authBusy = true;
+        state.error = '';
+        state.notice = '';
+        render();
+
+        try {
+          if (state.authMode === 'register') {
+            const signUpResult = await supabaseClient.auth.signUp({ email, password });
+            if (signUpResult.error) throw signUpResult.error;
+            if (!signUpResult.data.session) {
+              const signInResult = await supabaseClient.auth.signInWithPassword({ email, password });
+              if (signInResult.error) throw signInResult.error;
+            }
+            state.notice = '注册成功，正在载入角色。';
+          } else {
+            const signInResult = await supabaseClient.auth.signInWithPassword({ email, password });
+            if (signInResult.error) throw signInResult.error;
+            state.notice = '登录成功。';
+          }
+          const { data } = await supabaseClient.auth.getSession();
+          state.session = data.session;
+        } catch (error) {
+          state.error = error.message || '登录失败';
+        } finally {
+          state.authBusy = false;
+          state.booting = false;
+          render();
+        }
+      }
+
+      async function logout() {
+        await supabaseClient.auth.signOut();
+        state.session = null;
+        state.gameState = null;
+        state.arenaResult = null;
+        state.dungeonResult = null;
+        state.lastActionLog = [];
+        state.notice = '已退出登录。';
+        state.error = '';
+        render();
+      }
+
+      async function refreshSave() {
+        state.busy = true;
+        state.busyLabel = '刷新存档';
+        render();
+        try {
+          await loadSave();
+          state.notice = '存档已刷新。';
+        } catch (error) {
+          state.error = error.message || '刷新失败';
+        } finally {
+          state.busy = false;
+          state.busyLabel = '';
+          render();
+        }
+      }
+
+      async function upgradeAttribute(attribute) {
+        await callAction('UPGRADE_ATTRIBUTE', { attribute }, { label: '升级属性' });
+      }
+
+      async function equipItem(slot, index) {
+        await callAction('EQUIP_ITEM', { slot, itemIndex: index }, { label: '装备物品' });
+      }
+
+      async function unequipItem(slot) {
+        await callAction('UNEQUIP_ITEM', { slot }, { label: '卸下装备' });
+      }
+
+      async function generateMissions() {
+        await callAction('GENERATE_MISSIONS', {}, { label: '生成任务' });
+      }
+
+      async function startMission(missionId) {
+        await callAction('START_MISSION', { missionId }, { label: '开始任务' });
+      }
+
+      async function completeMission(forceDrop) {
+        await callAction('COMPLETE_MISSION', forceDrop ? { forceDrop: true } : {}, {
+          label: '完成任务',
+          onSuccess(result) {
+            state.modal = {
+              title: '任务奖励',
+              entries: Array.isArray(result.log) ? result.log : [],
+            };
+          },
+        });
+      }
+
+      async function skipMission() {
+        await callAction('SKIP_MISSION', {}, {
+          label: '跳过任务',
+          onSuccess(result) {
+            state.modal = {
+              title: '任务已立即完成',
+              entries: Array.isArray(result.log) ? result.log : [],
+            };
+          },
+        });
+      }
+
+      async function tavernDrink() {
+        await callAction('TAVERN_DRINK', {}, { label: '客栈饮酒' });
+      }
+
+      async function arenaFight() {
+        await callAction('ARENA_FIGHT', {}, {
+          label: '竞技场出战',
+          onSuccess(result) {
+            state.arenaResult = result.data || null;
+          },
+        });
+      }
+
+      async function arenaSkipCooldown() {
+        await callAction('ARENA_SKIP_COOLDOWN', {}, { label: '跳过竞技场冷却' });
+      }
+
+      async function dungeonFight() {
+        await callAction('DUNGEON_FIGHT', { chapterId: state.selectedChapter }, {
+          label: '挑战 Boss',
+          onSuccess(result) {
+            state.dungeonResult = result.data || null;
+          },
+        });
+      }
+
+      async function blackMarketRefresh() {
+        await callAction('BLACK_MARKET_REFRESH', {}, { label: '刷新黑市' });
+      }
+
+      async function blackMarketBuy(index) {
+        await callAction('BLACK_MARKET_BUY', { itemIndex: index }, { label: '购买黑市物品' });
+      }
+
+      function renderStatusBanner() {
+        const parts = [];
+        if (state.busy) {
+          parts.push('<div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">正在处理：' + escapeHtml(state.busyLabel) + '</div>');
+        }
+        if (state.notice) {
+          parts.push('<div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">' + escapeHtml(state.notice) + '</div>');
+        }
+        if (state.error) {
+          parts.push('<div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">' + escapeHtml(state.error) + '</div>');
+        }
+        return parts.join('');
+      }
+
+      function renderAuth() {
+        return `
+          <div class="mx-auto flex min-h-screen max-w-5xl items-center px-4 py-10">
+            <div class="grid w-full gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+              <section class="rounded-3xl bg-gradient-to-br from-stone-900 via-stone-800 to-orange-900 p-8 text-stone-50 shadow-card">
+                <p class="text-sm uppercase tracking-[0.35em] text-orange-200">Lite Client</p>
+                <h1 class="mt-4 text-4xl font-bold">大宋造反模拟器</h1>
+                <p class="mt-4 max-w-xl text-sm leading-7 text-stone-200">
+                  这是一个严格按 spec 编写的静态版客户端：纯 HTML、Vanilla JS、Tailwind CDN、Supabase CDN。
+                  所有状态变化都只来自 <code class="rounded bg-white/10 px-1.5 py-0.5">/api/save</code> 与
+                  <code class="rounded bg-white/10 px-1.5 py-0.5">/api/action</code>。
+                </p>
+                <div class="mt-8 grid gap-3 sm:grid-cols-2">
+                  <div class="rounded-2xl bg-white/10 p-4">
+                    <div class="text-sm text-orange-200">支持页面</div>
+                    <div class="mt-2 text-lg font-semibold">人物 / 行囊 / 客栈 / 竞技场 / 州府 / 黑市</div>
+                  </div>
+                  <div class="rounded-2xl bg-white/10 p-4">
+                    <div class="text-sm text-orange-200">权威状态</div>
+                    <div class="mt-2 text-lg font-semibold">每次 action 成功后整体替换 gameState</div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="rounded-3xl bg-white p-8 shadow-card">
+                <div class="flex gap-2 rounded-2xl bg-stone-100 p-1 text-sm">
+                  <button class="flex-1 rounded-xl px-4 py-2 ${state.authMode === 'login' ? 'bg-white shadow font-semibold text-stone-900' : 'text-stone-500'}" onclick="app.setAuthMode('login')">邮箱登录</button>
+                  <button class="flex-1 rounded-xl px-4 py-2 ${state.authMode === 'register' ? 'bg-white shadow font-semibold text-stone-900' : 'text-stone-500'}" onclick="app.setAuthMode('register')">邮箱注册</button>
+                </div>
+                <div class="mt-6 space-y-4">
+                  <label class="block">
+                    <span class="mb-2 block text-sm text-stone-600">邮箱</span>
+                    <input id="email-input" type="email" class="w-full rounded-2xl border border-stone-200 px-4 py-3 outline-none transition focus:border-orange-500" placeholder="you@example.com" />
+                  </label>
+                  <label class="block">
+                    <span class="mb-2 block text-sm text-stone-600">密码</span>
+                    <input id="password-input" type="password" class="w-full rounded-2xl border border-stone-200 px-4 py-3 outline-none transition focus:border-orange-500" placeholder="至少 6 位" />
+                  </label>
+                  <button class="w-full rounded-2xl bg-orange-700 px-4 py-3 font-semibold text-white transition hover:bg-orange-800 disabled:cursor-not-allowed disabled:opacity-60" onclick="app.submitAuth()" ${state.authBusy ? 'disabled' : ''}>
+                    ${state.authBusy ? '处理中...' : state.authMode === 'login' ? '登录并载入存档' : '注册并创建角色'}
+                  </button>
+                </div>
+                <div class="mt-6 space-y-3">${renderStatusBanner()}</div>
+              </section>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderResourcePills(gameState) {
+        return `
+          <div class="grid gap-3 sm:grid-cols-5">
+            <div class="rounded-2xl bg-amber-50 p-4 text-sm text-amber-900"><div class="text-xs text-amber-700">铜钱</div><div class="mt-1 text-xl font-bold">${formatNumber(gameState.resources.copper)}</div></div>
+            <div class="rounded-2xl bg-rose-50 p-4 text-sm text-rose-900"><div class="text-xs text-rose-700">声望</div><div class="mt-1 text-xl font-bold">${formatNumber(gameState.resources.prestige)}</div></div>
+            <div class="rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-900"><div class="text-xs text-emerald-700">干粮</div><div class="mt-1 text-xl font-bold">${formatNumber(gameState.resources.rations)}</div></div>
+            <div class="rounded-2xl bg-sky-50 p-4 text-sm text-sky-900"><div class="text-xs text-sky-700">通宝</div><div class="mt-1 text-xl font-bold">${formatNumber(gameState.resources.tokens)}</div></div>
+            <div class="rounded-2xl bg-violet-50 p-4 text-sm text-violet-900"><div class="text-xs text-violet-700">时砂</div><div class="mt-1 text-xl font-bold">${formatNumber(gameState.resources.hourglasses)}</div></div>
+          </div>
+        `;
+      }
+
+      function renderCharacterTab(gameState) {
+        const attributeCards = ATTRIBUTES.map(([key, label]) => {
+          const currentValue = gameState.attributes[key] || 0;
+          const cost = upgradeCost(currentValue);
+          return `
+            <div class="rounded-2xl border border-stone-200 bg-white p-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm text-stone-500">${label}</div>
+                  <div class="mt-1 text-2xl font-bold">${formatNumber(currentValue)}</div>
+                </div>
+                <button class="rounded-xl bg-stone-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" onclick="app.upgradeAttribute('${key}')" ${state.busy ? 'disabled' : ''}>
+                  升级 (${formatNumber(cost)} 铜钱)
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        const equippedRows = SLOTS.map(([slot, label]) => {
+          const item = gameState.equipped[slot];
+          return `
+            <div class="flex items-center justify-between rounded-2xl border border-stone-200 px-4 py-3">
+              <div>
+                <div class="text-sm text-stone-500">${label}</div>
+                <div class="font-semibold">${item ? escapeHtml(item.name) : '未装备'}</div>
+                ${item ? '<div class="mt-1 text-xs text-stone-500">' + escapeHtml(item.description || '') + '</div>' : ''}
+              </div>
+              ${item ? '<button class="rounded-xl bg-stone-200 px-3 py-2 text-sm font-semibold text-stone-700" onclick="app.unequipItem(\'' + slot + '\')">卸下</button>' : ''}
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <section class="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+            <div class="space-y-4 rounded-3xl bg-white p-6 shadow-card">
+              <div>
+                <div class="text-sm uppercase tracking-[0.3em] text-orange-700">人物概览</div>
+                <h2 class="mt-3 text-3xl font-bold">${escapeHtml(CLASS_NAMES[gameState.classId] || gameState.classId)}</h2>
+              </div>
+              <div class="grid gap-3 sm:grid-cols-3">
+                <div class="rounded-2xl bg-stone-100 p-4"><div class="text-xs text-stone-500">等级</div><div class="mt-1 text-2xl font-bold">${formatNumber(gameState.playerLevel)}</div></div>
+                <div class="rounded-2xl bg-stone-100 p-4"><div class="text-xs text-stone-500">经验</div><div class="mt-1 text-2xl font-bold">${formatNumber(gameState.exp)}</div></div>
+                <div class="rounded-2xl bg-stone-100 p-4"><div class="text-xs text-stone-500">更新时间</div><div class="mt-1 text-sm font-semibold">${escapeHtml(formatDate(gameState.lastUpdated))}</div></div>
+              </div>
+              <div class="space-y-3">
+                <div class="text-sm font-semibold text-stone-700">已装备</div>
+                ${equippedRows}
+              </div>
+            </div>
+            <div class="rounded-3xl bg-white p-6 shadow-card">
+              <div class="mb-4 text-sm uppercase tracking-[0.3em] text-orange-700">属性</div>
+              <div class="grid gap-4 md:grid-cols-2">${attributeCards}</div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderInventoryTab(gameState) {
+        const items = (gameState.inventory || []).map((item, index) => `
+          <div class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="rounded-full px-2 py-1 text-xs font-semibold ${qualityBadge(item.quality)}">${escapeHtml(item.quality || 'white')}</span>
+                  <h3 class="text-lg font-semibold">${escapeHtml(item.name)}</h3>
+                </div>
+                <div class="mt-2 text-sm text-stone-500">${escapeHtml(item.description || '')}</div>
+                <div class="mt-3 flex flex-wrap gap-2 text-xs text-stone-500">
+                  <span class="rounded-full bg-stone-100 px-2 py-1">槽位：${escapeHtml(item.slot)}</span>
+                  ${typeof item.price === 'number' ? '<span class="rounded-full bg-stone-100 px-2 py-1">价格：' + formatNumber(item.price) + '</span>' : ''}
+                  ${item.weaponDamage ? '<span class="rounded-full bg-stone-100 px-2 py-1">伤害：' + formatNumber(item.weaponDamage.min) + '-' + formatNumber(item.weaponDamage.max) + '</span>' : ''}
+                  ${typeof item.armor === 'number' ? '<span class="rounded-full bg-stone-100 px-2 py-1">护甲：' + formatNumber(item.armor) + '</span>' : ''}
+                </div>
+              </div>
+              <button class="rounded-xl bg-stone-900 px-3 py-2 text-sm font-semibold text-white" onclick="app.equipItem('${item.slot}', ${index})">装备</button>
+            </div>
+          </div>
+        `).join('');
+
+        return `
+          <section class="rounded-3xl bg-white p-6 shadow-card">
+            <div class="mb-4 flex items-center justify-between">
+              <div>
+                <div class="text-sm uppercase tracking-[0.3em] text-orange-700">行囊</div>
+                <h2 class="mt-2 text-2xl font-bold">背包物品</h2>
+              </div>
+              <div class="rounded-2xl bg-stone-100 px-4 py-2 text-sm text-stone-600">共 ${formatNumber(gameState.inventory.length)} 件</div>
+            </div>
+            <div class="grid gap-4">
+              ${items || '<div class="rounded-2xl border border-dashed border-stone-300 p-8 text-center text-stone-500">背包空空如也，先去客栈做任务或黑市淘宝。</div>'}
+            </div>
+          </section>
+        `;
+      }
+
+      function renderMissionCard(mission) {
+        return `
+          <div class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <div class="text-xs uppercase tracking-[0.2em] text-stone-500">任务 ${escapeHtml(mission.type)}</div>
+                <h3 class="mt-1 text-lg font-semibold">${escapeHtml(mission.name)}</h3>
+              </div>
+              <button class="rounded-xl bg-orange-700 px-3 py-2 text-sm font-semibold text-white" onclick="app.startMission('${mission.id}')">接取</button>
+            </div>
+            <div class="mt-3 grid gap-2 sm:grid-cols-4 text-sm text-stone-600">
+              <div class="rounded-xl bg-stone-100 px-3 py-2">时长 ${formatNumber(mission.durationSec)} 秒</div>
+              <div class="rounded-xl bg-stone-100 px-3 py-2">干粮 -${formatNumber(mission.foodCost)}</div>
+              <div class="rounded-xl bg-stone-100 px-3 py-2">经验 +${formatNumber(mission.expReward)}</div>
+              <div class="rounded-xl bg-stone-100 px-3 py-2">铜钱 +${formatNumber(mission.coinReward)}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderTavernTab(gameState) {
+        const activeMission = gameState.activeMission;
+        const missionRemaining = activeMission ? activeMission.endTime - Date.now() : 0;
+        const missionReady = activeMission && missionRemaining <= 0;
+        const missionSection = activeMission ? `
+          <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div class="text-sm text-amber-800">进行中的任务</div>
+                <h3 class="mt-1 text-xl font-bold text-amber-950">${escapeHtml(activeMission.name)}</h3>
+              </div>
+              <div class="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-stone-700">
+                ${missionReady ? '任务已可结算' : '剩余 ' + formatTime(missionRemaining)}
+              </div>
+            </div>
+            <div class="mt-4 grid gap-3 sm:grid-cols-3 text-sm text-amber-900">
+              <div class="rounded-xl bg-white px-3 py-2">奖励铜钱 ${formatNumber(activeMission.coinReward)}</div>
+              <div class="rounded-xl bg-white px-3 py-2">奖励经验 ${formatNumber(activeMission.expReward)}</div>
+              <div class="rounded-xl bg-white px-3 py-2">掉落率 ${formatNumber(Math.round((activeMission.dropRate || 0) * 100))}%</div>
+            </div>
+            <div class="mt-4 flex flex-wrap gap-3">
+              <button class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white ${missionReady ? '' : 'opacity-50'}" onclick="app.completeMission(false)" ${missionReady ? '' : 'disabled'}>完成任务</button>
+              <button class="rounded-xl bg-stone-200 px-4 py-2 text-sm font-semibold text-stone-700" onclick="app.skipMission()">花 1 通宝立刻完成</button>
+            </div>
+          </div>
+        ` : `
+          <div class="rounded-2xl border border-dashed border-stone-300 p-6 text-center text-stone-500">
+            当前没有进行中的任务。
+          </div>
+        `;
+
+        const availableMissions = (gameState.availableMissions || []).map(renderMissionCard).join('');
+
+        return `
+          <section class="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+            <div class="space-y-4 rounded-3xl bg-white p-6 shadow-card">
+              <div class="text-sm uppercase tracking-[0.3em] text-orange-700">客栈</div>
+              <h2 class="text-2xl font-bold">休整与任务</h2>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div class="rounded-2xl bg-stone-100 p-4">
+                  <div class="text-xs text-stone-500">当前干粮</div>
+                  <div class="mt-1 text-2xl font-bold">${formatNumber(gameState.resources.rations)}</div>
+                </div>
+                <div class="rounded-2xl bg-stone-100 p-4">
+                  <div class="text-xs text-stone-500">今日饮酒</div>
+                  <div class="mt-1 text-2xl font-bold">${formatNumber(gameState.tavernDailyDrinks.count)}</div>
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <button class="rounded-xl bg-orange-700 px-4 py-2 text-sm font-semibold text-white" onclick="app.tavernDrink()">喝酒恢复精力</button>
+                <button class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white" onclick="app.generateMissions()">生成任务</button>
+              </div>
+              ${missionSection}
+            </div>
+            <div class="rounded-3xl bg-white p-6 shadow-card">
+              <div class="mb-4 flex items-center justify-between">
+                <div>
+                  <div class="text-sm uppercase tracking-[0.3em] text-orange-700">任务列表</div>
+                  <h2 class="mt-2 text-2xl font-bold">可选任务</h2>
+                </div>
+                <div class="rounded-2xl bg-stone-100 px-4 py-2 text-sm text-stone-600">${formatNumber(gameState.availableMissions.length)} 项</div>
+              </div>
+              <div class="grid gap-4">
+                ${availableMissions || '<div class="rounded-2xl border border-dashed border-stone-300 p-8 text-center text-stone-500">暂无任务，点击“生成任务”。</div>'}
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderArenaTab(gameState) {
+        const cooldown = (gameState.arenaCooldownEndTime || 0) - Date.now();
+        const ready = cooldown <= 0;
+        const result = state.arenaResult;
+
+        return `
+          <section class="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+            <div class="space-y-4 rounded-3xl bg-white p-6 shadow-card">
+              <div class="text-sm uppercase tracking-[0.3em] text-orange-700">竞技场</div>
+              <h2 class="text-2xl font-bold">与服务端对战结算同步</h2>
+              <div class="grid gap-3 sm:grid-cols-3">
+                <div class="rounded-2xl bg-stone-100 p-4"><div class="text-xs text-stone-500">累计胜场</div><div class="mt-1 text-2xl font-bold">${formatNumber(gameState.arenaWins)}</div></div>
+                <div class="rounded-2xl bg-stone-100 p-4"><div class="text-xs text-stone-500">今日竞技场 XP 场次</div><div class="mt-1 text-2xl font-bold">${formatNumber(gameState.arenaDailyXP.wins)}</div></div>
+                <div class="rounded-2xl bg-stone-100 p-4"><div class="text-xs text-stone-500">冷却状态</div><div class="mt-1 text-sm font-semibold">${ready ? '已可出战' : '剩余 ' + formatTime(cooldown)}</div></div>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <button class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white ${ready ? '' : 'opacity-50'}" onclick="app.arenaFight()" ${ready ? '' : 'disabled'}>出战</button>
+                <button class="rounded-xl bg-stone-200 px-4 py-2 text-sm font-semibold text-stone-700" onclick="app.arenaSkipCooldown()">花 1 通宝跳过冷却</button>
+              </div>
+              <div class="rounded-2xl bg-stone-50 p-4 text-sm text-stone-600">
+                前端不生成对手、不计算胜负，只展示服务端在 <code>/api/action</code> 的 <code>data</code> 字段返回的结果。
+              </div>
+            </div>
+
+            <div class="rounded-3xl bg-white p-6 shadow-card">
+              <div class="text-sm uppercase tracking-[0.3em] text-orange-700">最近战报</div>
+              ${result ? `
+                <div class="mt-4 rounded-2xl border ${result.playerWon ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'} p-5">
+                  <div class="text-xs uppercase tracking-[0.25em] ${result.playerWon ? 'text-emerald-700' : 'text-rose-700'}">${result.playerWon ? '胜利' : '败北'}</div>
+                  <h3 class="mt-2 text-2xl font-bold">${escapeHtml(result.npcName || '未知对手')}</h3>
+                  <div class="mt-2 text-sm text-stone-600">等级：${formatNumber(result.npcLevel || 0)}</div>
+                  <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div class="rounded-xl bg-white px-3 py-2 text-sm">铜钱变化 ${formatNumber(result.coinGain || 0)}</div>
+                    <div class="rounded-xl bg-white px-3 py-2 text-sm">声望变化 ${formatNumber(result.prestigeDiff || 0)}</div>
+                    <div class="rounded-xl bg-white px-3 py-2 text-sm">结果 ${result.playerWon ? '你获胜' : '对手获胜'}</div>
+                  </div>
+                </div>
+              ` : '<div class="mt-4 rounded-2xl border border-dashed border-stone-300 p-8 text-center text-stone-500">尚无战报，点击“出战”后展示服务端返回的对手与结果。</div>'}
+            </div>
+          </section>
+        `;
+      }
+
+      function renderPrefectureTab(gameState) {
+        const chapterCards = CHAPTERS.map((chapter) => {
+          const progress = gameState.dungeonProgress[chapter.id] || 0;
+          const unlocked = gameState.playerLevel >= chapter.unlockLevel;
+          const selected = state.selectedChapter === chapter.id;
+          return `
+            <button class="rounded-2xl border px-4 py-4 text-left transition ${selected ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 bg-white hover:border-stone-400'}" onclick="app.setChapter('${chapter.id}')">
+              <div class="text-sm ${selected ? 'text-stone-300' : 'text-stone-500'}">${escapeHtml(chapter.name)}</div>
+              <div class="mt-1 text-lg font-semibold">${chapter.id}</div>
+              <div class="mt-3 text-sm ${selected ? 'text-stone-200' : 'text-stone-600'}">解锁等级 ${formatNumber(chapter.unlockLevel)}</div>
+              <div class="mt-1 text-sm ${selected ? 'text-stone-200' : 'text-stone-600'}">进度 ${formatNumber(progress)} / ${formatNumber(chapter.bosses)}</div>
+              <div class="mt-1 text-xs ${selected ? 'text-stone-300' : unlocked ? 'text-emerald-700' : 'text-rose-700'}">${unlocked ? '已解锁' : '未解锁'}</div>
+            </button>
+          `;
+        }).join('');
+
+        const currentChapter = CHAPTERS.find((chapter) => chapter.id === state.selectedChapter) || CHAPTERS[0];
+        const currentProgress = gameState.dungeonProgress[currentChapter.id] || 0;
+        const canFight = gameState.playerLevel >= currentChapter.unlockLevel;
+        const result = state.dungeonResult;
+
+        return `
+          <section class="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
+            <div class="rounded-3xl bg-white p-6 shadow-card">
+              <div class="text-sm uppercase tracking-[0.3em] text-orange-700">州府</div>
+              <h2 class="mt-2 text-2xl font-bold">章节选择</h2>
+              <div class="mt-5 grid gap-3">${chapterCards}</div>
+            </div>
+            <div class="space-y-6">
+              <div class="rounded-3xl bg-white p-6 shadow-card">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div class="text-sm uppercase tracking-[0.3em] text-orange-700">Boss 挑战</div>
+                    <h2 class="mt-2 text-2xl font-bold">${escapeHtml(currentChapter.name)}</h2>
+                  </div>
+                  <button class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white ${canFight ? '' : 'opacity-50'}" onclick="app.dungeonFight()" ${canFight ? '' : 'disabled'}>挑战 Boss</button>
+                </div>
+                <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div class="rounded-2xl bg-stone-100 p-4"><div class="text-xs text-stone-500">当前进度</div><div class="mt-1 text-2xl font-bold">${formatNumber(currentProgress)} / ${formatNumber(currentChapter.bosses)}</div></div>
+                  <div class="rounded-2xl bg-stone-100 p-4"><div class="text-xs text-stone-500">解锁等级</div><div class="mt-1 text-2xl font-bold">${formatNumber(currentChapter.unlockLevel)}</div></div>
+                  <div class="rounded-2xl bg-stone-100 p-4"><div class="text-xs text-stone-500">今日尝试</div><div class="mt-1 text-2xl font-bold">${formatNumber(gameState.dungeonDailyAttempt.used)}</div></div>
+                </div>
+              </div>
+
+              <div class="rounded-3xl bg-white p-6 shadow-card">
+                <div class="text-sm uppercase tracking-[0.3em] text-orange-700">最近战果</div>
+                ${result ? `
+                  <div class="mt-4 rounded-2xl border ${result.playerWon ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'} p-5">
+                    <div class="text-xs uppercase tracking-[0.25em] ${result.playerWon ? 'text-emerald-700' : 'text-rose-700'}">${result.playerWon ? '攻克成功' : '挑战失败'}</div>
+                    <h3 class="mt-2 text-2xl font-bold">${escapeHtml(result.bossName || '未知 Boss')}</h3>
+                    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                      <div class="rounded-xl bg-white px-3 py-2 text-sm">铜钱 ${formatNumber(result.coinGain || 0)}</div>
+                      <div class="rounded-xl bg-white px-3 py-2 text-sm">经验 ${formatNumber(result.xpGain || 0)}</div>
+                      <div class="rounded-xl bg-white px-3 py-2 text-sm">胜负 ${result.playerWon ? '胜利' : '失败'}</div>
+                    </div>
+                  </div>
+                ` : '<div class="mt-4 rounded-2xl border border-dashed border-stone-300 p-8 text-center text-stone-500">尚无州府战果，挑战一次后展示服务端返回的 Boss 名称与结果。</div>'}
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderMarketTab(gameState) {
+        const items = (gameState.blackMarket.items || []).map((item, index) => {
+          if (!item) {
+            return `
+              <div class="rounded-2xl border border-dashed border-stone-300 bg-white p-4 text-sm text-stone-500">
+                第 ${index + 1} 格暂无货物
+              </div>
+            `;
+          }
+
+          return `
+            <div class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="rounded-full px-2 py-1 text-xs font-semibold ${qualityBadge(item.quality)}">${escapeHtml(item.quality || 'white')}</span>
+                    <h3 class="text-lg font-semibold">${escapeHtml(item.name)}</h3>
+                  </div>
+                  <div class="mt-2 text-sm text-stone-500">${escapeHtml(item.description || '')}</div>
+                  <div class="mt-3 flex flex-wrap gap-2 text-xs text-stone-500">
+                    <span class="rounded-full bg-stone-100 px-2 py-1">槽位：${escapeHtml(item.slot)}</span>
+                    <span class="rounded-full bg-stone-100 px-2 py-1">价格：${formatNumber(item.price || 0)}</span>
+                  </div>
+                </div>
+                <button class="rounded-xl bg-stone-900 px-3 py-2 text-sm font-semibold text-white" onclick="app.blackMarketBuy(${index})">购买</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <section class="rounded-3xl bg-white p-6 shadow-card">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div class="text-sm uppercase tracking-[0.3em] text-orange-700">黑市</div>
+                <h2 class="mt-2 text-2xl font-bold">流动货摊</h2>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <div class="rounded-2xl bg-stone-100 px-4 py-2 text-sm text-stone-600">上次刷新 ${escapeHtml(formatDate(gameState.blackMarket.lastRefresh))}</div>
+                <button class="rounded-xl bg-orange-700 px-4 py-2 text-sm font-semibold text-white" onclick="app.blackMarketRefresh()">花 1 通宝刷新</button>
+              </div>
+            </div>
+            <div class="mt-6 grid gap-4 lg:grid-cols-2">
+              ${items || '<div class="rounded-2xl border border-dashed border-stone-300 p-8 text-center text-stone-500">黑市暂时无货。</div>'}
+            </div>
+          </section>
+        `;
+      }
+
+      function renderLogs() {
+        if (!state.lastActionLog.length) return '';
+        const rows = state.lastActionLog.map((entry) => `
+          <div class="rounded-xl border border-stone-200 bg-white px-4 py-3">
+            <div class="text-xs uppercase tracking-[0.25em] text-stone-500">${escapeHtml(entry.type || 'info')}</div>
+            <div class="mt-1 text-sm text-stone-700">${escapeHtml(entry.text || '')}</div>
+          </div>
+        `).join('');
+
+        return `
+          <section class="rounded-3xl bg-white p-6 shadow-card">
+            <div class="text-sm uppercase tracking-[0.3em] text-orange-700">最新日志</div>
+            <div class="mt-4 grid gap-3">${rows}</div>
+          </section>
+        `;
+      }
+
+      function closeModal() {
+        state.modal = null;
+        render();
+      }
+
+      function renderModal() {
+        if (!state.modal) return '';
+        const entries = (state.modal.entries || []).map((entry) => `
+          <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-[0.25em] text-stone-500">${escapeHtml(entry.type || 'info')}</div>
+            <div class="mt-1 text-sm text-stone-700">${escapeHtml(entry.text || '')}</div>
+          </div>
+        `).join('');
+
+        return `
+          <div class="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/45 px-4">
+            <div class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <div class="text-sm uppercase tracking-[0.3em] text-orange-700">结果</div>
+                  <h3 class="mt-2 text-2xl font-bold">${escapeHtml(state.modal.title || '系统提示')}</h3>
+                </div>
+                <button class="rounded-xl bg-stone-200 px-3 py-2 text-sm font-semibold text-stone-700" onclick="app.closeModal()">关闭</button>
+              </div>
+              <div class="mt-5 grid gap-3">
+                ${entries || '<div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600">无额外日志。</div>'}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderTabContent(gameState) {
+        switch (state.activeTab) {
+          case 'inventory':
+            return renderInventoryTab(gameState);
+          case 'tavern':
+            return renderTavernTab(gameState);
+          case 'arena':
+            return renderArenaTab(gameState);
+          case 'prefecture':
+            return renderPrefectureTab(gameState);
+          case 'market':
+            return renderMarketTab(gameState);
+          case 'character':
+          default:
+            return renderCharacterTab(gameState);
+        }
+      }
+
+      function renderApp() {
+        if (!state.session) return renderAuth();
+
+        if (!state.gameState) {
+          return `
+            <div class="mx-auto max-w-6xl px-4 py-8">
+              <div class="rounded-3xl bg-white p-10 text-center shadow-card">
+                <div class="text-sm uppercase tracking-[0.3em] text-orange-700">载入中</div>
+                <h1 class="mt-3 text-3xl font-bold">正在同步云存档</h1>
+                <div class="mt-6 space-y-3">${renderStatusBanner() || '<div class="text-stone-500">请稍候...</div>'}</div>
+              </div>
+            </div>
+          `;
+        }
+
+        const gameState = state.gameState;
+        const tabs = TABS.map((tab) => `
+          <button class="rounded-2xl px-4 py-3 text-sm font-semibold transition ${state.activeTab === tab.key ? 'bg-stone-900 text-white shadow' : 'bg-white text-stone-600 hover:bg-stone-200'}" onclick="app.setTab('${tab.key}')">
+            ${escapeHtml(tab.label)}
+          </button>
+        `).join('');
+
+        return `
+          <div class="mx-auto max-w-7xl px-4 py-6">
+            <header class="rounded-3xl bg-white p-6 shadow-card">
+              <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <div class="text-sm uppercase tracking-[0.35em] text-orange-700">Lite Client</div>
+                  <h1 class="mt-2 text-3xl font-bold">大宋造反模拟器</h1>
+                  <div class="mt-2 text-sm text-stone-500">${escapeHtml(state.session.user.email || '')}</div>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                  <button class="rounded-2xl bg-stone-200 px-4 py-2 text-sm font-semibold text-stone-700" onclick="app.refreshSave()">刷新存档</button>
+                  <button class="rounded-2xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white" onclick="app.logout()">退出登录</button>
+                </div>
+              </div>
+              <div class="mt-6">${renderResourcePills(gameState)}</div>
+              <div class="mt-6 space-y-3">${renderStatusBanner()}</div>
+            </header>
+
+            <nav class="mt-6 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">${tabs}</nav>
+
+            <main class="mt-6 space-y-6">
+              ${renderTabContent(gameState)}
+              ${renderLogs()}
+            </main>
+            ${renderModal()}
+          </div>
+        `;
+      }
+
+      function render() {
+        document.getElementById('app').innerHTML = renderApp();
+      }
+
+      window.app = {
+        submitAuth,
+        setAuthMode,
+        setTab,
+        setChapter,
+        logout,
+        refreshSave,
+        upgradeAttribute,
+        equipItem,
+        unequipItem,
+        generateMissions,
+        startMission,
+        completeMission,
+        skipMission,
+        tavernDrink,
+        arenaFight,
+        arenaSkipCooldown,
+        dungeonFight,
+        blackMarketRefresh,
+        blackMarketBuy,
+        closeModal,
+      };
+
+      async function boot() {
+        render();
+        try {
+          const { data } = await supabaseClient.auth.getSession();
+          state.session = data.session;
+          if (state.session) {
+            await loadSave();
+          }
+        } catch (error) {
+          state.error = error.message || '初始化失败';
+        } finally {
+          state.booting = false;
+          render();
+        }
+      }
+
+      supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+        state.session = session;
+        if (session) {
+          try {
+            await loadSave();
+          } catch (error) {
+            state.error = error.message || '载入存档失败';
+          }
+        } else {
+          state.gameState = null;
+        }
+        render();
+      });
+
+      setInterval(() => {
+        if (state.session && state.gameState) {
+          render();
+        }
+      }, 1000);
+
+      boot();
+    </script>
   </body>
 </html>
