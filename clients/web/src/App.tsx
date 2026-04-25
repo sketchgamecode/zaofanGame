@@ -8,9 +8,9 @@ import { Dungeon } from './components/Dungeon';
 import { Guild } from './components/Guild';
 import { BlackMarket } from './components/BlackMarket';
 import { AuthPage } from './components/AuthPage';
-import { type GameState, getInitialGameState, saveGameState } from './core/gameState';
+import { type GameState, getInitialGameState } from './core/gameState';
 import { supabase, getAuthToken, SERVER_URL } from './lib/supabase';
-import { useSaveSync } from './hooks/useSaveSync';
+import { useAction } from './hooks/useAction';
 
 function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined); // undefined = still checking
@@ -52,11 +52,9 @@ function App() {
           // 新玩家：初始化存档并立即同步到云端
           const initial = getInitialGameState();
           setGameState(initial);
-          // 立即触发一次云端存档（useSaveSync 会处理）
-          saveGameState(initial); // 同时保留 localStorage 作缓存
+
         } else {
           setGameState(save as GameState);
-          saveGameState(save as GameState);
         }
       } catch (err: any) {
         // 服务端不可达时，显示错误（不降级到本地存档，符合设计决策）
@@ -87,28 +85,14 @@ function App() {
     return () => clearInterval(interval);
   }, [!!gameState]);
 
-  // ── 云存档同步 ───────────────────────────────────────────────────────────────
-  useSaveSync(gameState);
 
-  const handleCheat = () => {
-    if (!gameState) return;
-    setGameState({
-      ...gameState,
-      resources: {
-        ...gameState.resources,
-        copper: gameState.resources.copper + 10000,
-        prestige: gameState.resources.prestige + 1000,
-        rations: 100,
-        tokens: gameState.resources.tokens + 100,
-      }
-    });
+  const { dispatchAction } = useAction(setGameState as any);
+  const handleCheat = async () => {
+    await dispatchAction('DEBUG_CHEAT');
   };
 
   const handleWipeSave = async () => {
-    if (confirm('确定要彻底清空存档吗？这将同时清除云端存档！')) {
-      const initial = getInitialGameState();
-      setGameState(initial);
-      saveGameState(initial);
+    if (confirm('暂不支持客户端清空存档（请联系管理员）')) {
     }
   };
 
