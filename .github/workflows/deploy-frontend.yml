@@ -1,0 +1,44 @@
+name: Deploy Frontend to Aliyun
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'clients/web/**'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: clients/web/package.json
+
+      - name: Install dependencies
+        working-directory: clients/web
+        run: npm install
+
+      - name: Build
+        working-directory: clients/web
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SERVER_URL: https://api.sketchgame.net
+        run: npm run build
+
+      - name: Deploy to Aliyun via SSH
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 47.79.240.134
+          username: root
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "clients/web/dist/*"
+          target: "/var/www/zaofan-web"
+          strip_components: 3
