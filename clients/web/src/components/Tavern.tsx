@@ -536,71 +536,36 @@ export function Tavern({ gameState, setGameState }: TavernProps) {
     setMissions(newMissions);
   };
 
-  const openQuestPanel = () => {
-    if (missions.length === 0) generateMissions();
+  const openQuestPanel = async () => {
+    if (gameState.availableMissions.length === 0) {
+      await dispatchAction('GENERATE_MISSIONS');
+    }
     setScene('quest-select');
   };
 
   // ── 接受任务 ──────────────────────────────────────────────────────────────
-  const handleAccept = (mission: MissionData) => {
-    setGameState(prev => {
-      const newActive = { ...mission, endTime: Date.now() + mission.durationSec * 1000 };
-      const newState = {
-        ...prev,
-        activeMission: newActive,
-        resources: { ...prev.resources, rations: prev.resources.rations - mission.foodCost },
-      };
-      saveGameState(newState);
-      return newState;
-    });
-    setScene('travel');
+  const handleAccept = async (mission: MissionData) => {
+    const ok = await dispatchAction('START_MISSION', { missionId: mission.id });
+    if (ok) setScene('travel');
   };
 
   // ── 任务结算 ──────────────────────────────────────────────────────────────
-  const handleMissionComplete = (mission: ActiveMission, forceDrop = false) => {
-    const current = gameStateRef.current;
-    if (!current.activeMission || current.activeMission.id !== mission.id) return;
-
-    const droppedItem = generateEquipment(current.playerLevel, mission.type, forceDrop);
-    let pendingNewLevel = 0;
-    let pendingDidLevelUp = false;
-
-    setGameState(prev => {
-      if (!prev.activeMission || prev.activeMission.id !== mission.id) return prev;
-      const newExp = (prev.exp ?? 0) + mission.expReward;
-      const { newLevel, newExp: remainingExp, didLevelUp } = checkLevelUp(prev.playerLevel, newExp);
-      pendingNewLevel = newLevel;
-      pendingDidLevelUp = didLevelUp;
-
-      const newState: GameState = {
-        ...prev,
-        playerLevel: newLevel,
-        exp: remainingExp,
-        activeMission: null,
-        resources: { ...prev.resources, copper: prev.resources.copper + mission.coinReward },
-        inventory: droppedItem ? [...prev.inventory, droppedItem] : prev.inventory,
-      };
-      saveGameState(newState);
-      return newState;
-    });
-
-    setRewardInfo({
-      missionName: mission.name,
-      coinReward: mission.coinReward,
-      expReward: mission.expReward,
-      droppedItemName: droppedItem?.name ?? null,
-      didLevelUp: pendingDidLevelUp,
-      newLevel: pendingNewLevel,
-    });
-    setScene('reward');
+  const handleMissionComplete = async (_mission: ActiveMission, forceDrop = false) => {
+    const res = await dispatchAction('COMPLETE_MISSION', { forceDrop });
+    if (res && res.data) {
+      setRewardInfo(res.data);
+      setScene('reward');
+    } else {
+      setScene('hall');
+    }
   };
 
-  const handleRewardConfirm = () => {
+  const handleRewardConfirm = async () => {
     if (rewardInfo?.didLevelUp && rewardInfo.newLevel) {
       setLevelUpShow(rewardInfo.newLevel);
     }
     setRewardInfo(null);
-    generateMissions();
+    await dispatchAction('GENERATE_MISSIONS');
     setScene('hall');
   };
 
@@ -653,28 +618,8 @@ export function Tavern({ gameState, setGameState }: TavernProps) {
   };
 
   // ── 掌柜买酒 ──────────────────────────────────────────────────────────────
-  const handleBuyDrink = () => {
-    const today = todayStr();
-    const drinksToday = gameState.tavernDailyDrinks.date === today ? gameState.tavernDailyDrinks.count : 0;
-    if (drinksToday >= MAX_DAILY_DRINKS) { alert('今日已达购买上限！'); return; }
-    if (gameState.resources.tokens < DRINK_TOKEN_COST) { alert('通宝不足！'); return; }
-    if (gameState.resources.rations >= MAX_ENERGY) { alert('精力已满！'); return; }
-
-    setGameState(prev => {
-      const d = prev.tavernDailyDrinks.date === today ? prev.tavernDailyDrinks.count : 0;
-      const gained = Math.min(DRINK_ENERGY_GAIN, MAX_ENERGY - prev.resources.rations);
-      const newState = {
-        ...prev,
-        resources: {
-          ...prev.resources,
-          rations: prev.resources.rations + gained,
-          tokens: prev.resources.tokens - DRINK_TOKEN_COST,
-        },
-        tavernDailyDrinks: { date: today, count: d + 1 },
-      };
-      saveGameState(newState);
-      return newState;
-    });
+  const handleBuyDrink = async () => {
+    await dispatchAction('TAVERN_DRINK');
   };
 
   // ── 更夫开始打工 ──────────────────────────────────────────────────────────
@@ -867,7 +812,7 @@ export function Tavern({ gameState, setGameState }: TavernProps) {
           missions={gameState.availableMissions}
           gameState={gameState}
           onAccept={mission => { handleAccept(mission); }}
-          onClose={() => { setScene('hall'); generateMissions(); }}
+          onClose={() => { setScene('hall'); }}
         />
       )}
 
