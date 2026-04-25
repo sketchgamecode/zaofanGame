@@ -1,0 +1,35 @@
+name: Deploy Lite Client to Aliyun
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'clients/lite/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Aliyun via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 47.79.240.134
+          username: root
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "clients/lite/*"
+          target: "/var/www/zaofan-lite"
+          strip_components: 2
+
+      - name: Reload Nginx (if needed)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 47.79.240.134
+          username: root
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            mkdir -p /var/www/zaofan-lite
+            nginx -s reload 2>/dev/null || true
