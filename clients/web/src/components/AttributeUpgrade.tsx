@@ -39,7 +39,9 @@ export function AttributeUpgrade({ gameState, setGameState }: AttributeUpgradePr
     const mainHandDmg = gameState.equipped.mainHand?.weaponDamage || { min: playerLevel*2, max: playerLevel*4 };
     
     if (classId === 'CLASS_D') {
-      const offHandDmg = gameState.equipped.offHand?.subType === 'weapon' ? gameState.equipped.offHand.weaponDamage : { min: 0, max: 0 };
+      const offHandDmg = (gameState.equipped.offHand?.subType === 'weapon'
+        ? (gameState.equipped.offHand.weaponDamage ?? { min: 0, max: 0 })
+        : { min: 0, max: 0 });
       const d1Min = MathCore.getSingleHitDamage(mainHandDmg.min, statVal, true);
       const d1Max = MathCore.getSingleHitDamage(mainHandDmg.max, statVal, true);
       const d2Min = MathCore.getSingleHitDamage(offHandDmg.min, statVal, true);
@@ -133,7 +135,7 @@ export function AttributeUpgrade({ gameState, setGameState }: AttributeUpgradePr
   );
 
   function renderBlock(b: any) {
-    const cost = b.isUpgradable ? MathCore.getUpgradeCost(base[b.key]) : 0;
+    const cost = b.isUpgradable ? MathCore.getUpgradeCost(base[b.key as keyof typeof base] ?? 0) : 0;
     const canUpgrade = resources.copper >= cost;
 
     return (

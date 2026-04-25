@@ -146,7 +146,9 @@ function App() {
     );
   }
 
-  // 4. 正常游戏界面
+  // 4. 正常游戏界面（此处 gameState 已确认非 null）
+  // 类型断言：组件 props 要求 Dispatch<SetStateAction<GameState>>（非空），此处安全
+  const setGS = setGameState as React.Dispatch<React.SetStateAction<GameState>>;
   return (
     <div className="flex h-screen bg-darkBg text-textMain overflow-hidden font-sans selection:bg-primary/30">
       <Navbar
@@ -157,12 +159,12 @@ function App() {
         onLogout={handleLogout}
       />
       <main className="flex-1 overflow-y-auto w-full h-full custom-scrollbar">
-        {activeTab === 'character' && <CharacterPanel gameState={gameState} setGameState={setGameState} />}
-        {activeTab === 'hideout' && <Tavern gameState={gameState} setGameState={setGameState} />}
-        {activeTab === 'arena' && <Arena gameState={gameState} setGameState={setGameState} />}
-        {activeTab === 'siege' && <Dungeon gameState={gameState} setGameState={setGameState} />}
+        {activeTab === 'character' && <CharacterPanel gameState={gameState} setGameState={setGS} />}
+        {activeTab === 'hideout' && <Tavern gameState={gameState} setGameState={setGS} />}
+        {activeTab === 'arena' && <Arena gameState={gameState} setGameState={setGS} />}
+        {activeTab === 'siege' && <Dungeon gameState={gameState} setGameState={setGS} />}
         {activeTab === 'guild' && <Guild />}
-        {activeTab === 'market' && <BlackMarket gameState={gameState} setGameState={setGameState} />}
+        {activeTab === 'market' && <BlackMarket gameState={gameState} setGameState={setGS} />}
       </main>
     </div>
   );

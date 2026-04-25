@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { type GameState, type ActiveMission, type MissionType, saveGameState } from '../core/gameState';
-import { Clock, Coins, Star, Activity, AlertCircle, FastForward, CircleDollarSign, Hourglass } from 'lucide-react';
+import { Clock, Coins, Star, Activity, AlertCircle, CircleDollarSign, Hourglass } from 'lucide-react';
 import { generateEquipment } from '../core/equipmentGenerator';
 import { checkLevelUp } from '../core/mathCore';
 import { XP_TABLE } from '../data/xpTable';

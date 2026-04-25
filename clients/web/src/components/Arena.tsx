@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Swords, Shield, Wand2, Zap, Sword, RefreshCw, SkipForward, Info } from 'lucide-react';
+import { Shield, Wand2, Zap, Sword, RefreshCw, Info } from 'lucide-react';
 import type { GameState } from '../core/gameState';
 import { getTotalAttributes, getTotalArmor, saveGameState } from '../core/gameState';
 import { simulateBattle, type Combatant, type TurnEvent, type BattleResult } from '../core/battleCore';
-import { CLASS_CONFIG, MathCore, checkLevelUp } from '../core/mathCore';
+import { MathCore, checkLevelUp } from '../core/mathCore';
 import { XP_TABLE } from '../data/xpTable';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
