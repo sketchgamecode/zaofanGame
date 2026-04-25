@@ -29,3 +29,6 @@ secrets/
 .env.local
 .env.*.local
 server/.env
+
+# server/ 是独立的 git 仓库 (zaofanServer)，不纳入此仓库管理
+server/
