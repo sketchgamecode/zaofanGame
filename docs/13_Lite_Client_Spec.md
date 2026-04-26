@@ -49,8 +49,8 @@ const token = session.access_token;
 
 **Supabase 配置**（直接写在代码里，是公开 key，安全）：
 ```js
-const SUPABASE_URL = 'https://iwxvwdckxbpqjicuvkbp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHZ3ZGNreGJwcWppY3V2a2JwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5MzU3NDEsImV4cCI6MjA2MDUxMTc0MX0.7PQP3CWCK8bHBEdLSSBvgXZkNp5-zW79smDVJb6y4KM';
+const SUPABASE_URL = 'https://kstzpcgwqxgxdcxuzqwg.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtzdHpwY2d3cXhneGRjeHV6cXdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMzQwMDIsImV4cCI6MjA4OTkxMDAwMn0.WHoV0ETfh37TMhE-UynHFa7K1EAIeJVjU0tgqTI-d-U';
 const API_URL = 'https://api.sketchgame.net';
 ```
 
