@@ -26,6 +26,62 @@ function shouldResyncTavern(errorCode: string) {
   }
 }
 
+function isTavernInfoData(value: unknown): value is TavernInfoData {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const tavern = candidate.tavern as Record<string, unknown> | undefined;
+  const mount = candidate.mount as Record<string, unknown> | undefined;
+
+  return (
+    typeof tavern === 'object' &&
+    tavern !== null &&
+    typeof tavern.status === 'string' &&
+    Array.isArray(tavern.missionOffers) &&
+    'activeMission' in tavern &&
+    typeof mount === 'object' &&
+    mount !== null &&
+    typeof mount.timeMultiplierBp === 'number'
+  );
+}
+
+function isCompleteMissionData(value: unknown): value is CompleteMissionData {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.result === 'string' &&
+    Array.isArray(candidate.nextMissionOffers) &&
+    isTavernInfoData({
+      tavern: candidate.tavern,
+      mount: { timeMultiplierBp: 10000 },
+    }) &&
+    typeof candidate.playerDelta === 'object' &&
+    candidate.playerDelta !== null &&
+    typeof candidate.grantedReward === 'object' &&
+    candidate.grantedReward !== null &&
+    typeof candidate.battleResult === 'object' &&
+    candidate.battleResult !== null
+  );
+}
+
+function mapStatusLabel(status: string | null | undefined) {
+  switch (status) {
+    case 'IDLE':
+      return '空闲中';
+    case 'IN_PROGRESS':
+      return '任务进行中';
+    case 'READY_TO_COMPLETE':
+      return '可完成';
+    default:
+      return '未知状态';
+  }
+}
+
 function mapErrorToMessage(error: ActionErrorResponse) {
   switch (error.errorCode) {
     case 'INVALID_TAVERN_STATE':
@@ -88,7 +144,7 @@ export function TavernPage({ onLogout }: TavernPageProps) {
     setLastAction('TAVERN_GET_INFO');
 
     try {
-      const response = await postGameAction<TavernInfoData>('TAVERN_GET_INFO');
+      const response = await postGameAction<unknown>('TAVERN_GET_INFO');
 
       if (!response.ok) {
         setLastErrorCode(response.errorCode);
@@ -96,10 +152,17 @@ export function TavernPage({ onLogout }: TavernPageProps) {
         return;
       }
 
+      if (!isTavernInfoData(response.data)) {
+        setLastErrorCode('INVALID_TAVERN_PAYLOAD');
+        setErrorMessage('酒馆数据格式异常，请重新同步');
+        setTavernData(null);
+        return;
+      }
+
       setLastErrorCode(null);
       applyTavernSnapshot(response.data, response.serverTime, response.stateRevision);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown tavern error';
+      const message = error instanceof Error ? error.message : '酒馆请求失败';
       setLastErrorCode('NETWORK_ERROR');
       setErrorMessage(message);
     } finally {
@@ -117,7 +180,7 @@ export function TavernPage({ onLogout }: TavernPageProps) {
     setLastAction('TAVERN_DRINK');
 
     try {
-      const response = await postGameAction<TavernInfoData>('TAVERN_DRINK');
+      const response = await postGameAction<unknown>('TAVERN_DRINK');
 
       if (!response.ok) {
         setLastErrorCode(response.errorCode);
@@ -130,10 +193,17 @@ export function TavernPage({ onLogout }: TavernPageProps) {
         return;
       }
 
+      if (!isTavernInfoData(response.data)) {
+        setLastErrorCode('INVALID_TAVERN_PAYLOAD');
+        setErrorMessage('酒馆数据格式异常，请重新同步');
+        await loadTavern(true);
+        return;
+      }
+
       setLastErrorCode(null);
       applyTavernSnapshot(response.data, response.serverTime, response.stateRevision);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown tavern error';
+      const message = error instanceof Error ? error.message : '酒馆请求失败';
       setLastErrorCode('NETWORK_ERROR');
       setErrorMessage(message);
     } finally {
@@ -148,7 +218,7 @@ export function TavernPage({ onLogout }: TavernPageProps) {
       setLastAction('START_MISSION');
 
       try {
-        const response = await postGameAction<TavernInfoData>('START_MISSION', {
+        const response = await postGameAction<unknown>('START_MISSION', {
           missionId: mission.missionId,
           offerSetId: mission.offerSetId,
         });
@@ -164,10 +234,17 @@ export function TavernPage({ onLogout }: TavernPageProps) {
           return;
         }
 
+        if (!isTavernInfoData(response.data)) {
+          setLastErrorCode('INVALID_TAVERN_PAYLOAD');
+          setErrorMessage('任务开始后的酒馆数据异常，请重新同步');
+          await loadTavern(true);
+          return;
+        }
+
         setLastErrorCode(null);
         applyTavernSnapshot(response.data, response.serverTime, response.stateRevision);
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown tavern error';
+        const message = error instanceof Error ? error.message : '酒馆请求失败';
         setLastErrorCode('NETWORK_ERROR');
         setErrorMessage(message);
       } finally {
@@ -197,10 +274,13 @@ export function TavernPage({ onLogout }: TavernPageProps) {
   const applySettlementResponse = useCallback(
     (data: CompleteMissionData, nextServerTime: number, nextRevision: number) => {
       const nextTavernData = mergeTavernSummary(data.tavern, data.nextMissionOffers);
-      if (nextTavernData) {
-        applyTavernSnapshot(nextTavernData, nextServerTime, nextRevision);
+      if (!nextTavernData) {
+        setLastErrorCode('INVALID_TAVERN_PAYLOAD');
+        setErrorMessage('结算后的酒馆数据异常，请重新同步');
+        return;
       }
 
+      applyTavernSnapshot(nextTavernData, nextServerTime, nextRevision);
       setSettlementData(data);
       setSettlementOpen(true);
     },
@@ -213,7 +293,7 @@ export function TavernPage({ onLogout }: TavernPageProps) {
     setLastAction('COMPLETE_MISSION');
 
     try {
-      const response = await postGameAction<CompleteMissionData>('COMPLETE_MISSION');
+      const response = await postGameAction<unknown>('COMPLETE_MISSION');
 
       if (!response.ok) {
         setLastErrorCode(response.errorCode);
@@ -226,10 +306,17 @@ export function TavernPage({ onLogout }: TavernPageProps) {
         return;
       }
 
+      if (!isCompleteMissionData(response.data)) {
+        setLastErrorCode('INVALID_SETTLEMENT_PAYLOAD');
+        setErrorMessage('任务结算数据异常，请重新同步');
+        await loadTavern(true);
+        return;
+      }
+
       setLastErrorCode(null);
       applySettlementResponse(response.data, response.serverTime, response.stateRevision);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown tavern error';
+      const message = error instanceof Error ? error.message : '酒馆请求失败';
       setLastErrorCode('NETWORK_ERROR');
       setErrorMessage(message);
     } finally {
@@ -247,7 +334,7 @@ export function TavernPage({ onLogout }: TavernPageProps) {
     setLastAction('SKIP_MISSION');
 
     try {
-      const response = await postGameAction<CompleteMissionData>('SKIP_MISSION');
+      const response = await postGameAction<unknown>('SKIP_MISSION');
 
       if (!response.ok) {
         setLastErrorCode(response.errorCode);
@@ -260,10 +347,17 @@ export function TavernPage({ onLogout }: TavernPageProps) {
         return;
       }
 
+      if (!isCompleteMissionData(response.data)) {
+        setLastErrorCode('INVALID_SETTLEMENT_PAYLOAD');
+        setErrorMessage('跳过结算数据异常，请重新同步');
+        await loadTavern(true);
+        return;
+      }
+
       setLastErrorCode(null);
       applySettlementResponse(response.data, response.serverTime, response.stateRevision);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown tavern error';
+      const message = error instanceof Error ? error.message : '酒馆请求失败';
       setLastErrorCode('NETWORK_ERROR');
       setErrorMessage(message);
     } finally {
@@ -300,7 +394,7 @@ export function TavernPage({ onLogout }: TavernPageProps) {
 
   const missionCountLabel = useMemo(() => {
     const count = tavernData?.tavern.missionOffers.length ?? 0;
-    return `${count} mission${count === 1 ? '' : 's'} loaded`;
+    return `当前任务 ${count} / 3`;
   }, [tavernData]);
 
   const formattedServerTime = useMemo(() => {
@@ -319,8 +413,8 @@ export function TavernPage({ onLogout }: TavernPageProps) {
         <div className="mx-auto flex min-h-[80vh] w-full max-w-md flex-col items-center justify-center gap-5">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-amber-900/40 border-t-amber-400" />
           <div className="text-center">
-            <p className="text-xs uppercase tracking-[0.38em] text-amber-700">Tavern</p>
-            <h1 className="mt-2 text-2xl font-black tracking-[0.08em] text-amber-100">Pulling Live Orders</h1>
+            <p className="text-xs uppercase tracking-[0.38em] text-amber-700">酒馆</p>
+            <h1 className="mt-2 text-2xl font-black tracking-[0.08em] text-amber-100">正在同步酒馆情报</h1>
           </div>
         </div>
       </div>
@@ -345,10 +439,10 @@ export function TavernPage({ onLogout }: TavernPageProps) {
         <header className="rounded-[30px] border border-amber-900/50 bg-[linear-gradient(160deg,rgba(29,17,11,0.96),rgba(10,7,8,0.98))] px-5 py-5 shadow-[0_20px_60px_rgba(0,0,0,0.42)]">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.34em] text-amber-700">Game.SketchGame.Net</p>
-              <h1 className="mt-2 text-2xl font-black tracking-[0.08em] text-amber-100">Tavern Orders</h1>
+              <p className="text-[11px] uppercase tracking-[0.34em] text-amber-700">game.sketchgame.net</p>
+              <h1 className="mt-2 text-2xl font-black tracking-[0.08em] text-amber-100">酒馆任务</h1>
               <p className="mt-3 text-sm leading-6 text-stone-300">
-                Mobile-first live tavern view. This page only renders server-owned tavern state.
+                当前页面只展示服务端权威的酒馆状态，不在本地生成任务或结算奖励。
               </p>
             </div>
             <button
@@ -356,25 +450,25 @@ export function TavernPage({ onLogout }: TavernPageProps) {
               onClick={() => onLogout()}
               className="shrink-0 rounded-full border border-stone-700/70 bg-black/20 px-3 py-2 text-xs font-semibold tracking-[0.18em] text-stone-300"
             >
-              LOGOUT
+              退出登录
             </button>
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-2xl border border-white/5 bg-black/20 p-3">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500">Status</p>
-              <p className="mt-2 font-semibold text-amber-100">{tavern?.status ?? 'UNKNOWN'}</p>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500">当前状态</p>
+              <p className="mt-2 font-semibold text-amber-100">{mapStatusLabel(tavern?.status)}</p>
             </div>
             <div className="rounded-2xl border border-white/5 bg-black/20 p-3">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500">Mount Multiplier</p>
-              <p className="mt-2 font-semibold text-amber-100">{mount?.timeMultiplierBp ?? 10000} bp</p>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500">坐骑倍率</p>
+              <p className="mt-2 font-semibold text-amber-100">{mount?.timeMultiplierBp ?? '-'} bp</p>
             </div>
             <div className="rounded-2xl border border-white/5 bg-black/20 p-3">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500">Server Time</p>
-              <p className="mt-2 font-semibold text-amber-100">{serverTime ?? '-'}</p>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500">服务器时间</p>
+              <p className="mt-2 font-semibold text-amber-100">{formattedServerTime}</p>
             </div>
             <div className="rounded-2xl border border-white/5 bg-black/20 p-3">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500">Revision</p>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500">状态版本</p>
               <p className="mt-2 font-semibold text-amber-100">{stateRevision ?? '-'}</p>
             </div>
           </div>
@@ -386,8 +480,8 @@ export function TavernPage({ onLogout }: TavernPageProps) {
           {showDebugPanel ? (
             <section className="rounded-2xl border border-cyan-900/40 bg-cyan-950/20 px-4 py-3 text-[11px] text-cyan-100/85">
               <div className="flex items-center justify-between gap-3">
-                <span className="uppercase tracking-[0.24em] text-cyan-400">Debug Status</span>
-                <span className="text-cyan-500">DEV ONLY</span>
+                <span className="uppercase tracking-[0.24em] text-cyan-400">调试状态</span>
+                <span className="text-cyan-500">仅开发环境显示</span>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
                 <span>status: {tavernData?.tavern.status ?? '-'}</span>
@@ -415,8 +509,8 @@ export function TavernPage({ onLogout }: TavernPageProps) {
                 <section className="space-y-4">
                   <div className="flex items-center justify-between px-1">
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.3em] text-amber-700">Mission Offers</p>
-                      <h2 className="mt-2 text-xl font-black tracking-[0.05em] text-amber-100">Three Choices, Server Owned</h2>
+                      <p className="text-[11px] uppercase tracking-[0.3em] text-amber-700">任务列表</p>
+                      <h2 className="mt-2 text-xl font-black tracking-[0.05em] text-amber-100">三选一任务</h2>
                     </div>
                     <span className="rounded-full border border-amber-900/40 bg-black/20 px-3 py-1.5 text-xs text-amber-400">
                       {missionCountLabel}
@@ -434,14 +528,14 @@ export function TavernPage({ onLogout }: TavernPageProps) {
                     ))
                   ) : (
                     <div className="rounded-[28px] border border-amber-900/40 bg-black/20 px-5 py-8 text-center text-sm text-stone-300">
-                      No mission offers returned by the server.
+                      当前没有可展示的任务，请点击右下角重新同步。
                     </div>
                   )}
                 </section>
               ) : (
                 <ActiveMissionPanel
                   mission={tavern.activeMission}
-                  status={tavern.status}
+                  status={mapStatusLabel(tavern.status)}
                   displayRemainingSec={displayRemainingSec}
                   canComplete={Boolean(canCompleteMission)}
                   onComplete={handleCompleteMission}
@@ -453,20 +547,20 @@ export function TavernPage({ onLogout }: TavernPageProps) {
             </>
           ) : (
             <div className="rounded-[28px] border border-red-900/40 bg-black/20 px-5 py-8 text-center text-sm text-stone-300">
-              Tavern payload is empty.
+              酒馆数据暂不可用，请稍后重试或点击重新同步。
             </div>
           )}
         </main>
 
         <footer className="mt-5 flex items-center justify-between px-1 text-xs text-stone-500">
-          <span>Phase C1-C10</span>
+          <span>酒馆联调版本</span>
           <button
             type="button"
             onClick={() => loadTavern(true)}
             disabled={refreshing}
             className="rounded-full border border-stone-800/80 bg-black/20 px-3 py-2 tracking-[0.18em] text-stone-300 disabled:opacity-50"
           >
-            {refreshing ? 'SYNCING' : 'RELOAD'}
+            {refreshing ? '同步中' : '重新同步'}
           </button>
         </footer>
       </div>

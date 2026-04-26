@@ -32,7 +32,7 @@ function App() {
     return (
       <div className="min-h-screen bg-darkBg flex items-center justify-center flex-col gap-4">
         <div className="h-10 w-10 rounded-full border-4 border-primary/40 border-t-primary animate-spin" />
-        <p className="text-sm tracking-[0.35em] text-textMuted uppercase">Connecting</p>
+        <p className="text-sm tracking-[0.35em] text-textMuted uppercase">连接中</p>
       </div>
     );
   }
