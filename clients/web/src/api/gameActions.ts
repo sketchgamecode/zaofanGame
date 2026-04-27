@@ -80,12 +80,24 @@ function mapBusinessMessage(errorCode: string, fallbackMessage: string) {
   switch (errorCode) {
     case 'NOT_ENOUGH_TOKENS':
       return '通宝不足，暂时无法执行这次操作。';
+    case 'NOT_ENOUGH_COPPER':
+      return '铜钱不足。';
     case 'TAVERN_DRINK_LIMIT_REACHED':
       return '今日饮酒次数已达上限。';
     case 'NOT_ENOUGH_THIRST':
       return '干粮不足，先补给后再出发。';
     case 'NOT_ENOUGH_SKIP_RESOURCE':
       return '沙漏或通宝不足，暂时无法跳过任务。';
+    case 'ITEM_NOT_FOUND':
+      return '装备不存在或已不在背包中。';
+    case 'INVALID_EQUIPMENT_SLOT':
+      return '装备槽位无效。';
+    case 'EQUIP_SLOT_MISMATCH':
+      return '装备槽位不匹配。';
+    case 'EMPTY_EQUIPMENT_SLOT':
+      return '该槽位没有装备。';
+    case 'INVALID_ATTRIBUTE_KEY':
+      return '属性类型无效。';
     default:
       return fallbackMessage || '服务器拒绝了这次操作。';
   }
