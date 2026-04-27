@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { postGameAction } from '../api/gameActions';
-import type { ActionErrorResponse } from '../api/actionTypes';
+import { createClientStateError, fetchApiHealth, postGameAction, shouldResyncForError } from '../api/gameActions';
+import type { ActionSuccessResult, ApiHealthSummary } from '../api/actionTypes';
+import { GameApiError } from '../api/actionTypes';
 import { ErrorToast } from '../components/common/ErrorToast';
 import { ActiveMissionPanel } from '../components/tavern/ActiveMissionPanel';
 import { DrinkPanel } from '../components/tavern/DrinkPanel';
@@ -12,18 +13,8 @@ type TavernPageProps = {
   onLogout: () => Promise<unknown>;
 };
 
-function shouldResyncTavern(errorCode: string) {
-  switch (errorCode) {
-    case 'INVALID_TAVERN_STATE':
-    case 'MISSION_ALREADY_IN_PROGRESS':
-    case 'MISSION_NOT_FOUND':
-    case 'OFFER_SET_MISMATCH':
-    case 'MISSION_NOT_FINISHED':
-    case 'NO_ACTIVE_MISSION':
-      return true;
-    default:
-      return false;
-  }
+function isDebugModeEnabled() {
+  return import.meta.env.DEV || new URLSearchParams(window.location.search).get('debug') === '1';
 }
 
 function isTavernInfoData(value: unknown): value is TavernInfoData {
@@ -82,55 +73,113 @@ function mapStatusLabel(status: string | null | undefined) {
   }
 }
 
-function mapErrorToMessage(error: ActionErrorResponse) {
-  switch (error.errorCode) {
-    case 'INVALID_TAVERN_STATE':
-      return '酒馆状态异常，正在重新同步';
-    case 'NOT_ENOUGH_TOKENS':
-      return '通宝不足';
-    case 'TAVERN_DRINK_LIMIT_REACHED':
-      return '今日饮酒次数已达上限';
-    case 'MISSION_ALREADY_IN_PROGRESS':
-      return '已有任务进行中，正在重新同步';
-    case 'MISSION_NOT_FOUND':
-      return '任务已失效，请重新进入酒馆';
-    case 'OFFER_SET_MISMATCH':
-      return '任务列表已变化，请重新进入酒馆';
-    case 'NOT_ENOUGH_THIRST':
-      return '干粮不足，可先喝酒补充';
-    case 'MISSION_NOT_FINISHED':
-      return '任务尚未完成，正在校准倒计时';
-    case 'NO_ACTIVE_MISSION':
-      return '当前没有进行中的任务，正在重新同步';
-    case 'NOT_ENOUGH_SKIP_RESOURCE':
-      return '沙漏/通宝不足，无法跳过';
+function mapErrorTitle(error: GameApiError) {
+  switch (error.kind) {
+    case 'network':
+      return '网络连接异常';
+    case 'auth':
+      return '登录状态异常';
+    case 'config':
+      return '部署或接口配置异常';
+    case 'business':
+      return '操作未通过';
+    case 'client_state':
+      return '页面状态需要刷新';
     default:
-      return error.message || '酒馆请求失败';
+      return '请求失败';
   }
 }
 
+function mapErrorHint(error: GameApiError) {
+  switch (error.kind) {
+    case 'network':
+      return '可先检查手机网络、代理或稍后重试。';
+    case 'auth':
+      return '请退出后重新登录，再继续 Tavern 流程。';
+    case 'config':
+      return '请确认当前前端连接的是正确 API 地址，并检查 CORS / 部署环境。';
+    case 'client_state':
+      return error.reason === 'DUPLICATE_ACTION'
+        ? '同一操作正在处理中，等待返回即可。'
+        : '页面会按服务器状态重新同步，也可以手动点击“重新同步”。';
+    default:
+      return null;
+  }
+}
+
+function toGameApiError(action: string, error: unknown) {
+  if (error instanceof GameApiError) {
+    return error;
+  }
+
+  return new GameApiError({
+    action,
+    kind: 'unknown',
+    reason: 'UNKNOWN',
+    userMessage: '发生了未识别的客户端错误，请稍后重试。',
+    debugMessage: error instanceof Error ? error.message : `Unknown error while handling ${action}`,
+    apiBaseUrl: window.location.origin,
+  });
+}
+
 export function TavernPage({ onLogout }: TavernPageProps) {
-  const showDebugPanel = import.meta.env.DEV;
+  const debugMode = isDebugModeEnabled();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<GameApiError | null>(null);
   const [serverTime, setServerTime] = useState<number | null>(null);
   const [stateRevision, setStateRevision] = useState<number | null>(null);
   const [lastAction, setLastAction] = useState<string>('TAVERN_GET_INFO');
   const [lastErrorCode, setLastErrorCode] = useState<string | null>(null);
+  const [lastErrorKind, setLastErrorKind] = useState<string | null>(null);
+  const [lastRequestId, setLastRequestId] = useState<string | null>(null);
+  const [healthSummary, setHealthSummary] = useState<ApiHealthSummary | null>(null);
   const [tavernData, setTavernData] = useState<TavernInfoData | null>(null);
   const [drinkPending, setDrinkPending] = useState(false);
   const [startingMissionId, setStartingMissionId] = useState<string | null>(null);
   const [completePending, setCompletePending] = useState(false);
   const [skipPending, setSkipPending] = useState(false);
-  const [displayRemainingSec, setDisplayRemainingSec] = useState<number | null>(null);
+  const [snapshotReceivedAtMs, setSnapshotReceivedAtMs] = useState(0);
+  const [currentTimeMs, setCurrentTimeMs] = useState(0);
   const [settlementData, setSettlementData] = useState<CompleteMissionData | null>(null);
   const [settlementOpen, setSettlementOpen] = useState(false);
 
+  const applySuccessMeta = useCallback((action: string, response: ActionSuccessResult<unknown>) => {
+    setLastAction(action);
+    setLastRequestId(response.meta.requestId);
+    setLastErrorCode(null);
+    setLastErrorKind(null);
+    setApiError(null);
+  }, []);
+
+  const applyErrorState = useCallback((action: string, error: GameApiError) => {
+    setLastAction(action);
+    setLastRequestId(error.requestId);
+    setLastErrorCode(error.errorCode);
+    setLastErrorKind(error.kind);
+    setApiError(error);
+
+    if (typeof error.serverTime === 'number') {
+      setServerTime(error.serverTime);
+    }
+
+    if (typeof error.stateRevision === 'number') {
+      setStateRevision(error.stateRevision);
+    }
+  }, []);
+
   const applyTavernSnapshot = useCallback((snapshot: TavernInfoData, nextServerTime: number, nextRevision: number) => {
+    const receivedAtMs = Date.now();
     setTavernData(snapshot);
     setServerTime(nextServerTime);
     setStateRevision(nextRevision);
+    setSnapshotReceivedAtMs(receivedAtMs);
+    setCurrentTimeMs(receivedAtMs);
+  }, []);
+
+  const loadHealth = useCallback(async () => {
+    const summary = await fetchApiHealth();
+    setHealthSummary(summary);
   }, []);
 
   const loadTavern = useCallback(async (background = false) => {
@@ -140,31 +189,31 @@ export function TavernPage({ onLogout }: TavernPageProps) {
       setLoading(true);
     }
 
-    setErrorMessage(null);
-    setLastAction('TAVERN_GET_INFO');
-
     try {
       const response = await postGameAction<unknown>('TAVERN_GET_INFO');
-
-      if (!response.ok) {
-        setLastErrorCode(response.errorCode);
-        setErrorMessage(mapErrorToMessage(response));
-        return;
-      }
+      applySuccessMeta('TAVERN_GET_INFO', response);
 
       if (!isTavernInfoData(response.data)) {
-        setLastErrorCode('INVALID_TAVERN_PAYLOAD');
-        setErrorMessage('酒馆数据格式异常，请重新同步');
+        const payloadError = new GameApiError({
+          action: 'TAVERN_GET_INFO',
+          kind: 'config',
+          reason: 'INVALID_API_RESPONSE',
+          userMessage: '服务器返回了无法识别的 Tavern 数据，请确认部署环境。',
+          debugMessage: 'Invalid Tavern info payload shape',
+          status: response.meta.status,
+          requestId: response.meta.requestId,
+          apiBaseUrl: response.meta.apiBaseUrl,
+          serverTime: response.serverTime,
+          stateRevision: response.stateRevision,
+        });
+        applyErrorState('TAVERN_GET_INFO', payloadError);
         setTavernData(null);
         return;
       }
 
-      setLastErrorCode(null);
       applyTavernSnapshot(response.data, response.serverTime, response.stateRevision);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '酒馆请求失败';
-      setLastErrorCode('NETWORK_ERROR');
-      setErrorMessage(message);
+      applyErrorState('TAVERN_GET_INFO', toGameApiError('TAVERN_GET_INFO', error));
     } finally {
       if (background) {
         setRefreshing(false);
@@ -172,86 +221,136 @@ export function TavernPage({ onLogout }: TavernPageProps) {
         setLoading(false);
       }
     }
-  }, [applyTavernSnapshot]);
+  }, [applyErrorState, applySuccessMeta, applyTavernSnapshot]);
+
+  const handleClientStateFailure = useCallback(
+    async (error: GameApiError) => {
+      applyErrorState(error.action, error);
+      if (shouldResyncForError(error)) {
+        await loadTavern(true);
+      }
+    },
+    [applyErrorState, loadTavern],
+  );
 
   const handleDrink = useCallback(async () => {
+    if (drinkPending) {
+      await handleClientStateFailure(
+        createClientStateError(
+          'TAVERN_DRINK',
+          'DUPLICATE_ACTION',
+          '补给请求仍在处理中，请勿重复点击。',
+          'Duplicate TAVERN_DRINK blocked on client',
+        ),
+      );
+      return;
+    }
+
     setDrinkPending(true);
-    setErrorMessage(null);
-    setLastAction('TAVERN_DRINK');
 
     try {
       const response = await postGameAction<unknown>('TAVERN_DRINK');
-
-      if (!response.ok) {
-        setLastErrorCode(response.errorCode);
-        setErrorMessage(mapErrorToMessage(response));
-
-        if (shouldResyncTavern(response.errorCode)) {
-          await loadTavern(true);
-        }
-
-        return;
-      }
+      applySuccessMeta('TAVERN_DRINK', response);
 
       if (!isTavernInfoData(response.data)) {
-        setLastErrorCode('INVALID_TAVERN_PAYLOAD');
-        setErrorMessage('酒馆数据格式异常，请重新同步');
-        await loadTavern(true);
+        await handleClientStateFailure(
+          new GameApiError({
+            action: 'TAVERN_DRINK',
+            kind: 'config',
+            reason: 'INVALID_API_RESPONSE',
+            userMessage: '补给后的 Tavern 数据格式异常，请重新同步。',
+            debugMessage: 'Invalid Tavern payload after TAVERN_DRINK',
+            status: response.meta.status,
+            requestId: response.meta.requestId,
+            apiBaseUrl: response.meta.apiBaseUrl,
+            serverTime: response.serverTime,
+            stateRevision: response.stateRevision,
+          }),
+        );
         return;
       }
 
-      setLastErrorCode(null);
       applyTavernSnapshot(response.data, response.serverTime, response.stateRevision);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '酒馆请求失败';
-      setLastErrorCode('NETWORK_ERROR');
-      setErrorMessage(message);
+      const apiFailure = toGameApiError('TAVERN_DRINK', error);
+      applyErrorState('TAVERN_DRINK', apiFailure);
+      if (shouldResyncForError(apiFailure)) {
+        await loadTavern(true);
+      }
     } finally {
       setDrinkPending(false);
     }
-  }, [applyTavernSnapshot, loadTavern]);
+  }, [applyErrorState, applySuccessMeta, applyTavernSnapshot, drinkPending, handleClientStateFailure, loadTavern]);
 
   const handleStartMission = useCallback(
     async (mission: MissionOffer) => {
+      if (startingMissionId) {
+        await handleClientStateFailure(
+          createClientStateError(
+            'START_MISSION',
+            'DUPLICATE_ACTION',
+            '上一条任务开始请求仍在处理中，请勿重复点击。',
+            `Duplicate START_MISSION blocked while ${startingMissionId} is pending`,
+          ),
+        );
+        return;
+      }
+
+      const currentOffers = tavernData?.tavern.missionOffers ?? [];
+      const isOfferStillVisible = currentOffers.some((offer) => offer.missionId === mission.missionId && offer.offerSetId === mission.offerSetId);
+      const isIdle = tavernData?.tavern.status === 'IDLE';
+
+      if (!isIdle || !isOfferStillVisible) {
+        await handleClientStateFailure(
+          createClientStateError(
+            'START_MISSION',
+            'STALE_UI_STATE',
+            '当前任务列表已变化，正在重新同步服务器状态。',
+            `Stale START_MISSION rejected on client for mission ${mission.missionId}`,
+          ),
+        );
+        return;
+      }
+
       setStartingMissionId(mission.missionId);
-      setErrorMessage(null);
-      setLastAction('START_MISSION');
 
       try {
         const response = await postGameAction<unknown>('START_MISSION', {
           missionId: mission.missionId,
           offerSetId: mission.offerSetId,
         });
-
-        if (!response.ok) {
-          setLastErrorCode(response.errorCode);
-          setErrorMessage(mapErrorToMessage(response));
-
-          if (shouldResyncTavern(response.errorCode)) {
-            await loadTavern(true);
-          }
-
-          return;
-        }
+        applySuccessMeta('START_MISSION', response);
 
         if (!isTavernInfoData(response.data)) {
-          setLastErrorCode('INVALID_TAVERN_PAYLOAD');
-          setErrorMessage('任务开始后的酒馆数据异常，请重新同步');
-          await loadTavern(true);
+          await handleClientStateFailure(
+            new GameApiError({
+              action: 'START_MISSION',
+              kind: 'config',
+              reason: 'INVALID_API_RESPONSE',
+              userMessage: '开始任务后的 Tavern 数据格式异常，请重新同步。',
+              debugMessage: 'Invalid Tavern payload after START_MISSION',
+              status: response.meta.status,
+              requestId: response.meta.requestId,
+              apiBaseUrl: response.meta.apiBaseUrl,
+              serverTime: response.serverTime,
+              stateRevision: response.stateRevision,
+            }),
+          );
           return;
         }
 
-        setLastErrorCode(null);
         applyTavernSnapshot(response.data, response.serverTime, response.stateRevision);
       } catch (error) {
-        const message = error instanceof Error ? error.message : '酒馆请求失败';
-        setLastErrorCode('NETWORK_ERROR');
-        setErrorMessage(message);
+        const apiFailure = toGameApiError('START_MISSION', error);
+        applyErrorState('START_MISSION', apiFailure);
+        if (shouldResyncForError(apiFailure)) {
+          await loadTavern(true);
+        }
       } finally {
         setStartingMissionId(null);
       }
     },
-    [applyTavernSnapshot, loadTavern],
+    [applyErrorState, applySuccessMeta, applyTavernSnapshot, handleClientStateFailure, loadTavern, startingMissionId, tavernData],
   );
 
   const mergeTavernSummary = useCallback(
@@ -272,15 +371,24 @@ export function TavernPage({ onLogout }: TavernPageProps) {
   );
 
   const applySettlementResponse = useCallback(
-    (data: CompleteMissionData, nextServerTime: number, nextRevision: number) => {
+    (data: CompleteMissionData, response: ActionSuccessResult<unknown>) => {
       const nextTavernData = mergeTavernSummary(data.tavern, data.nextMissionOffers);
       if (!nextTavernData) {
-        setLastErrorCode('INVALID_TAVERN_PAYLOAD');
-        setErrorMessage('结算后的酒馆数据异常，请重新同步');
-        return;
+        throw new GameApiError({
+          action: response.action,
+          kind: 'client_state',
+          reason: 'STALE_UI_STATE',
+          userMessage: '结算时页面状态已经过期，正在重新同步。',
+          debugMessage: `Unable to merge settlement response for ${response.action}`,
+          status: response.meta.status,
+          requestId: response.meta.requestId,
+          apiBaseUrl: response.meta.apiBaseUrl,
+          serverTime: response.serverTime,
+          stateRevision: response.stateRevision,
+        });
       }
 
-      applyTavernSnapshot(nextTavernData, nextServerTime, nextRevision);
+      applyTavernSnapshot(nextTavernData, response.serverTime, response.stateRevision);
       setSettlementData(data);
       setSettlementOpen(true);
     },
@@ -288,109 +396,162 @@ export function TavernPage({ onLogout }: TavernPageProps) {
   );
 
   const handleCompleteMission = useCallback(async () => {
+    if (completePending || skipPending) {
+      await handleClientStateFailure(
+        createClientStateError(
+          'COMPLETE_MISSION',
+          'DUPLICATE_ACTION',
+          '当前已有结算请求在处理中，请等待服务器返回。',
+          'Duplicate COMPLETE_MISSION blocked on client',
+        ),
+      );
+      return;
+    }
+
+    if (!tavernData?.tavern.activeMission) {
+      await handleClientStateFailure(
+        createClientStateError(
+          'COMPLETE_MISSION',
+          'STALE_UI_STATE',
+          '当前没有可结算的任务，正在重新同步。',
+          'COMPLETE_MISSION blocked because no active mission exists on client',
+        ),
+      );
+      return;
+    }
+
     setCompletePending(true);
-    setErrorMessage(null);
-    setLastAction('COMPLETE_MISSION');
 
     try {
       const response = await postGameAction<unknown>('COMPLETE_MISSION');
-
-      if (!response.ok) {
-        setLastErrorCode(response.errorCode);
-        setErrorMessage(mapErrorToMessage(response));
-
-        if (shouldResyncTavern(response.errorCode)) {
-          await loadTavern(true);
-        }
-
-        return;
-      }
+      applySuccessMeta('COMPLETE_MISSION', response);
 
       if (!isCompleteMissionData(response.data)) {
-        setLastErrorCode('INVALID_SETTLEMENT_PAYLOAD');
-        setErrorMessage('任务结算数据异常，请重新同步');
-        await loadTavern(true);
+        await handleClientStateFailure(
+          new GameApiError({
+            action: 'COMPLETE_MISSION',
+            kind: 'config',
+            reason: 'INVALID_API_RESPONSE',
+            userMessage: '任务结算返回了无法识别的数据，请重新同步。',
+            debugMessage: 'Invalid settlement payload after COMPLETE_MISSION',
+            status: response.meta.status,
+            requestId: response.meta.requestId,
+            apiBaseUrl: response.meta.apiBaseUrl,
+            serverTime: response.serverTime,
+            stateRevision: response.stateRevision,
+          }),
+        );
         return;
       }
 
-      setLastErrorCode(null);
-      applySettlementResponse(response.data, response.serverTime, response.stateRevision);
+      applySettlementResponse(response.data, response);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '酒馆请求失败';
-      setLastErrorCode('NETWORK_ERROR');
-      setErrorMessage(message);
+      const apiFailure = toGameApiError('COMPLETE_MISSION', error);
+      applyErrorState('COMPLETE_MISSION', apiFailure);
+      if (shouldResyncForError(apiFailure)) {
+        await loadTavern(true);
+      }
     } finally {
       setCompletePending(false);
     }
-  }, [applySettlementResponse, loadTavern]);
+  }, [applyErrorState, applySettlementResponse, applySuccessMeta, completePending, handleClientStateFailure, loadTavern, skipPending, tavernData]);
 
   const handleSkipMission = useCallback(async () => {
     if (skipPending || completePending) {
+      await handleClientStateFailure(
+        createClientStateError(
+          'SKIP_MISSION',
+          'DUPLICATE_ACTION',
+          '当前已有结算请求在处理中，请等待服务器返回。',
+          'Duplicate SKIP_MISSION blocked on client',
+        ),
+      );
+      return;
+    }
+
+    if (!tavernData?.tavern.activeMission) {
+      await handleClientStateFailure(
+        createClientStateError(
+          'SKIP_MISSION',
+          'STALE_UI_STATE',
+          '当前没有可跳过的任务，正在重新同步。',
+          'SKIP_MISSION blocked because no active mission exists on client',
+        ),
+      );
       return;
     }
 
     setSkipPending(true);
-    setErrorMessage(null);
-    setLastAction('SKIP_MISSION');
 
     try {
       const response = await postGameAction<unknown>('SKIP_MISSION');
-
-      if (!response.ok) {
-        setLastErrorCode(response.errorCode);
-        setErrorMessage(mapErrorToMessage(response));
-
-        if (shouldResyncTavern(response.errorCode)) {
-          await loadTavern(true);
-        }
-
-        return;
-      }
+      applySuccessMeta('SKIP_MISSION', response);
 
       if (!isCompleteMissionData(response.data)) {
-        setLastErrorCode('INVALID_SETTLEMENT_PAYLOAD');
-        setErrorMessage('跳过结算数据异常，请重新同步');
-        await loadTavern(true);
+        await handleClientStateFailure(
+          new GameApiError({
+            action: 'SKIP_MISSION',
+            kind: 'config',
+            reason: 'INVALID_API_RESPONSE',
+            userMessage: '跳过结算返回了无法识别的数据，请重新同步。',
+            debugMessage: 'Invalid settlement payload after SKIP_MISSION',
+            status: response.meta.status,
+            requestId: response.meta.requestId,
+            apiBaseUrl: response.meta.apiBaseUrl,
+            serverTime: response.serverTime,
+            stateRevision: response.stateRevision,
+          }),
+        );
         return;
       }
 
-      setLastErrorCode(null);
-      applySettlementResponse(response.data, response.serverTime, response.stateRevision);
+      applySettlementResponse(response.data, response);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '酒馆请求失败';
-      setLastErrorCode('NETWORK_ERROR');
-      setErrorMessage(message);
+      const apiFailure = toGameApiError('SKIP_MISSION', error);
+      applyErrorState('SKIP_MISSION', apiFailure);
+      if (shouldResyncForError(apiFailure)) {
+        await loadTavern(true);
+      }
     } finally {
       setSkipPending(false);
     }
-  }, [applySettlementResponse, completePending, loadTavern, skipPending]);
+  }, [applyErrorState, applySettlementResponse, applySuccessMeta, completePending, handleClientStateFailure, loadTavern, skipPending, tavernData]);
 
   useEffect(() => {
-    loadTavern();
-  }, [loadTavern]);
+    const timerId = window.setTimeout(() => {
+      void loadTavern();
+      void loadHealth();
+    }, 0);
+
+    return () => window.clearTimeout(timerId);
+  }, [loadHealth, loadTavern]);
 
   useEffect(() => {
     const activeMission = tavernData?.tavern.activeMission ?? null;
 
     if (!activeMission) {
-      setDisplayRemainingSec(null);
       return;
+    }
+
+    const interval = window.setInterval(() => {
+      setCurrentTimeMs(Date.now());
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [tavernData?.tavern.activeMission]);
+
+  const displayRemainingSec = useMemo(() => {
+    const activeMission = tavernData?.tavern.activeMission ?? null;
+    if (!activeMission) {
+      return null;
     }
 
     const calibratedRemaining =
       serverTime !== null ? Math.max(0, Math.ceil((activeMission.endTime - serverTime) / 1000)) : activeMission.remainingSec;
     const baseRemainingSec = activeMission.remainingSec ?? calibratedRemaining;
-    const syncStartedAt = Date.now();
-
-    setDisplayRemainingSec(baseRemainingSec);
-
-    const interval = setInterval(() => {
-      const elapsedSec = Math.floor((Date.now() - syncStartedAt) / 1000);
-      setDisplayRemainingSec(Math.max(0, baseRemainingSec - elapsedSec));
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [serverTime, tavernData?.tavern.activeMission?.missionId, tavernData?.tavern.activeMission?.remainingSec, tavernData?.tavern.activeMission?.endTime]);
+    const elapsedSec = Math.max(0, Math.floor((currentTimeMs - snapshotReceivedAtMs) / 1000));
+    return Math.max(0, baseRemainingSec - elapsedSec);
+  }, [currentTimeMs, serverTime, snapshotReceivedAtMs, tavernData?.tavern.activeMission]);
 
   const missionCountLabel = useMemo(() => {
     const count = tavernData?.tavern.missionOffers.length ?? 0;
@@ -447,7 +608,9 @@ export function TavernPage({ onLogout }: TavernPageProps) {
             </div>
             <button
               type="button"
-              onClick={() => onLogout()}
+              onClick={() => {
+                void onLogout();
+              }}
               className="shrink-0 rounded-full border border-stone-700/70 bg-black/20 px-3 py-2 text-xs font-semibold tracking-[0.18em] text-stone-300"
             >
               退出登录
@@ -475,13 +638,20 @@ export function TavernPage({ onLogout }: TavernPageProps) {
         </header>
 
         <main className="mt-4 flex flex-1 flex-col gap-4">
-          {errorMessage ? <ErrorToast message={errorMessage} /> : null}
+          {apiError ? (
+            <ErrorToast
+              title={mapErrorTitle(apiError)}
+              message={apiError.userMessage}
+              hint={mapErrorHint(apiError)}
+              requestId={debugMode ? apiError.requestId : null}
+            />
+          ) : null}
 
-          {showDebugPanel ? (
+          {debugMode ? (
             <section className="rounded-2xl border border-cyan-900/40 bg-cyan-950/20 px-4 py-3 text-[11px] text-cyan-100/85">
               <div className="flex items-center justify-between gap-3">
                 <span className="uppercase tracking-[0.24em] text-cyan-400">调试状态</span>
-                <span className="text-cyan-500">仅开发环境显示</span>
+                <span className="text-cyan-500">dev / ?debug=1 可见</span>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
                 <span>status: {tavernData?.tavern.status ?? '-'}</span>
@@ -490,7 +660,14 @@ export function TavernPage({ onLogout }: TavernPageProps) {
                 <span>offers: {tavernData?.tavern.missionOffers.length ?? 0}</span>
                 <span>activeMission: {tavernData?.tavern.activeMission?.missionId ?? '-'}</span>
                 <span>lastAction: {lastAction}</span>
-                <span className="col-span-2">lastErrorCode: {lastErrorCode ?? '-'}</span>
+                <span className="col-span-2">apiBaseUrl: {healthSummary?.apiBaseUrl ?? '-'}</span>
+                <span>lastRequestId: {lastRequestId ?? '-'}</span>
+                <span>lastErrorCode: {lastErrorCode ?? '-'}</span>
+                <span>lastErrorKind: {lastErrorKind ?? '-'}</span>
+                <span>healthStatus: {healthSummary?.status ?? '-'}</span>
+                <span>healthEnv: {healthSummary?.env ?? '-'}</span>
+                <span className="col-span-2">releaseTag: {healthSummary?.releaseTag ?? '-'}</span>
+                <span className="col-span-2">healthWarning: {healthSummary?.warning ?? '-'}</span>
               </div>
             </section>
           ) : null}
@@ -547,7 +724,7 @@ export function TavernPage({ onLogout }: TavernPageProps) {
             </>
           ) : (
             <div className="rounded-[28px] border border-red-900/40 bg-black/20 px-5 py-8 text-center text-sm text-stone-300">
-              酒馆数据暂不可用，请稍后重试或点击重新同步。
+              Tavern 数据暂不可用，请稍后重试或点击重新同步。
             </div>
           )}
         </main>
@@ -556,7 +733,10 @@ export function TavernPage({ onLogout }: TavernPageProps) {
           <span>酒馆联调版本</span>
           <button
             type="button"
-            onClick={() => loadTavern(true)}
+            onClick={() => {
+              void loadTavern(true);
+              void loadHealth();
+            }}
             disabled={refreshing}
             className="rounded-full border border-stone-800/80 bg-black/20 px-3 py-2 tracking-[0.18em] text-stone-300 disabled:opacity-50"
           >

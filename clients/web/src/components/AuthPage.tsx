@@ -40,6 +40,7 @@ export function AuthPage({ onAuthSuccess }: AuthPageProps) {
         if (signInError) throw signInError;
         onAuthSuccess();
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       const msg = err?.message ?? '未知错误';
       if (msg.includes('Invalid login credentials')) setError('邮箱或密码错误');
