@@ -5,8 +5,9 @@ import { AuthPage } from './components/AuthPage';
 import { CharacterPage } from './pages/CharacterPage';
 import { TavernPage } from './pages/TavernPage';
 import { supabase } from './lib/supabase';
+import { BlackMarketPage } from './pages/BlackMarketPage';
 
-type AppTab = 'tavern' | 'character';
+type AppTab = 'tavern' | 'character' | 'blackmarket';
 
 function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -49,15 +50,13 @@ function App() {
   return (
     <div className="min-h-screen bg-[#050406]">
       <div className="pb-24">
-        {tab === 'tavern' ? (
-          <TavernPage onLogout={() => supabase.auth.signOut()} />
-        ) : (
-          <CharacterPage />
-        )}
+        {tab === 'tavern' && <TavernPage onLogout={() => supabase.auth.signOut()} />}
+        {tab === 'character' && <CharacterPage />}
+        {tab === 'blackmarket' && <BlackMarketPage />}
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-800/80 bg-[rgba(10,10,14,0.92)] px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
-        <div className="mx-auto grid w-full max-w-md grid-cols-2 gap-3">
+        <div className="mx-auto grid w-full max-w-md grid-cols-3 gap-3">
           <button
             type="button"
             onClick={() => setTab('tavern')}
@@ -84,6 +83,20 @@ function App() {
             <span className="flex items-center justify-center gap-2">
               <ScrollText size={16} />
               Character
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('blackmarket')}
+            className={`rounded-2xl border px-2 py-3 text-sm font-semibold transition flex items-center justify-center ${
+              tab === 'blackmarket'
+                ? 'border-purple-700/70 bg-purple-700/15 text-purple-100'
+                : 'border-stone-800/80 bg-black/20 text-stone-400'
+            }`}
+          >
+            <span className="flex items-center justify-center gap-1 text-xs">
+              <span className="text-base">⚖️</span>
+              Black Market
             </span>
           </button>
         </div>
