@@ -6,21 +6,6 @@ type DrinkPanelProps = {
   isSubmitting: boolean;
 };
 
-function formatThirst(seconds: number) {
-  const minutes = Math.floor(seconds / 60);
-  const remainder = seconds % 60;
-
-  if (minutes === 0) {
-    return `${remainder}秒`;
-  }
-
-  if (remainder === 0) {
-    return `${minutes}分`;
-  }
-
-  return `${minutes}分 ${remainder}秒`;
-}
-
 export function DrinkPanel({
   thirstSecRemaining,
   drinksUsedToday,
@@ -28,39 +13,49 @@ export function DrinkPanel({
   onDrink,
   isSubmitting,
 }: DrinkPanelProps) {
+  const mm = Math.floor(thirstSecRemaining / 60).toString().padStart(2, '0');
+  const ss = (thirstSecRemaining % 60).toString().padStart(2, '0');
+  
+  // MAX thirst is maybe 120 mins = 7200 sec? (Placeholder for progress)
+  const maxThirst = 100 * 60; // 100 minutes
+  const progressPercent = Math.min(100, Math.max(0, (thirstSecRemaining / maxThirst) * 100));
+
   return (
-    <section className="rounded-[28px] border border-amber-800/40 bg-[linear-gradient(140deg,rgba(54,24,12,0.94),rgba(22,10,6,0.98))] p-5 shadow-[0_18px_45px_rgba(0,0,0,0.38)]">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.28em] text-amber-600">酒馆补给</p>
-          <h2 className="mt-2 text-xl font-black tracking-[0.06em] text-amber-100">干粮账本</h2>
-        </div>
-        <div className="rounded-full border border-amber-700/40 bg-black/20 px-3 py-1.5 text-xs text-amber-300">
-          饮酒 {drinksUsedToday}/10
-        </div>
-      </div>
-
-      <div className="mt-5 grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-white/5 bg-black/20 p-4">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500">剩余干粮</p>
-          <p className="mt-2 text-2xl font-bold text-amber-100">{formatThirst(thirstSecRemaining)}</p>
-        </div>
-        <div className="rounded-2xl border border-white/5 bg-black/20 p-4">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500">首任务加成</p>
-          <p className="mt-2 text-sm font-semibold text-amber-100">
-            {firstMissionBonusAvailable ? '今日可用' : '今日已消耗'}
-          </p>
-        </div>
-      </div>
-
+    <div className="absolute bottom-[40px] left-1/2 -translate-x-1/2 w-[800px] h-[48px] z-20 flex shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
+      
+      {/* Drink Button (Left) */}
       <button
         type="button"
         onClick={onDrink}
-        disabled={isSubmitting}
-        className="mt-5 w-full rounded-2xl border border-amber-700/60 bg-amber-700/15 px-4 py-3 text-sm font-semibold tracking-[0.18em] text-amber-200 transition hover:bg-amber-700/25 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={isSubmitting || drinksUsedToday >= 10}
+        className="w-[80px] h-full bg-gradient-to-b from-amber-700 to-amber-900 border-2 border-stone-900 rounded-l-lg flex flex-col items-center justify-center hover:from-amber-600 hover:to-amber-800 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed group relative"
       >
-        {isSubmitting ? '上酒中' : '喝酒补给'}
+        <span className="text-xl font-black text-amber-200 drop-shadow-md">🍺</span>
+        <span className="text-[10px] font-bold text-amber-100">{drinksUsedToday}/10</span>
+        
+        {/* Hover Hint */}
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-2 bg-black/90 border border-stone-700 rounded text-xs text-stone-300 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-xl">
+          {firstMissionBonusAvailable ? '首任务加成：今日可用' : '点击消耗 1 沙漏恢复 20 分钟探险时间'}
+        </div>
       </button>
-    </section>
+
+      {/* Thirst Bar (Right) */}
+      <div className="flex-1 h-full bg-stone-900 border-y-2 border-r-2 border-stone-900 rounded-r-lg relative overflow-hidden">
+        {/* Fake Wood Texture */}
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')] opacity-20 pointer-events-none" />
+        
+        {/* Fill */}
+        <div 
+          className="h-full bg-gradient-to-r from-amber-600 to-amber-400 shadow-[inset_0_2px_10px_rgba(255,255,255,0.2)] transition-all duration-1000 ease-linear"
+          style={{ width: `${progressPercent}%` }}
+        />
+        
+        {/* Text */}
+        <div className="absolute inset-0 flex items-center justify-center text-white font-black tracking-widest drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
+          Thirst for adventure: {mm}:{ss}
+        </div>
+      </div>
+
+    </div>
   );
 }

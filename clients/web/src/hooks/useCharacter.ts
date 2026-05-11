@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { createClientStateError, fetchApiHealth, postGameAction, shouldResyncForError } from '../api/gameActions';
 import type { ActionSuccessResult, ApiHealthSummary } from '../api/actionTypes';
 import { GameApiError } from '../api/actionTypes';
@@ -141,7 +141,22 @@ function toGameApiError(action: CharacterActionName, error: unknown) {
   });
 }
 
+const CharacterContext = React.createContext<ReturnType<typeof useCharacterImpl> | null>(null);
+
+export function CharacterProvider({ children }: { children: React.ReactNode }) {
+  const value = useCharacterImpl();
+  return React.createElement(CharacterContext.Provider, { value }, children);
+}
+
 export function useCharacter() {
+  const context = React.useContext(CharacterContext);
+  if (!context) {
+    throw new Error('useCharacter must be used within a CharacterProvider');
+  }
+  return context;
+}
+
+function useCharacterImpl() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [character, setCharacter] = useState<CharacterInfoView | null>(null);
@@ -348,6 +363,7 @@ export function useCharacter() {
     loading,
     refreshing,
     character,
+    setCharacter,
     apiError,
     lastAction,
     lastErrorCode,

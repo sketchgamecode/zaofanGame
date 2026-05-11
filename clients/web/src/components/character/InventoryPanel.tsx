@@ -1,53 +1,59 @@
-import { EquipmentItemCard } from './EquipmentItemCard';
+import React from 'react';
 import type { CharacterInfoView } from '../../types/character';
+import { DraggableInventorySlot } from './DraggableInventorySlot';
 
 type InventoryPanelProps = {
-  inventory: CharacterInfoView['inventory'];
-  pendingItemId?: string;
-  onEquip: (itemId: string) => void;
+  character: CharacterInfoView;
+  rows?: number;
+  cols?: number;
 };
 
-export function InventoryPanel({ inventory, pendingItemId, onEquip }: InventoryPanelProps) {
+export const InventoryPanel: React.FC<InventoryPanelProps> = ({ 
+  character, 
+  rows = 3, 
+  cols = 5 
+}) => {
+  const totalSlots = Math.max(character.inventory.capacity ?? 15, rows * cols);
+
   return (
-    <section className="rounded-[28px] border border-fuchsia-900/50 bg-[linear-gradient(180deg,rgba(27,12,28,0.95),rgba(12,6,16,0.98))] p-5 text-fuchsia-100 shadow-[0_18px_45px_rgba(0,0,0,0.38)]">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.28em] text-fuchsia-500">背包</p>
-          <h2 className="mt-2 text-xl font-black tracking-[0.05em]">库存装备</h2>
-        </div>
-        <div className="rounded-2xl border border-fuchsia-800/50 bg-fuchsia-950/25 px-4 py-3 text-right text-sm">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-fuchsia-400/70">数量</p>
-          <p className="mt-1 font-semibold text-fuchsia-100">
-            {inventory.count}
-            {typeof inventory.capacity === 'number' ? ` / ${inventory.capacity}` : ''}
-          </p>
+    <div className="flex flex-col w-full bg-[#08152e] rounded-b-xl border-2 border-[#b8860b] shadow-[0_10px_30px_rgba(0,0,0,0.8)] overflow-hidden relative">
+      
+      {/* Header Bar with buttons */}
+      <div className="h-8 bg-gradient-to-r from-[#002244] to-[#003366] border-b-2 border-[#b8860b] flex items-center justify-between px-2 shadow-inner relative z-10">
+        <div className="w-6" /> {/* Placeholder for balance */}
+        
+        {/* Center chevron button */}
+        <button className="w-16 h-5 bg-gradient-to-b from-[#b8860b] to-[#8b6508] hover:from-[#daa520] hover:to-[#b8860b] border border-black rounded-b-md shadow-[0_2px_5px_rgba(0,0,0,0.8)] flex items-center justify-center text-black font-black active:scale-95 transition-transform translate-y-[2px]">
+          ^
+        </button>
+        
+        {/* Right close button */}
+        <button className="w-6 h-6 flex items-center justify-center text-[#ffcc00] font-black text-lg hover:text-white transition-colors drop-shadow-[0_2px_2px_rgba(0,0,0,1)]">
+          ×
+        </button>
+      </div>
+
+      {/* Grid Zone */}
+      <div className="p-3 relative bg-[#041124] min-h-[220px]">
+        {/* Background texture */}
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 mix-blend-overlay pointer-events-none" />
+        
+        <div 
+          className="grid gap-2 place-content-center relative z-10"
+          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+        >
+          {Array.from({ length: totalSlots }).map((_, i) => {
+            const item = character.inventory.items[i];
+            // Fixed size 64x64 slots for the backpack
+            return (
+              <div key={i} className="w-[64px] h-[64px] bg-black/40 rounded border border-[#b8860b]/40 shadow-[inset_0_2px_5px_rgba(0,0,0,0.5)]">
+                <DraggableInventorySlot index={i} item={item} />
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <div className="mt-5 space-y-4">
-        {inventory.items.length > 0 ? (
-          inventory.items.map((item) => (
-            <EquipmentItemCard
-              key={item.id}
-              item={item}
-              footer={
-                <button
-                  type="button"
-                  onClick={() => onEquip(item.id)}
-                  disabled={pendingItemId === item.id}
-                  className="w-full rounded-2xl border border-fuchsia-700/60 bg-fuchsia-700/15 px-4 py-3 text-sm font-semibold tracking-[0.18em] text-fuchsia-100 transition hover:bg-fuchsia-700/25 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {pendingItemId === item.id ? '穿戴中' : '穿戴装备'}
-                </button>
-              }
-            />
-          ))
-        ) : (
-          <div className="rounded-[24px] border border-dashed border-white/10 bg-stone-950/50 px-4 py-6 text-center text-sm text-stone-400">
-            当前背包没有装备。
-          </div>
-        )}
-      </div>
-    </section>
+    </div>
   );
-}
+};

@@ -39,6 +39,7 @@ export type EquipmentItem = {
     max: number;
   };
   price?: number;
+  sellPrice?: number;
   bonusAttributes: Partial<AttributeValues>;
 };
 

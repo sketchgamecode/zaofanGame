@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { createClientStateError, fetchApiHealth, postGameAction, shouldResyncForError } from '../api/gameActions';
 import type { ActionSuccessResult } from '../api/actionTypes';
 import { GameApiError } from '../api/actionTypes';
@@ -62,7 +62,22 @@ function toGameApiError(action: BlackMarketActionName, error: unknown) {
   });
 }
 
+const BlackMarketContext = React.createContext<ReturnType<typeof useBlackMarketImpl> | null>(null);
+
+export function BlackMarketProvider({ children }: { children: React.ReactNode }) {
+  const value = useBlackMarketImpl();
+  return React.createElement(BlackMarketContext.Provider, { value }, children);
+}
+
 export function useBlackMarket() {
+  const context = React.useContext(BlackMarketContext);
+  if (!context) {
+    throw new Error('useBlackMarket must be used within a BlackMarketProvider');
+  }
+  return context;
+}
+
+function useBlackMarketImpl() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [market, setMarket] = useState<BlackMarketView | null>(null);
@@ -156,6 +171,40 @@ export function useBlackMarket() {
     }
   }, [applyErrorState, loadMarket, pendingOperation]);
 
+  const buyItem = useCallback(async (itemId: string) => {
+    // ⚠️ MOCK FOR NOW: Server Agent is implementing BUY_ITEM
+    if (pendingOperation) return false;
+    setPendingOperation({ action: 'BUY_AND_EQUIP_ITEM', itemId }); // using same action name temporarily for pending state
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      // Remove item from market locally
+      setMarket(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.filter(i => i.id !== itemId)
+        };
+      });
+      return true;
+    } finally {
+      setPendingOperation(null);
+    }
+  }, [pendingOperation]);
+
+  const sellItem = useCallback(async (itemId: string) => {
+    // ⚠️ MOCK FOR NOW: Server Agent is implementing SELL_ITEM
+    if (pendingOperation) return false;
+    setPendingOperation({ action: 'REFRESH_BLACKMARKET' }); // random pending state
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return true;
+    } finally {
+      setPendingOperation(null);
+    }
+  }, [pendingOperation]);
+
   return {
     loading,
     refreshing,
@@ -165,5 +214,7 @@ export function useBlackMarket() {
     loadMarket,
     refreshMarket,
     buyAndEquip,
+    buyItem,
+    sellItem,
   };
 }

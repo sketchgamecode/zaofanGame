@@ -10,10 +10,26 @@
 }
 
 @layer base {
+  html, body, #root {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
+    background-color: #041124; /* 深海皇室蓝背景 */
+    user-select: none;
+    -webkit-user-select: none;
+  }
   body {
-    background-color: var(--color-darkBg);
     color: var(--color-textMain);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'ZCOOL KuaiLe', 'Carter One', cursive, system-ui, -apple-system, sans-serif;
+    letter-spacing: 0.05em;
+  }
+  
+  /* Utilities for the English Fantasy Font */
+  .font-fantasy {
+    font-family: 'Carter One', 'ZCOOL KuaiLe', cursive;
+    letter-spacing: 0.1em;
   }
 }
 

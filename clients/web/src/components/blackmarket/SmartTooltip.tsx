@@ -110,9 +110,20 @@ export const SmartTooltip: React.FC<SmartTooltipProps> = ({ item, equippedItem, 
       </div>
 
       <div className="flex justify-between items-center border-t border-stone-800 pt-2 mt-2">
-        <div className="text-amber-500 text-sm flex items-center gap-1">
-          <img src="/assets/ui/icon_copper.png" alt="copper" className="w-4 h-4 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
-          {item.price ?? 0}
+        <div className="flex flex-col gap-1">
+          {item.price !== undefined && (
+            <div className="text-amber-500 text-sm flex items-center gap-1">
+              <img src="/assets/ui/icon_copper.png" alt="copper" className="w-4 h-4 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
+              {item.price}
+            </div>
+          )}
+          {item.sellPrice !== undefined && (
+            <div className="text-stone-400 text-xs flex items-center gap-1">
+              Selling price: 
+              <img src="/assets/ui/icon_copper.png" alt="copper" className="w-3 h-3 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
+              {item.sellPrice}
+            </div>
+          )}
         </div>
         
         {equippedItem && (

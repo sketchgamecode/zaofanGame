@@ -28,11 +28,11 @@ export const ShopPanel: React.FC<ShopPanelProps> = ({
   nextAutoRefreshMs
 }) => {
   const npcName = shopType === 'weapon' ? '【铁瞎子】' : '【半仙】';
-  const npcIcon = shopType === 'weapon' ? '/assets/npcs/npc_blacksmith.png' : '/assets/npcs/npc_wizard.png';
+  const npcIcon = shopType === 'weapon' ? '/assets/npcs/npc_blacksmith.png' : '/assets/npcs/avatar_girl.png';
   const chatBubble = shopType === 'weapon' 
     ? '“这刀杀过人，你要是怕鬼就别买。”' 
     : '“你印堂发黑，买这个能让你晚死两天。”';
-  const shopName = shopType === 'weapon' ? '兵器铺' : '奇珍阁';
+  const shopName = shopType === 'weapon' ? 'WEAPON SHOP' : 'MAGIC SHOP';
 
   // Format countdown
   const seconds = Math.floor(nextAutoRefreshMs / 1000);
@@ -40,70 +40,78 @@ export const ShopPanel: React.FC<ShopPanelProps> = ({
   const ss = (seconds % 60).toString().padStart(2, '0');
 
   return (
-    <div className="flex flex-col h-full bg-stone-900/60 rounded-3xl border border-stone-800 overflow-hidden relative">
-      {/* Top section: NPC & Shop Info */}
-      <div className="relative h-48 bg-stone-950 border-b border-stone-800 shrink-0">
-        <div className="absolute inset-0 opacity-40 bg-gradient-to-t from-stone-900 to-transparent" />
+    <div className="flex flex-col h-full bg-[#08152e] rounded-t-xl border-2 border-[#b8860b] overflow-hidden relative shadow-[0_0_20px_rgba(0,0,0,0.8)]">
+      {/* Top section: Shop Info (Fixed Height) */}
+      <div className="relative h-[80px] bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')] bg-[#22150a] border-b-2 border-[#b8860b] shrink-0 shadow-[inset_0_-10px_20px_rgba(0,0,0,0.8)]">
+        <div className="absolute inset-0 opacity-40 bg-gradient-to-t from-black to-transparent" />
         
-        {/* NPC Graphic */}
-        <div className="absolute right-0 bottom-0 w-48 h-48 flex items-end justify-end overflow-hidden">
+        {/* Info & Chat */}
+        <div className="relative p-3 h-full flex justify-between items-center z-20">
+          <div>
+            <h2 className="text-2xl font-fantasy font-black text-[#ffcc00] tracking-wider drop-shadow-[0_2px_2px_rgba(0,0,0,1)] stroke-black">{shopName}</h2>
+            <p className="text-xs font-bold text-amber-100 drop-shadow-md">{npcName}</p>
+          </div>
+          
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-2 max-w-[50%] shadow-xl">
+            <p className="text-[11px] text-white font-bold drop-shadow-md italic">"{chatBubble}"</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Middle section: Item Grid (Left) + NPC (Right) */}
+      <div className="flex-1 flex min-h-0 bg-[#041124] shadow-[inset_0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden">
+        
+        {/* Left Side: 2x3 Item Grid */}
+        <div className="w-[60%] p-3 flex flex-col justify-center border-r-2 border-[#b8860b] z-20 bg-black/20">
+           <div className="grid grid-cols-2 grid-rows-3 gap-2 w-full h-full">
+            {Array.from({ length: 6 }).map((_, i) => {
+              const item = items[i];
+              // Responsive size shop slots to fit the 2x3 grid
+              return (
+                <div key={i} className="w-full h-full min-h-[80px] bg-slate-900/60 rounded-lg border-2 border-slate-700 shadow-inner flex items-center justify-center relative group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none rounded-lg" />
+                  {item ? (
+                    <ShopItemCard 
+                      item={item} 
+                      onHoverStart={onHoverStart}
+                      onHoverEnd={onHoverEnd}
+                      onDoubleClick={onDoubleClickItem}
+                    />
+                  ) : (
+                    <span className="text-[10px] text-slate-700 uppercase tracking-widest font-fantasy select-none">Sold</span>
+                  )}
+                </div>
+              );
+            })}
+           </div>
+        </div>
+
+        {/* Right Side: Full Body NPC */}
+        <div className="w-[40%] relative flex items-end justify-center z-10">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10 pointer-events-none" />
           <img 
             src={npcIcon} 
             alt={npcName} 
-            className="h-[120%] object-contain origin-bottom object-right-bottom mix-blend-screen opacity-90"
+            className="w-[180%] max-w-none object-contain origin-bottom object-bottom drop-shadow-[-10px_10px_15px_rgba(0,0,0,0.8)] relative z-0 translate-x-4"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
-              if (e.currentTarget.parentElement) {
-                e.currentTarget.parentElement.innerHTML = `<div class="p-4 text-xs text-stone-500 font-mono">${npcIcon.split('/').pop()}</div>`;
-              }
             }}
           />
         </div>
-
-        {/* Info & Chat */}
-        <div className="relative p-4 h-full flex flex-col justify-between pointer-events-none z-10">
-          <div>
-            <h2 className="text-xl font-black text-stone-100 tracking-wider drop-shadow-md">{shopName}</h2>
-            <p className="text-sm font-bold text-stone-400">{npcName}</p>
-          </div>
-          
-          <div className="bg-stone-900/80 backdrop-blur-md border border-stone-700 rounded-2xl rounded-br-none p-3 max-w-[75%] shadow-xl">
-            <p className="text-xs text-stone-300 italic">"{chatBubble}"</p>
-          </div>
-        </div>
       </div>
 
-      {/* Middle section: Item Grid */}
-      <div className="flex-1 p-4 grid grid-cols-3 grid-rows-2 gap-3 min-h-0 place-content-center">
-        {Array.from({ length: 6 }).map((_, i) => {
-          const item = items[i];
-          return (
-            <div key={i} className="aspect-square bg-black/40 rounded-xl border border-stone-800/60 shadow-inner flex items-center justify-center">
-              {item ? (
-                <ShopItemCard 
-                  item={item} 
-                  onHoverStart={onHoverStart}
-                  onHoverEnd={onHoverEnd}
-                  onDoubleClick={onDoubleClickItem}
-                />
-              ) : (
-                <span className="text-xs text-stone-700 uppercase tracking-widest font-mono select-none">Sold</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Bottom section: Action Bar */}
-      <div className="p-4 bg-black/40 border-t border-stone-800/80 backdrop-blur shrink-0">
-        <div className="flex justify-between items-center mb-3">
-          <div className="flex gap-4">
-            <div className="flex items-center gap-1.5 text-stone-300 font-bold bg-stone-900/80 px-2 py-1 rounded-lg border border-stone-800">
-              <img src="/assets/ui/icon_copper.png" alt="c" className="w-5 h-5" onError={e => e.currentTarget.style.display='none'} />
+      {/* Bottom section: Action Bar (Fixed Height) */}
+      <div className="p-3 bg-[#0a1a3a] border-t-2 border-[#b8860b] shrink-0 h-[100px] flex flex-col justify-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 mix-blend-overlay pointer-events-none" />
+        
+        <div className="flex justify-between items-center mb-2 z-10">
+          <div className="flex gap-2">
+            <div className="flex items-center gap-1.5 text-amber-200 font-bold bg-black/40 px-2 py-1 rounded border border-amber-900/50 text-sm shadow-inner">
+              <img src="/assets/ui/icon_copper.png" alt="c" className="w-4 h-4" onError={e => e.currentTarget.style.display='none'} />
               {copper}
             </div>
-            <div className="flex items-center gap-1.5 text-stone-300 font-bold bg-stone-900/80 px-2 py-1 rounded-lg border border-stone-800">
-              <img src="/assets/ui/icon_token.png" alt="t" className="w-5 h-5" onError={e => e.currentTarget.style.display='none'} />
+            <div className="flex items-center gap-1.5 text-amber-200 font-bold bg-black/40 px-2 py-1 rounded border border-amber-900/50 text-sm shadow-inner">
+              <img src="/assets/ui/icon_token.png" alt="t" className="w-4 h-4" onError={e => e.currentTarget.style.display='none'} />
               {tokens}
             </div>
           </div>
@@ -114,27 +122,24 @@ export const ShopPanel: React.FC<ShopPanelProps> = ({
           onClick={onRefresh}
           disabled={isRefreshing}
           className={`
-            w-full py-3 rounded-xl font-black text-sm tracking-widest flex items-center justify-center gap-2
-            transition-all duration-200 active:scale-95
+            w-full py-2.5 rounded-lg font-fantasy text-sm tracking-widest flex items-center justify-center gap-2 z-10
+            transition-all duration-200 active:scale-95 border-2 shadow-[0_4px_10px_rgba(0,0,0,0.5)]
             ${isRefreshing 
-              ? 'bg-stone-800 text-stone-500 cursor-not-allowed' 
-              : 'bg-indigo-900/60 text-indigo-100 hover:bg-indigo-800 border border-indigo-700/50 shadow-lg shadow-indigo-900/20'}
+              ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed' 
+              : 'bg-gradient-to-b from-[#4a90e2] to-[#003366] text-white hover:from-[#5aa0f2] hover:to-[#004488] border-[#8ab4f8]'}
           `}
         >
           {isRefreshing ? (
-            <div className="w-5 h-5 border-2 border-stone-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
           ) : (
             <>
-              刷新商品
-              <div className="flex items-center gap-1 text-xs font-bold bg-black/30 px-1.5 py-0.5 rounded">
-                -1 <img src="/assets/ui/icon_token.png" alt="t" className="w-3 h-3" onError={e => e.currentTarget.style.display='none'} />
+              NEW GOODS
+              <div className="flex items-center gap-1 text-[10px] font-bold bg-black/30 px-1.5 py-0.5 rounded shadow-inner">
+                1 <img src="/assets/ui/icon_token.png" alt="t" className="w-3 h-3" onError={e => e.currentTarget.style.display='none'} />
               </div>
             </>
           )}
         </button>
-        <div className="text-center mt-2 text-[10px] text-stone-500">
-          {nextAutoRefreshMs > 0 ? `下次自动刷新: ${mm}:${ss}` : '可以免费刷新'}
-        </div>
       </div>
     </div>
   );

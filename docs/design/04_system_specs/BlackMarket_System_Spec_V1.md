@@ -107,6 +107,8 @@ Implementation Allowed: Yes
 | :--- | :--- | :--- |
 | 刷新商品（自动/手动） | `REFRESH_BLACKMARKET` | `{ force: boolean }` |
 | 购买并穿戴 | `BUY_AND_EQUIP_ITEM` | `{ itemId: string }` |
+| 购买到背包 | `BUY_ITEM` | `{ itemId: string }` |
+| 出售物品（支持身上或背包）| `SELL_ITEM` | `{ itemId: string }` |
 
 > [!WARNING]
 > `BLACK_MARKET_REFRESH` 和 `BLACK_MARKET_BUY` 为旧废弃名称，**Client Agent 应使用新名称**。

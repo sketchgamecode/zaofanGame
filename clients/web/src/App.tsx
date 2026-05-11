@@ -6,8 +6,13 @@ import { CharacterPage } from './pages/CharacterPage';
 import { TavernPage } from './pages/TavernPage';
 import { supabase } from './lib/supabase';
 import { BlackMarketPage } from './pages/BlackMarketPage';
+import { MainLayout } from './layouts/MainLayout';
 
-type AppTab = 'tavern' | 'character' | 'blackmarket';
+import { CharacterProvider } from './hooks/useCharacter';
+import { BlackMarketProvider } from './hooks/useBlackMarket';
+import { GameContainer } from './components/layout/GameContainer';
+
+export type AppTab = 'tavern' | 'character' | 'weapon_shop' | 'magic_shop';
 
 function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -36,9 +41,9 @@ function App() {
 
   if (session === undefined) {
     return (
-      <div className="min-h-screen bg-darkBg flex items-center justify-center flex-col gap-4">
-        <div className="h-10 w-10 rounded-full border-4 border-primary/40 border-t-primary animate-spin" />
-        <p className="text-sm tracking-[0.35em] text-textMuted uppercase">连接中</p>
+      <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center flex-col gap-4">
+        <div className="h-10 w-10 rounded-full border-4 border-amber-900/40 border-t-amber-500 animate-spin" />
+        <p className="text-sm tracking-[0.35em] text-stone-500 uppercase">连接中</p>
       </div>
     );
   }
@@ -48,60 +53,24 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050406]">
-      <div className="pb-24">
-        {tab === 'tavern' && <TavernPage onLogout={() => supabase.auth.signOut()} />}
-        {tab === 'character' && <CharacterPage />}
-        {tab === 'blackmarket' && <BlackMarketPage />}
-      </div>
-
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-800/80 bg-[rgba(10,10,14,0.92)] px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
-        <div className="mx-auto grid w-full max-w-md grid-cols-3 gap-3">
-          <button
-            type="button"
-            onClick={() => setTab('tavern')}
-            className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
-              tab === 'tavern'
-                ? 'border-amber-700/70 bg-amber-700/15 text-amber-100'
-                : 'border-stone-800/80 bg-black/20 text-stone-400'
-            }`}
-          >
-            <span className="flex items-center justify-center gap-2">
-              <Swords size={16} />
-              Tavern
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('character')}
-            className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
-              tab === 'character'
-                ? 'border-indigo-700/70 bg-indigo-700/15 text-indigo-100'
-                : 'border-stone-800/80 bg-black/20 text-stone-400'
-            }`}
-          >
-            <span className="flex items-center justify-center gap-2">
-              <ScrollText size={16} />
-              Character
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('blackmarket')}
-            className={`rounded-2xl border px-2 py-3 text-sm font-semibold transition flex items-center justify-center ${
-              tab === 'blackmarket'
-                ? 'border-purple-700/70 bg-purple-700/15 text-purple-100'
-                : 'border-stone-800/80 bg-black/20 text-stone-400'
-            }`}
-          >
-            <span className="flex items-center justify-center gap-1 text-xs">
-              <span className="text-base">⚖️</span>
-              Black Market
-            </span>
-          </button>
-        </div>
-      </nav>
-    </div>
+    <CharacterProvider>
+      <BlackMarketProvider>
+        <GameContainer>
+          <MainLayout activeTab={tab} onTabChange={setTab}>
+            <div className="h-full relative bg-[#0a0a0c]">
+              {tab === 'tavern' && <TavernPage onLogout={() => supabase.auth.signOut()} />}
+              {tab === 'character' && (
+                <div className="flex items-center justify-center h-full text-stone-500">
+                  <CharacterPage />
+                </div>
+              )}
+              {tab === 'weapon_shop' && <BlackMarketPage shopType="weapon" />}
+              {tab === 'magic_shop' && <BlackMarketPage shopType="magic" />}
+            </div>
+          </MainLayout>
+        </GameContainer>
+      </BlackMarketProvider>
+    </CharacterProvider>
   );
 }
 

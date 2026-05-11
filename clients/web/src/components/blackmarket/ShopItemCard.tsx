@@ -57,7 +57,7 @@ export const ShopItemCard: React.FC<ShopItemCardProps> = ({
       onMouseLeave={handleMouseLeave}
       onDoubleClick={() => onDoubleClick(item)}
       className={`
-        relative aspect-square rounded-xl border-2 cursor-grab active:cursor-grabbing 
+        relative w-full h-full aspect-square rounded-xl border-2 cursor-grab active:cursor-grabbing 
         transition-all duration-200 overflow-hidden group
         ${isDragging ? 'opacity-50 scale-95 z-50 shadow-2xl' : 'opacity-100 hover:scale-105 hover:shadow-lg'}
         ${disabled ? 'pointer-events-none opacity-50 grayscale' : ''}
