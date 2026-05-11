@@ -1,10 +1,21 @@
+import type { BattleResultV2 } from './combat';
+
 export type TavernStatus = 'IDLE' | 'IN_PROGRESS' | 'READY_TO_COMPLETE';
 
 export type VisibleReward = {
   xp: number;
   copper: number;
   hasEquipment: boolean;
+  equipmentPreview?: {
+    slot: string;
+    rarity: number;
+    name?: string;
+  };
   hasDungeonKey: boolean;
+  dungeonKeyPreview?: {
+    dungeonId: string;
+    name: string;
+  };
   hasHourglass?: boolean;
 };
 
@@ -39,13 +50,6 @@ export type RewardPreview = {
   hasHourglass?: boolean;
 };
 
-export type MountSnapshotView = {
-  timeMultiplierBp: number;
-  name?: string;
-  tier?: string;
-  capturedAt?: number;
-};
-
 export type ActiveMissionView = {
   missionId: string;
   offerSetId: string;
@@ -61,31 +65,39 @@ export type ActiveMissionView = {
   actualDurationSec: number;
   thirstCostSec: number;
   rewardPreview: RewardPreview;
-  mountSnapshot: MountSnapshotView;
+  mountSnapshot: {
+    timeMultiplierBp: number;
+    name?: string;
+    tier?: string;
+    capturedAt?: number;
+  };
 };
 
-export type TavernView = {
-  status: TavernStatus;
-  thirstSecRemaining: number;
-  drinksUsedToday: number;
-  firstMissionBonusAvailable: boolean;
-  missionOffers: MissionOffer[];
-  activeMission: ActiveMissionView | null;
-};
-
-export type MountView = {
-  timeMultiplierBp: number;
-  expiresAt: number | null;
-  name?: string;
-  tier?: string;
+export type TavernNpcGreeting = {
+  npcId: string;
+  name: string;
+  dialogue: string;
 };
 
 export type TavernInfoData = {
-  tavern: TavernView;
-  mount: MountView;
+  tavern: {
+    status: TavernStatus;
+    thirstSecRemaining: number;
+    drinksUsedToday: number;
+    firstMissionBonusAvailable: boolean;
+    missionOffers: MissionOffer[];
+    activeMission: ActiveMissionView | null;
+    npcGreeting: TavernNpcGreeting | null;
+  };
+  mount: {
+    timeMultiplierBp: number;
+    expiresAt: number | null;
+    name?: string;
+    tier?: string;
+  };
 };
 
-export type TavernSummaryView = TavernView;
+export type TavernSummaryView = TavernInfoData['tavern'];
 
 export type GrantedReward = {
   xp: number;
@@ -118,31 +130,18 @@ export type PlayerDelta = {
   prestigeAfter: number;
 };
 
-export type BattleRound = {
-  attacker: 'player' | 'enemy';
-  damage: number;
-  targetHpAfter: number;
-  wasCrit?: boolean;
-};
-
-export type BattleResult = {
-  playerWon: boolean;
-  rounds: BattleRound[];
-  playerHpEnd: number;
-  enemyHpEnd: number;
-  totalRounds: number;
-};
-
 export type CompleteMissionResult = 'SUCCESS' | 'FAILED' | 'ALREADY_SETTLED';
 
 export type CompleteMissionData = {
   result: CompleteMissionResult;
   missionId: string;
   offerSetId: string;
-  battleResult: BattleResult;
+  battleResult: BattleResultV2;
   rewardGranted: boolean;
   grantedReward: GrantedReward;
   playerDelta: PlayerDelta;
   nextMissionOffers: MissionOffer[];
   tavern: TavernSummaryView;
+  canSaveReplay?: boolean;
+  replayId?: string | null;
 };

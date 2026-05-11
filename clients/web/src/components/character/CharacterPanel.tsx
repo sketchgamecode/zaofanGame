@@ -1,141 +1,319 @@
-import React, { useState } from 'react';
-import type { CharacterInfoView } from '../../types/character';
-import { EQUIPMENT_SLOTS } from '../../types/character';
-import { DroppableEquipSlot } from './DroppableEquipSlot';
-import { DraggableInventorySlot } from './DraggableInventorySlot';
-import { AttributesTab } from './AttributesTab';
+import {
+  useDraggable,
+  useDroppable,
+} from '@dnd-kit/core';
+import { CLASS_META, getAvatarUrl } from '../../config/characterCatalog';
+import { getNextLevelXp } from '../../config/xpTable';
+import {
+  ATTRIBUTE_KEYS,
+  EQUIPMENT_SLOT_LABELS,
+  EQUIPMENT_SLOTS,
+  type AttributeKey,
+  type CharacterInfoView,
+  type EquipmentItem,
+  type EquipmentSlot,
+} from '../../types/game';
+
+type ItemTooltipState = {
+  item: EquipmentItem;
+  x: number;
+  y: number;
+};
 
 type CharacterPanelProps = {
   character: CharacterInfoView;
-  activeDragType: string | null;
+  pendingAction: string | null;
+  onUpgradeAttribute: (attribute: AttributeKey) => void;
+  onItemTooltipChange: (nextValue: ItemTooltipState | null) => void;
 };
 
-type TabId = 'ATTRIBUTES' | 'DESCRIPTION' | 'INFO' | 'INTERACTIONS';
+function getDerivedStat(character: CharacterInfoView, key: AttributeKey) {
+  switch (key) {
+    case 'strength':
+      return {
+        label: 'DEFENSE',
+        value: `${character.combatPreview.armor}`,
+      };
+    case 'agility':
+      return {
+        label: 'DODGE',
+        value: `${((character.combatPreview.dodgeChanceBp ?? 0) / 100).toFixed(2)}%`,
+      };
+    case 'intelligence':
+      return {
+        label: 'DAMAGE',
+        value: `${character.combatPreview.damageMin} - ${character.combatPreview.damageMax}`,
+      };
+    case 'constitution':
+      return {
+        label: 'HIT POINTS',
+        value: `${character.combatPreview.hp.toLocaleString()}`,
+      };
+    case 'luck':
+      return {
+        label: 'CRITICAL HIT',
+        value: `${(character.combatPreview.critChanceBp / 100).toFixed(2)}%`,
+      };
+    default:
+      return null;
+  }
+}
 
-export const CharacterPanel: React.FC<CharacterPanelProps> = ({ character, activeDragType }) => {
-  const [activeTab, setActiveTab] = useState<TabId>('ATTRIBUTES');
-
-  const leftSlots = EQUIPMENT_SLOTS.slice(0, 4); // head, body, hands, feet
-  const rightSlots = EQUIPMENT_SLOTS.slice(4, 8); // neck, belt, ring, trinket
-  const bottomSlots = EQUIPMENT_SLOTS.slice(8, 10); // weapon, offHand
-
-  // Calculate XP percentage
-  const xpPercent = Math.min(100, Math.max(0, character.player.exp / 100)); // TODO: Needs actual max XP formula.
+function DraggableEquipmentItem({
+  item,
+  onItemTooltipChange,
+}: {
+  item: EquipmentItem;
+  onItemTooltipChange: CharacterPanelProps['onItemTooltipChange'];
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `equip-item:${item.id}`,
+    data: {
+      source: 'equipment',
+      item,
+    },
+  });
 
   return (
-    <div className="flex flex-col h-full gap-2 text-stone-200">
-      
-      {/* 1. Header Zone (Avatar & Equipment) */}
-      <div className="relative shrink-0 flex flex-col h-[280px] bg-[#041124] rounded-t-xl border-t-2 border-x-2 border-[#b8860b] shadow-[inset_0_0_50px_rgba(0,0,0,0.8)] overflow-hidden">
-        
-        {/* Background Avatar (Full Width Integration) */}
-        <div className="absolute inset-0 z-0 pointer-events-none flex justify-center items-start overflow-hidden">
-          <div className="absolute bottom-0 inset-x-0 h-1/2 bg-gradient-to-t from-[#041124] to-transparent z-10" />
-          <img 
-            src="/assets/npcs/avatar_girl.png" 
-            alt="Avatar" 
-            className="w-full h-full object-cover object-top drop-shadow-[-5px_5px_15px_rgba(0,0,0,0.8)] opacity-90"
-            onError={e=>e.currentTarget.style.display='none'}
-          />
-        </div>
-
-        {/* Name Title */}
-        <div className="relative z-20 mt-2 mb-2 text-center">
-          <h2 className="text-2xl font-fantasy font-black text-[#ffcc00] tracking-widest uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,1)] stroke-black">
-            {character.player.displayName || 'Hero'}
-          </h2>
-        </div>
-        
-        {/* Equip Slots overlay */}
-        <div className="flex justify-between w-full px-3 relative z-20 flex-1">
-          
-          {/* Left Slots */}
-          <div className="flex flex-col gap-1.5 w-[52px]">
-            {leftSlots.map(slot => (
-              <div key={slot} className="w-full h-[52px] bg-black/40 rounded border border-[#b8860b]/60 shadow-[0_4px_6px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(0,0,0,0.5)]">
-                <DroppableEquipSlot 
-                  slot={slot} 
-                  item={character.equipment.equipped[slot]} 
-                  isHighlighted={activeDragType === slot}
-                />
-              </div>
-            ))}
-          </div>
-          
-          {/* Center Bottom (Level, XP, Weapon, Offhand) */}
-          <div className="flex-1 flex flex-col justify-end items-center pb-2 px-2">
-            
-            {/* Level Badge Over Avatar */}
-            <div className="mb-2 px-4 py-1 bg-gradient-to-r from-transparent via-[#b8860b]/80 to-transparent flex items-center justify-center shadow-lg border-y border-[#ffcc00]/50 backdrop-blur-sm">
-              <span className="text-sm font-fantasy font-black text-white drop-shadow-md">Level {character.player.level}</span>
-            </div>
-            
-            {/* XP Bar */}
-            <div className="w-full h-2 bg-black rounded-full border border-[#b8860b]/50 overflow-hidden shadow-inner mb-2 relative">
-               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 mix-blend-overlay z-10" />
-               <div className="h-full bg-gradient-to-r from-emerald-700 to-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)] relative z-0" style={{ width: `${xpPercent}%` }} />
-            </div>
-            
-            {/* Bottom Slots (Weapon, Offhand) */}
-            <div className="flex gap-4 w-full justify-center">
-              {bottomSlots.map(slot => (
-                <div key={slot} className="w-[52px] h-[52px] bg-black/60 rounded border-2 border-[#b8860b]/80 shadow-[0_4px_10px_rgba(0,0,0,0.8),inset_0_2px_4px_rgba(0,0,0,0.5)]">
-                  <DroppableEquipSlot 
-                    slot={slot} 
-                    item={character.equipment.equipped[slot]} 
-                    isHighlighted={activeDragType === slot}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {/* Right Slots */}
-          <div className="flex flex-col gap-1.5 w-[52px]">
-            {rightSlots.map(slot => (
-              <div key={slot} className="w-full h-[52px] bg-black/40 rounded border border-[#b8860b]/60 shadow-[0_4px_6px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(0,0,0,0.5)]">
-                <DroppableEquipSlot 
-                  slot={slot} 
-                  item={character.equipment.equipped[slot]} 
-                  isHighlighted={activeDragType === slot}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
+    <button
+      ref={setNodeRef}
+      className="inventory-item-card inventory-item-card--equipped"
+      style={{
+        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+        opacity: isDragging ? 0.2 : 1,
+      }}
+      type="button"
+      {...listeners}
+      {...attributes}
+      onPointerEnter={(event) => {
+        onItemTooltipChange({
+          item,
+          x: event.clientX,
+          y: event.clientY,
+        });
+      }}
+      onPointerMove={(event) => {
+        onItemTooltipChange({
+          item,
+          x: event.clientX,
+          y: event.clientY,
+        });
+      }}
+      onPointerLeave={() => onItemTooltipChange(null)}
+    >
+      <div className="inventory-item-card__name">{item.name}</div>
+      <div className="inventory-item-card__sub">
+        {item.armor ? `甲 ${item.armor}` : item.weaponDamage ? `伤 ${item.weaponDamage.min}-${item.weaponDamage.max}` : '装备'}
       </div>
-      
-      {/* 2. Bottom Tabs Zone (Replaces Backpack) */}
-      <div className="flex-1 flex flex-col min-h-0 bg-[#08152e] rounded-lg border-2 border-[#b8860b] shadow-[0_10px_30px_rgba(0,0,0,0.8)] overflow-hidden mt-2 relative">
-        {/* Tab Headers */}
-        <div className="flex border-b-2 border-[#b8860b] bg-gradient-to-r from-[#002244] to-[#003366] shrink-0 relative z-10 shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
-          {(['ATTRIBUTES', 'DESCRIPTION', 'INFO', 'INTERACTIONS'] as TabId[]).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-1.5 text-[10px] font-fantasy font-black text-center border-r-2 border-[#b8860b]/50 last:border-r-0 transition-colors drop-shadow-md ${
-                activeTab === tab 
-                  ? 'text-white bg-[#b8860b]/40 shadow-[inset_0_-3px_0_#ffcc00]' 
-                  : 'text-amber-500/60 hover:text-amber-300 hover:bg-white/5'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-        
-        {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-2 custom-scrollbar bg-[#041124] relative">
-          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 mix-blend-overlay pointer-events-none" />
-          <div className="relative z-10 h-full">
-            {activeTab === 'ATTRIBUTES' && <AttributesTab character={character} />}
-            {activeTab === 'DESCRIPTION' && <div className="text-sm text-amber-200 italic p-2 font-fantasy">"天道不仁，以万物为刍狗。"</div>}
-            {activeTab === 'INFO' && <div className="text-sm text-amber-200 p-2 font-fantasy">详细信息...</div>}
-            {activeTab === 'INTERACTIONS' && <div className="text-sm text-amber-200 p-2 font-fantasy">互动选项...</div>}
-          </div>
-        </div>
-      </div>
+    </button>
+  );
+}
 
+function EquipmentSlotCell({
+  slot,
+  item,
+  onItemTooltipChange,
+}: {
+  slot: EquipmentSlot;
+  item: EquipmentItem | null;
+  onItemTooltipChange: CharacterPanelProps['onItemTooltipChange'];
+}) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: `equip-slot:${slot}`,
+    data: {
+      type: 'equip-slot',
+      slot,
+    },
+  });
+
+  return (
+    <div ref={setNodeRef} className={`character-panel__equip-slot${isOver ? ' character-panel__equip-slot--over' : ''}`}>
+      <div className="character-panel__equip-label">{EQUIPMENT_SLOT_LABELS[slot]}</div>
+      {item ? <DraggableEquipmentItem item={item} onItemTooltipChange={onItemTooltipChange} /> : null}
     </div>
   );
-};
+}
+
+function StatRow({
+  character,
+  attribute,
+  pendingAction,
+  onUpgradeAttribute,
+}: {
+  character: CharacterInfoView;
+  attribute: AttributeKey;
+  pendingAction: string | null;
+  onUpgradeAttribute: CharacterPanelProps['onUpgradeAttribute'];
+}) {
+  const derived = getDerivedStat(character, attribute);
+  const base = character.attributes.base[attribute];
+  const total = character.attributes.total[attribute];
+  const equipment = total - base;
+  const upgradeCost = character.attributes.upgradeCosts[attribute];
+  const canUpgrade = character.resources.copper >= upgradeCost && pendingAction === null;
+  const labelMap: Record<AttributeKey, string> = {
+    strength: 'STRENGTH',
+    intelligence: 'INTELLIGENCE',
+    agility: 'DEXTERITY',
+    constitution: 'CONSTITUTION',
+    luck: 'LUCK',
+  };
+
+  return (
+    <div className="character-panel__stat-row">
+      <div className="character-panel__stat-main">
+        <div className="character-panel__stat-head">
+          <span>{labelMap[attribute]}</span>
+          <span>{total}</span>
+        </div>
+        {derived ? (
+          <div className="character-panel__stat-derived">
+            <span>{derived.label}</span>
+            <span>{derived.value}</span>
+          </div>
+        ) : null}
+        <div className="character-panel__stat-breakdown">
+          <span>Basis {base}</span>
+          <span>Equipment {equipment >= 0 ? `+${equipment}` : equipment}</span>
+        </div>
+      </div>
+      <button
+        className="character-panel__upgrade"
+        type="button"
+        disabled={!canUpgrade}
+        title={`升级消耗 ${upgradeCost} 铜钱`}
+        onClick={() => onUpgradeAttribute(attribute)}
+      >
+        +
+      </button>
+    </div>
+  );
+}
+
+export function CharacterPanel({
+  character,
+  pendingAction,
+  onUpgradeAttribute,
+  onItemTooltipChange,
+}: CharacterPanelProps) {
+  const classMeta = CLASS_META[character.player.classId];
+  const nextLevelXp = getNextLevelXp(character.player.level);
+  const xpProgress = Math.min(1, Math.max(0, character.player.exp / Math.max(1, nextLevelXp)));
+  const leftSlots = EQUIPMENT_SLOTS.slice(0, 4);
+  const rightSlots = EQUIPMENT_SLOTS.slice(4, 8);
+  const bottomSlots = EQUIPMENT_SLOTS.slice(8, 10);
+
+  return (
+    <section className="character-panel">
+      <header className="character-panel__header">
+        <div className="character-panel__avatar-frame">
+          <img alt={character.player.displayName || '角色头像'} className="character-panel__avatar" src={getAvatarUrl(character.player.avatarId)} />
+        </div>
+
+        <div className="character-panel__header-copy">
+          <div className="character-panel__name">{character.player.displayName || '无名好汉'}</div>
+          <div className="character-panel__class">{classMeta.name}</div>
+          <div className="character-panel__level-row">
+            <span>Lv.{character.player.level}</span>
+            <span>{character.player.exp} / {nextLevelXp}</span>
+          </div>
+          <div className="character-panel__xp-bar">
+            <div className="character-panel__xp-fill" style={{ width: `${xpProgress * 100}%` }} />
+          </div>
+        </div>
+      </header>
+
+      <div className="character-panel__equip-layout">
+        <div className="character-panel__equip-column">
+          {leftSlots.map((slot) => (
+            <EquipmentSlotCell
+              key={slot}
+              slot={slot}
+              item={character.equipment.equipped[slot]}
+              onItemTooltipChange={onItemTooltipChange}
+            />
+          ))}
+        </div>
+
+        <div className="character-panel__center">
+          <div className="character-panel__hero-card">
+            <img alt={character.player.displayName || '头像'} className="character-panel__hero-portrait" src={getAvatarUrl(character.player.avatarId)} />
+          </div>
+
+          <div className="character-panel__bottom-slots">
+            {bottomSlots.map((slot) => (
+              <EquipmentSlotCell
+                key={slot}
+                slot={slot}
+                item={character.equipment.equipped[slot]}
+                onItemTooltipChange={onItemTooltipChange}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="character-panel__equip-column">
+          {rightSlots.map((slot) => (
+            <EquipmentSlotCell
+              key={slot}
+              slot={slot}
+              item={character.equipment.equipped[slot]}
+              onItemTooltipChange={onItemTooltipChange}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="character-panel__tabs">
+        <button className="character-panel__tab character-panel__tab--active" type="button">ATTRIBUTES</button>
+        <button className="character-panel__tab" type="button">DESCRIPTION</button>
+        <button className="character-panel__tab" type="button">INFO</button>
+        <button className="character-panel__tab" type="button">INTERACTIONS</button>
+      </div>
+
+      <div className="character-panel__stats-grid">
+        <div className="character-panel__stats-column">
+          {ATTRIBUTE_KEYS.slice(0, 3).map((attribute) => (
+            <StatRow
+              key={attribute}
+              attribute={attribute}
+              character={character}
+              pendingAction={pendingAction}
+              onUpgradeAttribute={onUpgradeAttribute}
+            />
+          ))}
+        </div>
+
+        <div className="character-panel__stats-column">
+          {ATTRIBUTE_KEYS.slice(3).map((attribute) => (
+            <StatRow
+              key={attribute}
+              attribute={attribute}
+              character={character}
+              pendingAction={pendingAction}
+              onUpgradeAttribute={onUpgradeAttribute}
+            />
+          ))}
+
+          <div className="character-panel__stat-row character-panel__stat-row--static">
+            <div className="character-panel__stat-main">
+              <div className="character-panel__stat-head">
+                <span>ARMOR</span>
+                <span>{character.combatPreview.armor}</span>
+              </div>
+              <div className="character-panel__stat-derived">
+                <span>DAMAGE RED.</span>
+                <span>{Math.min(classMeta.armorCap, Math.floor(character.combatPreview.armor / Math.max(1, character.player.level)))}%</span>
+              </div>
+              <div className="character-panel__stat-breakdown">
+                <span>Combat Rating</span>
+                <span>{character.combatPreview.combatRating}</span>
+              </div>
+            </div>
+            <div className="character-panel__upgrade character-panel__upgrade--ghost" />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

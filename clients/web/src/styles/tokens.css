@@ -1,0 +1,20 @@
+:root {
+  --shell-bg: #0b0907;
+  --stage-frame: #22160f;
+  --scene-floor: #2b2018;
+  --scene-wood: #5c3e2b;
+  --scene-wood-light: #8f6646;
+  --scene-paper: #b89c76;
+  --scene-ink: #24160d;
+  --metal-dark: #59534c;
+  --metal-light: #92897d;
+  --accent-red: #8f3c2e;
+  --accent-gold: #ba8b47;
+  --text-main: #f2e3c8;
+  --text-muted: #d0b896;
+  --text-dark: #28180f;
+  --shadow-heavy: 0 14px 40px rgba(0, 0, 0, 0.45);
+  --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.2);
+  --border-strong: 2px solid rgba(26, 16, 10, 0.7);
+  --font-ui: "Microsoft YaHei UI", "PingFang SC", "Noto Serif SC", serif;
+}
