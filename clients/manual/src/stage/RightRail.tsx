@@ -10,14 +10,13 @@ type RightRailProps = {
   onInventoryOpen: () => void;
 };
 
-const menuItems: Array<{ id: string; sceneId?: SceneId; label: string; subtitle: string }> = [
-  { id: 'city', sceneId: 'city', label: '州城', subtitle: '主场景' },
+const menuItems: Array<{ id: string; sceneId: SceneId; label: string; subtitle: string }> = [
   { id: 'tavern', sceneId: 'tavern', label: '客栈', subtitle: '接任务' },
   { id: 'blackmarket', sceneId: 'blackmarket', label: '黑市', subtitle: '兵器奇珍' },
   { id: 'inventory', sceneId: 'inventory', label: '行囊', subtitle: '属性装备' },
-  { id: 'world', sceneId: 'world', label: '江湖', subtitle: '地图外出' },
-  { id: 'arena', label: '校场', subtitle: '后续系统' },
-  { id: 'home', label: '住处', subtitle: '后续系统' },
+  { id: 'dungeon', sceneId: 'dungeon', label: '江湖', subtitle: '地界历练' },
+  { id: 'arena', sceneId: 'arena', label: '校场', subtitle: '挑战排名' },
+  { id: 'mail', sceneId: 'mail', label: '邮件', subtitle: '战报回看' },
 ];
 
 export function RightRail({ activeSceneId, onSceneChange, onInventoryOpen }: RightRailProps) {
@@ -52,7 +51,11 @@ export function RightRail({ activeSceneId, onSceneChange, onInventoryOpen }: Rig
       >
         <button className="portrait-summary" type="button" onClick={onInventoryOpen}>
           <div className="portrait-summary__avatar-frame">
-            <img alt={character.player.displayName || '角色头像'} className="portrait-summary__avatar" src={getAvatarUrl(character.player.avatarId)} />
+            <img
+              alt={character.player.displayName || '角色头像'}
+              className="portrait-summary__avatar"
+              src={getAvatarUrl(character.player.avatarId)}
+            />
           </div>
           <div className="portrait-summary__content">
             <div className="portrait-summary__name">{character.player.displayName || '无名好汉'}</div>
@@ -86,7 +89,7 @@ export function RightRail({ activeSceneId, onSceneChange, onInventoryOpen }: Rig
           return (
             <button
               key={item.id}
-              className={`right-nav__button${isActive ? ' right-nav__button--active' : ''}${item.sceneId ? '' : ' right-nav__button--disabled'}`}
+              className={`right-nav__button${isActive ? ' right-nav__button--active' : ''}`}
               style={{
                 left: `${buttonRect.x - layout.rightNav.x}px`,
                 top: `${buttonRect.y - layout.rightNav.y}px`,
@@ -94,11 +97,7 @@ export function RightRail({ activeSceneId, onSceneChange, onInventoryOpen }: Rig
                 height: `${buttonRect.height}px`,
               }}
               type="button"
-              onClick={() => {
-                if (item.sceneId) {
-                  onSceneChange(item.sceneId);
-                }
-              }}
+              onClick={() => onSceneChange(item.sceneId)}
             >
               <span className="right-nav__title">{item.label}</span>
               <span className="right-nav__subtitle">{item.subtitle}</span>

@@ -277,7 +277,7 @@ Action Start
 
 ## 5. BattleResult 数据契约
 
-当前 `BattleRound` 只记录 `attacker/damage/targetHpAfter/wasCrit`，不足以支撑正式回放和邮箱归档。建议升级为 action/hit 两级结构，同时保留兼容字段可由 server 映射生成。
+`BattleResultV2` 是当前正式战斗播放与回放归档的唯一契约。旧 `BattleResult.rounds` / `BattleRound` 不再保留兼容映射；项目遵循清档升级原则，详见 `server/tdd/server_agent_common_rules.md`。
 
 ```typescript
 type BattleHitEvent = {
@@ -750,7 +750,7 @@ honorDeltaLose = -round(32 * expected)
 - 引擎输入使用完整 `CombatantSnapshot`。
 - 实现 HP、暴击率、主属性因子、护甲减伤、怒气、格挡、闪避、法师绕甲、刺客双持、狂战士连击。
 - 使用现有 `createSeededRandom` 保证可复现。
-- 输出 `BattleResultV2`，并提供旧 `BattleResult` 兼容映射，避免一次性打断 client。
+- 输出 `BattleResultV2`；不提供旧 `BattleResult` 兼容映射。
 - 输出必须完整到可长期回放，不得依赖当前存档重新计算。
 
 ### P0: 角色战斗预览
@@ -768,7 +768,8 @@ honorDeltaLose = -round(32 * expected)
 
 - 实现 `ARENA_GET_INFO`、`ARENA_REFRESH_CANDIDATES`、`ARENA_FIGHT`。
 - 扩展 `ArenaState`，新增 honor/rank/candidates/daily XP wins。
-- 增加名人堂查询和 bot fallback。
+- 当前 server 交接范围仅包含竞技场挑战页 API；英雄谱 / Hall of Fame 查询 API 不在本轮实现范围内。
+- 增加 bot fallback。
 - 荣誉更新后刷新排名。
 - 每次 `ARENA_FIGHT` 自动创建邮箱战斗回放，并返回 `replayId`。
 
@@ -841,7 +842,9 @@ honorDeltaLose = -round(32 * expected)
 
 ## 11. 当前实现差异
 
-截至 2026-05-11，server 现状与正式规格的主要差异：
+历史说明：本节原本记录正式版战斗系统实现前的差异清单。2026-05-11 的 server 实现已经完成 BattleResultV2、职业规则、竞技场挑战页与战斗回放 API；client 对接应以 `server/tdd/api_master_list.md` 第 7/8 节和 `server/tdd/player_save_schema.md` 为准。
+
+以下清单仅保留为实现前问题追踪记录，不再代表当前 server 行为：
 
 | 位置 | 当前行为 | 正式版要求 |
 | :--- | :--- | :--- |

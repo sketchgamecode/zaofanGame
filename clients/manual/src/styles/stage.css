@@ -87,6 +87,19 @@ body {
     linear-gradient(180deg, #40251d 0%, #221816 58%, #191211 100%);
 }
 
+.scene--arena,
+.scene--mail {
+  background:
+    radial-gradient(circle at top, rgba(61, 126, 145, 0.18), transparent 28%),
+    linear-gradient(180deg, #10333d 0%, #0c252c 52%, #09171b 100%);
+}
+
+.scene--dungeon {
+  background:
+    radial-gradient(circle at 50% 16%, rgba(181, 128, 45, 0.18), transparent 24%),
+    linear-gradient(180deg, #2e241d 0%, #181310 60%, #12100f 100%);
+}
+
 .scene--character {
   background:
     linear-gradient(180deg, rgba(255, 244, 216, 0.08), rgba(0, 0, 0, 0)),
@@ -1226,12 +1239,22 @@ body {
 
 .city-scene__node--inventory {
   right: 356px;
-  top: 180px;
+  top: 126px;
 }
 
-.city-scene__node--world {
-  right: 48px;
-  top: 338px;
+.city-scene__node--dungeon {
+  right: 72px;
+  top: 148px;
+}
+
+.city-scene__node--arena {
+  left: 580px;
+  top: 344px;
+}
+
+.city-scene__node--mail {
+  right: 168px;
+  top: 372px;
 }
 
 .city-scene__node-title {
@@ -1684,4 +1707,533 @@ body {
 
 .decision-modal__button--quiet {
   background: rgba(44, 35, 30, 0.96);
+}
+
+.arena-scene,
+.dungeon-scene,
+.mail-scene {
+  position: absolute;
+  inset: 76px 68px 62px;
+}
+
+.arena-scene {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 24px;
+}
+
+.arena-scene__summary {
+  padding: 22px 24px;
+  border: 2px solid rgba(80, 116, 132, 0.84);
+  background: rgba(10, 25, 30, 0.82);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 14px;
+}
+
+.arena-scene__summary-block,
+.arena-scene__summary-actions {
+  min-height: 112px;
+  padding: 16px 18px;
+  border: 1px solid rgba(88, 128, 145, 0.52);
+  background: rgba(6, 17, 20, 0.58);
+}
+
+.arena-scene__summary-label {
+  font-size: 16px;
+  color: rgba(216, 234, 238, 0.62);
+  letter-spacing: 0.08em;
+}
+
+.arena-scene__summary-value {
+  margin-top: 18px;
+  font-size: 34px;
+  color: #f6e1be;
+}
+
+.arena-scene__summary-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.arena-scene__action,
+.mail-scene__action,
+.dungeon-scene__fight {
+  min-height: 50px;
+  border: 1px solid rgba(131, 92, 47, 0.84);
+  background: linear-gradient(180deg, rgba(186, 129, 68, 0.98), rgba(120, 73, 35, 0.98));
+  color: #fff2d6;
+  cursor: pointer;
+}
+
+.arena-scene__action--quiet,
+.mail-scene__action--quiet {
+  background: rgba(28, 37, 42, 0.92);
+}
+
+.arena-scene__board,
+.dungeon-scene__chapter-list,
+.dungeon-scene__detail,
+.mail-scene__list,
+.mail-scene__detail {
+  border: 2px solid rgba(80, 116, 132, 0.68);
+  background: rgba(8, 23, 29, 0.74);
+  box-shadow: var(--shadow-heavy);
+}
+
+.arena-scene__board {
+  padding: 28px 34px 34px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 22px;
+}
+
+.arena-scene__heading,
+.dungeon-scene__heading,
+.mail-scene__heading,
+.dungeon-scene__detail-title,
+.mail-scene__detail-title {
+  font-size: 42px;
+  color: #f3e0bd;
+}
+
+.arena-scene__subtitle,
+.dungeon-scene__subheading,
+.mail-scene__subheading,
+.dungeon-scene__detail-flavor,
+.mail-scene__detail-copy {
+  margin-top: 10px;
+  color: rgba(229, 214, 191, 0.72);
+  font-size: 20px;
+}
+
+.arena-scene__candidates {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.arena-card {
+  padding: 18px;
+  border: 1px solid rgba(108, 153, 171, 0.52);
+  background: rgba(7, 18, 21, 0.7);
+  display: grid;
+  grid-template-rows: 180px auto auto repeat(3, auto) 1fr auto;
+  gap: 10px;
+}
+
+.arena-card__portrait-frame {
+  border: 1px solid rgba(94, 132, 148, 0.58);
+  background: rgba(5, 13, 15, 0.88);
+  overflow: hidden;
+}
+
+.arena-card__portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.arena-card__name {
+  font-size: 30px;
+}
+
+.arena-card__meta {
+  color: #d9b06f;
+}
+
+.arena-card__stat-row,
+.dungeon-scene__detail-row,
+.mail-scene__detail-line,
+.battle-summary__line {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 20px;
+}
+
+.arena-card__fight {
+  min-height: 58px;
+  border: 1px solid rgba(129, 92, 47, 0.84);
+  background: linear-gradient(180deg, rgba(178, 118, 59, 0.98), rgba(122, 67, 31, 0.98));
+  color: #fff1d4;
+  cursor: pointer;
+}
+
+.arena-card__fight:disabled,
+.arena-scene__action:disabled,
+.mail-scene__action:disabled,
+.dungeon-scene__fight:disabled,
+.battle-replay__result-action:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.dungeon-scene,
+.mail-scene {
+  display: grid;
+  grid-template-columns: 560px 1fr;
+  gap: 26px;
+}
+
+.dungeon-scene__chapter-list,
+.mail-scene__list {
+  padding: 24px;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+}
+
+.dungeon-scene__chapter-scroll,
+.mail-scene__scroll {
+  margin-top: 24px;
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+  padding-right: 8px;
+}
+
+.dungeon-scene__chapter {
+  padding: 18px;
+  text-align: left;
+  border: 1px solid rgba(121, 88, 51, 0.68);
+  background: rgba(20, 16, 14, 0.76);
+  color: #f6e1be;
+  cursor: pointer;
+}
+
+.dungeon-scene__chapter--active {
+  box-shadow: 0 0 0 2px rgba(223, 170, 93, 0.3) inset;
+}
+
+.dungeon-scene__chapter--locked {
+  opacity: 0.62;
+}
+
+.dungeon-scene__chapter-name {
+  font-size: 28px;
+}
+
+.dungeon-scene__chapter-flavor,
+.dungeon-scene__chapter-meta {
+  margin-top: 10px;
+  color: rgba(240, 225, 201, 0.68);
+}
+
+.dungeon-scene__chapter-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 15px;
+}
+
+.dungeon-scene__detail,
+.mail-scene__detail {
+  padding: 28px 32px;
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto;
+}
+
+.dungeon-scene__detail-panel,
+.mail-scene__detail-card {
+  margin-top: 24px;
+  padding: 20px 22px;
+  border: 1px solid rgba(98, 78, 57, 0.68);
+  background: rgba(17, 13, 11, 0.66);
+  display: grid;
+  gap: 14px;
+}
+
+.dungeon-scene__fight,
+.mail-scene__detail-actions {
+  margin-top: 24px;
+}
+
+.mail-scene__detail-actions {
+  display: flex;
+  gap: 14px;
+}
+
+.mail-item {
+  padding: 16px 18px;
+  text-align: left;
+  border: 1px solid rgba(88, 128, 145, 0.4);
+  background: rgba(6, 18, 21, 0.64);
+  color: #f3e0bd;
+  cursor: pointer;
+}
+
+.mail-item--active {
+  box-shadow: 0 0 0 2px rgba(91, 145, 167, 0.28) inset;
+  background: rgba(10, 31, 37, 0.8);
+}
+
+.mail-item__title {
+  font-size: 24px;
+}
+
+.mail-item__context {
+  margin-top: 8px;
+  color: #e0b06a;
+}
+
+.mail-item__meta {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  color: rgba(227, 214, 193, 0.64);
+}
+
+.mail-scene__empty {
+  padding: 28px 0;
+  color: rgba(240, 225, 201, 0.58);
+}
+
+.mail-scene__empty--detail {
+  align-self: center;
+}
+
+.battle-replay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  background: rgba(8, 6, 5, 0.58);
+}
+
+.battle-replay__stage {
+  position: absolute;
+  inset: 0;
+}
+
+.battle-replay__header {
+  position: absolute;
+  left: 330px;
+  right: 330px;
+  top: 68px;
+  text-align: center;
+}
+
+.battle-replay__eyebrow {
+  font-size: 18px;
+  letter-spacing: 0.18em;
+  color: rgba(245, 225, 196, 0.62);
+}
+
+.battle-replay__title {
+  margin-top: 12px;
+  font-size: 48px;
+}
+
+.battle-replay__subtitle {
+  margin-top: 12px;
+  color: rgba(245, 225, 196, 0.74);
+}
+
+.battle-replay__side {
+  position: absolute;
+  top: 172px;
+  width: 310px;
+  padding: 20px 22px 22px;
+  border: 2px solid rgba(92, 66, 41, 0.84);
+  background: rgba(18, 12, 10, 0.76);
+  box-shadow: var(--shadow-heavy);
+}
+
+.battle-replay__side--player {
+  left: 110px;
+}
+
+.battle-replay__side--enemy {
+  right: 110px;
+}
+
+.battle-replay__portrait-frame {
+  width: 100%;
+  height: 264px;
+  border: 1px solid rgba(118, 84, 47, 0.72);
+  overflow: hidden;
+  background: rgba(8, 8, 7, 0.78);
+}
+
+.battle-replay__portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.battle-replay__combatant-name {
+  margin-top: 16px;
+  font-size: 30px;
+}
+
+.battle-replay__combatant-meta {
+  margin-top: 8px;
+  color: #d5aa6d;
+}
+
+.battle-replay__hp-bar {
+  margin-top: 18px;
+  height: 20px;
+  border: 1px solid rgba(108, 76, 43, 0.7);
+  background: rgba(10, 8, 7, 0.86);
+  overflow: hidden;
+}
+
+.battle-replay__hp-fill {
+  height: 100%;
+}
+
+.battle-replay__hp-fill--player {
+  background: linear-gradient(90deg, #678c33 0%, #abd464 100%);
+}
+
+.battle-replay__hp-fill--enemy {
+  background: linear-gradient(90deg, #7e2f23 0%, #d66c5f 100%);
+}
+
+.battle-replay__hp-text {
+  margin-top: 10px;
+  font-size: 22px;
+}
+
+.battle-replay__log {
+  position: absolute;
+  left: 454px;
+  right: 454px;
+  top: 300px;
+  min-height: 262px;
+  padding: 32px 36px;
+  text-align: center;
+  border: 2px solid rgba(92, 66, 41, 0.84);
+  background: rgba(18, 12, 10, 0.78);
+  box-shadow: var(--shadow-heavy);
+}
+
+.battle-replay__round {
+  font-size: 24px;
+  color: rgba(245, 225, 196, 0.68);
+}
+
+.battle-replay__actor {
+  margin-top: 22px;
+  font-size: 34px;
+}
+
+.battle-replay__damage {
+  margin-top: 20px;
+  font-size: 58px;
+  color: #e1a15b;
+}
+
+.battle-replay__detail {
+  margin-top: 18px;
+  font-size: 20px;
+  color: rgba(245, 225, 196, 0.66);
+}
+
+.battle-replay__skip {
+  position: absolute;
+  right: 120px;
+  bottom: 118px;
+  min-width: 220px;
+  min-height: 72px;
+  border: 1px solid rgba(118, 84, 47, 0.84);
+  background: rgba(40, 33, 29, 0.94);
+  color: #fff2d6;
+  cursor: pointer;
+}
+
+.battle-replay__result-panel {
+  position: absolute;
+  left: 500px;
+  right: 500px;
+  top: 196px;
+  min-height: 540px;
+  padding: 42px 44px 34px;
+  border: 2px solid rgba(118, 84, 47, 0.86);
+  background: rgba(19, 14, 11, 0.94);
+  box-shadow: var(--shadow-heavy);
+}
+
+.battle-replay__result-badge {
+  width: 172px;
+  height: 72px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  font-size: 38px;
+  color: #fff8e3;
+  background: linear-gradient(180deg, rgba(168, 90, 43, 0.98), rgba(119, 45, 23, 0.98));
+}
+
+.battle-replay__result-badge--win {
+  background: linear-gradient(180deg, rgba(83, 164, 58, 0.98), rgba(50, 118, 34, 0.98));
+}
+
+.battle-replay__result-copy {
+  margin-top: 24px;
+  text-align: center;
+  color: rgba(245, 225, 196, 0.76);
+  line-height: 1.6;
+}
+
+.battle-replay__result-body {
+  position: relative;
+  margin-top: 30px;
+  min-height: 220px;
+}
+
+.battle-replay__result-actions {
+  margin-top: 36px;
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+
+.battle-replay__result-action {
+  min-width: 168px;
+  min-height: 58px;
+  border: 1px solid rgba(118, 84, 47, 0.84);
+  color: #fff2d6;
+  cursor: pointer;
+}
+
+.battle-replay__result-action--primary {
+  background: linear-gradient(180deg, rgba(178, 118, 59, 0.98), rgba(122, 67, 31, 0.98));
+}
+
+.battle-replay__result-action--secondary {
+  background: rgba(52, 39, 31, 0.96);
+}
+
+.battle-replay__result-action--quiet {
+  background: rgba(28, 24, 22, 0.96);
+}
+
+.battle-summary {
+  position: relative;
+  min-height: 220px;
+}
+
+.battle-summary__line {
+  margin-top: 12px;
+}
+
+.battle-summary__reward-row {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  min-height: 230px;
+}
+
+.battle-summary__reward {
+  width: 209px;
+  height: 210px;
+}
+
+.battle-summary__failure {
+  padding-top: 42px;
+  text-align: center;
+  font-size: 28px;
+  color: #f4e1bd;
 }

@@ -32,7 +32,7 @@ export type RaceId =
 export type AttributeKey = (typeof ATTRIBUTE_KEYS)[number];
 export type EquipmentSlot = (typeof EQUIPMENT_SLOTS)[number];
 export type ItemRarity = 0 | 1 | 2 | 3 | 4;
-export type SceneId = 'city' | 'tavern' | 'blackmarket' | 'inventory' | 'world';
+export type SceneId = 'city' | 'tavern' | 'blackmarket' | 'inventory' | 'dungeon' | 'arena' | 'mail';
 
 export type AttributeValues = Record<AttributeKey, number>;
 

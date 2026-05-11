@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { postGameAction } from '../api/gameApi';
+import { BattleReplay } from '../components/combat/BattleReplay';
+import { formatCountdown } from '../lib/formatters';
+import { toActionErrorMessage } from '../lib/manualErrors';
 import { useGameState } from '../state/GameStateContext';
+import type { MailSaveMissionReplayData } from '../types/combat';
 import type {
   ActiveMissionView,
-  BattleResult,
   CompleteMissionData,
   MissionOffer,
   RewardPreview,
@@ -30,17 +33,6 @@ type MissionPresentation = {
   visibleReward?: VisibleReward;
 };
 
-type BattlePlayback = {
-  playerName: string;
-  enemyName: string;
-  playerWon: boolean;
-  playerHpMax: number;
-  enemyHpMax: number;
-  playerHpEnd: number;
-  enemyHpEnd: number;
-  rounds: BattleResult['rounds'];
-};
-
 type RewardSlot = {
   key: string;
   iconSrc: string;
@@ -49,58 +41,15 @@ type RewardSlot = {
 };
 
 const NPC_VISUALS: Record<string, NpcVisualConfig> = {
-  npc_laobao: {
-    idleSrc: '/assets/foregrounds/tavern_guest_0.png',
-    hoverSrc: '/assets/foregrounds/tavern_guest_0_hover.png',
-    x: 109,
-    y: 381,
-    width: 245,
-    height: 489,
-  },
-  npc_cuihua: {
-    idleSrc: '/assets/foregrounds/tavern_guest_1.png',
-    hoverSrc: '/assets/foregrounds/tavern_guest_1_hover.png',
-    x: 767,
-    y: 351,
-    width: 330,
-    height: 499,
-  },
-  npc_daoye: {
-    idleSrc: '/assets/foregrounds/tavern_guest_2.png',
-    hoverSrc: '/assets/foregrounds/tavern_guest_2_hover.png',
-    x: 767,
-    y: 180,
-    width: 443,
-    height: 723,
-  },
-  npc_mao_jiu: {
-    idleSrc: '/assets/foregrounds/tavern_guest_3.png',
-    hoverSrc: '/assets/foregrounds/tavern_guest_3_hover.png',
-    x: 109,
-    y: 220,
-    width: 306,
-    height: 667,
-  },
-  npc_xue_gu: {
-    idleSrc: '/assets/foregrounds/tavern_guest_4.png',
-    hoverSrc: '/assets/foregrounds/tavern_guest_4_hover.png',
-    x: 767,
-    y: 336,
-    width: 343,
-    height: 508,
-  },
+  npc_laobao: { idleSrc: '/assets/foregrounds/tavern_guest_0.png', hoverSrc: '/assets/foregrounds/tavern_guest_0_hover.png', x: 109, y: 381, width: 245, height: 489 },
+  npc_cuihua: { idleSrc: '/assets/foregrounds/tavern_guest_1.png', hoverSrc: '/assets/foregrounds/tavern_guest_1_hover.png', x: 767, y: 351, width: 330, height: 499 },
+  npc_daoye: { idleSrc: '/assets/foregrounds/tavern_guest_2.png', hoverSrc: '/assets/foregrounds/tavern_guest_2_hover.png', x: 767, y: 180, width: 443, height: 723 },
+  npc_mao_jiu: { idleSrc: '/assets/foregrounds/tavern_guest_3.png', hoverSrc: '/assets/foregrounds/tavern_guest_3_hover.png', x: 109, y: 220, width: 306, height: 667 },
+  npc_xue_gu: { idleSrc: '/assets/foregrounds/tavern_guest_4.png', hoverSrc: '/assets/foregrounds/tavern_guest_4_hover.png', x: 767, y: 336, width: 343, height: 508 },
 };
 
 const REWARD_X_POSITIONS = [440, 622, 804, 986, 1168];
 const REWARD_BASE_Y = 516;
-const BATTLE_STEP_MS = 820;
-
-function toErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return '酒馆状态同步失败，请稍后重试。';
-}
 
 function createPresentationFromOffer(offer: MissionOffer): MissionPresentation {
   return {
@@ -129,41 +78,41 @@ function createPresentationFromActiveMission(activeMission: ActiveMissionView): 
   };
 }
 
-function buildPreviewRewardSlots(presentation: MissionPresentation): RewardSlot[] {
+function buildRewardSlots(rewardPreview: RewardPreview, visibleReward?: VisibleReward): RewardSlot[] {
   const rewardSlots: RewardSlot[] = [
     {
       key: 'copper',
       iconSrc: '/assets/ui/token_0.png',
-      amountText: String(presentation.rewardPreview.copper),
+      amountText: String(rewardPreview.copper),
       label: '铜钱',
     },
     {
       key: 'xp',
       iconSrc: '/assets/ui/token_1.png',
-      amountText: String(presentation.rewardPreview.xp),
+      amountText: String(rewardPreview.xp),
       label: '经验',
     },
   ];
 
-  if (presentation.rewardPreview.hasEquipment) {
+  if (rewardPreview.hasEquipment) {
     rewardSlots.push({
       key: 'equipment',
       iconSrc: '/assets/ui/token_placehoder.png',
       amountText: '1',
-      label: presentation.visibleReward?.equipmentPreview?.name ?? '装备',
+      label: visibleReward?.equipmentPreview?.name ?? '装备',
     });
   }
 
-  if (presentation.rewardPreview.hasDungeonKey) {
+  if (rewardPreview.hasDungeonKey) {
     rewardSlots.push({
       key: 'dungeon_key',
       iconSrc: '/assets/ui/token_placehoder.png',
       amountText: '1',
-      label: presentation.visibleReward?.dungeonKeyPreview?.name ?? '钥牌',
+      label: visibleReward?.dungeonKeyPreview?.name ?? '钥牌',
     });
   }
 
-  if (presentation.rewardPreview.hasHourglass) {
+  if (rewardPreview.hasHourglass) {
     rewardSlots.push({
       key: 'hourglass',
       iconSrc: '/assets/ui/token_placehoder.png',
@@ -179,130 +128,39 @@ function buildSettlementRewardSlots(data: CompleteMissionData): RewardSlot[] {
   const rewardSlots: RewardSlot[] = [];
 
   if (data.grantedReward.copper > 0) {
-    rewardSlots.push({
-      key: 'copper',
-      iconSrc: '/assets/ui/token_0.png',
-      amountText: String(data.grantedReward.copper),
-      label: '铜钱',
-    });
+    rewardSlots.push({ key: 'copper', iconSrc: '/assets/ui/token_0.png', amountText: String(data.grantedReward.copper), label: '铜钱' });
   }
-
   if (data.grantedReward.xp > 0) {
-    rewardSlots.push({
-      key: 'xp',
-      iconSrc: '/assets/ui/token_1.png',
-      amountText: String(data.grantedReward.xp),
-      label: '经验',
-    });
+    rewardSlots.push({ key: 'xp', iconSrc: '/assets/ui/token_1.png', amountText: String(data.grantedReward.xp), label: '经验' });
   }
-
   if (data.grantedReward.equipment) {
-    rewardSlots.push({
-      key: 'equipment',
-      iconSrc: '/assets/ui/token_placehoder.png',
-      amountText: '1',
-      label: data.grantedReward.equipment.name,
-    });
+    rewardSlots.push({ key: 'equipment', iconSrc: '/assets/ui/token_placehoder.png', amountText: '1', label: data.grantedReward.equipment.name });
   }
-
   if (data.grantedReward.dungeonKey) {
-    rewardSlots.push({
-      key: 'dungeon_key',
-      iconSrc: '/assets/ui/token_placehoder.png',
-      amountText: '1',
-      label: data.grantedReward.dungeonKey.name,
-    });
+    rewardSlots.push({ key: 'dungeon_key', iconSrc: '/assets/ui/token_placehoder.png', amountText: '1', label: data.grantedReward.dungeonKey.name });
   }
-
   if (data.grantedReward.hourglass > 0) {
-    rewardSlots.push({
-      key: 'hourglass',
-      iconSrc: '/assets/ui/token_placehoder.png',
-      amountText: String(data.grantedReward.hourglass),
-      label: '沙漏',
-    });
+    rewardSlots.push({ key: 'hourglass', iconSrc: '/assets/ui/token_placehoder.png', amountText: String(data.grantedReward.hourglass), label: '沙漏' });
   } else if (data.grantedReward.tokens > 0) {
-    rewardSlots.push({
-      key: 'tokens',
-      iconSrc: '/assets/ui/token_placehoder.png',
-      amountText: String(data.grantedReward.tokens),
-      label: '令牌',
-    });
+    rewardSlots.push({ key: 'tokens', iconSrc: '/assets/ui/token_placehoder.png', amountText: String(data.grantedReward.tokens), label: '令牌' });
   }
 
   return rewardSlots.slice(0, REWARD_X_POSITIONS.length);
 }
 
-function formatRemainingTime(totalSec: number) {
-  const safe = Math.max(0, totalSec);
-  const minutes = Math.floor(safe / 60);
-  const seconds = safe % 60;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
-
-function buildBattlePlaybackFromResult(
-  battleResult: BattleResult,
-  playerName: string,
-  enemyName: string,
-): BattlePlayback {
-  let playerHpMax = battleResult.playerHpEnd;
-  let enemyHpMax = battleResult.enemyHpEnd;
-
-  for (const round of battleResult.rounds) {
-    if (round.attacker === 'player') {
-      enemyHpMax = Math.max(enemyHpMax, round.targetHpAfter + round.damage);
-    } else {
-      playerHpMax = Math.max(playerHpMax, round.targetHpAfter + round.damage);
-    }
-  }
-
-  return {
-    playerName,
-    enemyName,
-    playerWon: battleResult.playerWon,
-    playerHpMax,
-    enemyHpMax,
-    playerHpEnd: battleResult.playerHpEnd,
-    enemyHpEnd: battleResult.enemyHpEnd,
-    rounds: battleResult.rounds,
-  };
-}
-
-function getBattleHpState(playback: BattlePlayback, roundIndex: number) {
-  let playerHp = playback.playerHpMax;
-  let enemyHp = playback.enemyHpMax;
-
-  for (let index = 0; index < roundIndex; index += 1) {
-    const round = playback.rounds[index];
-    if (!round) {
-      break;
-    }
-
-    if (round.attacker === 'player') {
-      enemyHp = round.targetHpAfter;
-    } else {
-      playerHp = round.targetHpAfter;
-    }
-  }
-
-  return { playerHp, enemyHp };
-}
-
 export function TavernScene() {
-  const { character, refreshCharacterInfo } = useGameState();
+  const { refreshCharacterInfo } = useGameState();
   const [tavernData, setTavernData] = useState<TavernInfoData | null>(null);
   const [loading, setLoading] = useState(true);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedOfferIndex, setSelectedOfferIndex] = useState(0);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [snapshotReceivedAtMs, setSnapshotReceivedAtMs] = useState(0);
   const [nowMs, setNowMs] = useState(Date.now());
-  const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [missionPresentation, setMissionPresentation] = useState<MissionPresentation | null>(null);
-  const [battlePlayback, setBattlePlayback] = useState<BattlePlayback | null>(null);
-  const [battleRoundIndex, setBattleRoundIndex] = useState(0);
   const [settlementData, setSettlementData] = useState<CompleteMissionData | null>(null);
-  const [settlementOpen, setSettlementOpen] = useState(false);
+  const [replaySaved, setReplaySaved] = useState(false);
   const autoResolveMissionIdRef = useRef<string | null>(null);
 
   const tavern = tavernData?.tavern ?? null;
@@ -312,8 +170,9 @@ export function TavernScene() {
   const selectedOffer = tavern?.missionOffers[selectedOfferIndex] ?? tavern?.missionOffers[0] ?? null;
   const previewPresentation = selectedOffer ? createPresentationFromOffer(selectedOffer) : null;
   const currentPresentation = missionPresentation ?? (activeMission ? createPresentationFromActiveMission(activeMission) : null);
-  const previewRewardSlots = previewPresentation ? buildPreviewRewardSlots(previewPresentation) : [];
+  const previewRewardSlots = previewPresentation ? buildRewardSlots(previewPresentation.rewardPreview, previewPresentation.visibleReward) : [];
   const settlementRewardSlots = settlementData ? buildSettlementRewardSlots(settlementData) : [];
+  const taskBackgroundPath = currentPresentation ? resolveTaskBackgroundPath(currentPresentation.locationName) : null;
 
   const applyTavernSnapshot = useCallback((snapshot: TavernInfoData) => {
     setTavernData(snapshot);
@@ -330,7 +189,7 @@ export function TavernScene() {
       const snapshot = await postGameAction<TavernInfoData>('TAVERN_GET_INFO');
       applyTavernSnapshot(snapshot);
     } catch (error) {
-      setRequestError(toErrorMessage(error));
+      setRequestError(toActionErrorMessage(error, '客栈情报读取失败。'));
     } finally {
       setLoading(false);
     }
@@ -352,21 +211,7 @@ export function TavernScene() {
   }, [selectedOfferIndex, tavern?.missionOffers]);
 
   useEffect(() => {
-    if (activeMission) {
-      if (!missionPresentation || missionPresentation.missionId !== activeMission.missionId) {
-        setMissionPresentation(createPresentationFromActiveMission(activeMission));
-      }
-      return;
-    }
-
-    autoResolveMissionIdRef.current = null;
-    if (!battlePlayback && !settlementOpen) {
-      setMissionPresentation(null);
-    }
-  }, [activeMission, battlePlayback, settlementOpen, missionPresentation]);
-
-  useEffect(() => {
-    if (!activeMission || battlePlayback || settlementOpen) {
+    if (!activeMission || settlementData) {
       return;
     }
 
@@ -375,7 +220,18 @@ export function TavernScene() {
     }, 1000);
 
     return () => window.clearInterval(timerId);
-  }, [activeMission, battlePlayback, settlementOpen]);
+  }, [activeMission, settlementData]);
+
+  useEffect(() => {
+    if (!activeMission) {
+      autoResolveMissionIdRef.current = null;
+      return;
+    }
+
+    if (!missionPresentation || missionPresentation.missionId !== activeMission.missionId) {
+      setMissionPresentation(createPresentationFromActiveMission(activeMission));
+    }
+  }, [activeMission, missionPresentation]);
 
   const remainingSec = useMemo(() => {
     if (!activeMission) {
@@ -394,17 +250,6 @@ export function TavernScene() {
     const elapsed = activeMission.actualDurationSec - remainingSec;
     return Math.max(0, Math.min(1, elapsed / activeMission.actualDurationSec));
   }, [activeMission, remainingSec]);
-
-  const battleHpState = useMemo(() => {
-    if (!battlePlayback) {
-      return null;
-    }
-
-    return getBattleHpState(battlePlayback, battleRoundIndex);
-  }, [battlePlayback, battleRoundIndex]);
-
-  const currentBattleRound = battlePlayback?.rounds[Math.max(0, battleRoundIndex - 1)] ?? null;
-  const taskBackgroundPath = currentPresentation ? resolveTaskBackgroundPath(currentPresentation.locationName) : null;
 
   const runMissionSettlement = useCallback(async (action: 'COMPLETE_MISSION' | 'SKIP_MISSION') => {
     if (!activeMission || loadingAction) {
@@ -431,30 +276,26 @@ export function TavernScene() {
       ));
       setSnapshotReceivedAtMs(Date.now());
       setNowMs(Date.now());
-      setBattlePlayback(
-        buildBattlePlaybackFromResult(
-          data.battleResult,
-          character?.player.displayName ?? '无名好汉',
-          resolvedPresentation.enemyName,
-        ),
-      );
-      setBattleRoundIndex(0);
-      setSettlementData(data);
-      setSettlementOpen(false);
+      setReplaySaved(!data.canSaveReplay);
 
-      void refreshCharacterInfo().catch((error) => {
-        setRequestError(toErrorMessage(error));
-      });
+      if (data.result === 'ALREADY_SETTLED') {
+        setSettlementData(null);
+        setMissionPresentation(null);
+      } else {
+        setSettlementData(data);
+      }
+
+      void refreshCharacterInfo().catch(() => {});
     } catch (error) {
       autoResolveMissionIdRef.current = null;
-      setRequestError(toErrorMessage(error));
+      setRequestError(toActionErrorMessage(error, '任务结算失败。'));
     } finally {
       setLoadingAction(null);
     }
-  }, [activeMission, character?.player.displayName, loadingAction, missionPresentation, refreshCharacterInfo]);
+  }, [activeMission, loadingAction, missionPresentation, refreshCharacterInfo]);
 
   useEffect(() => {
-    if (!activeMission || battlePlayback || settlementOpen || loadingAction) {
+    if (!activeMission || settlementData || loadingAction) {
       return;
     }
 
@@ -472,32 +313,7 @@ export function TavernScene() {
 
     autoResolveMissionIdRef.current = activeMission.missionId;
     void runMissionSettlement('COMPLETE_MISSION');
-  }, [
-    activeMission,
-    battlePlayback,
-    loadingAction,
-    remainingSec,
-    runMissionSettlement,
-    settlementOpen,
-    tavern?.status,
-  ]);
-
-  useEffect(() => {
-    if (!battlePlayback) {
-      return;
-    }
-
-    if (battleRoundIndex >= battlePlayback.rounds.length) {
-      setSettlementOpen(true);
-      return;
-    }
-
-    const timerId = window.setTimeout(() => {
-      setBattleRoundIndex((previous) => previous + 1);
-    }, BATTLE_STEP_MS);
-
-    return () => window.clearTimeout(timerId);
-  }, [battlePlayback, battleRoundIndex]);
+  }, [activeMission, loadingAction, remainingSec, runMissionSettlement, settlementData, tavern?.status]);
 
   const handleNpcClick = () => {
     if (!tavern || tavern.status !== 'IDLE' || loading) {
@@ -525,7 +341,7 @@ export function TavernScene() {
       applyTavernSnapshot(snapshot);
       setPanelOpen(false);
     } catch (error) {
-      setRequestError(toErrorMessage(error));
+      setRequestError(toActionErrorMessage(error, '领取任务失败。'));
     } finally {
       setLoadingAction(null);
     }
@@ -535,22 +351,41 @@ export function TavernScene() {
     void runMissionSettlement('SKIP_MISSION');
   };
 
-  const handleSkipBattle = () => {
-    if (!battlePlayback) {
+  const handleSaveReplay = async () => {
+    if (!settlementData || replaySaved || loadingAction === 'MAIL_SAVE_MISSION_REPLAY') {
       return;
     }
 
-    setBattleRoundIndex(battlePlayback.rounds.length);
+    setLoadingAction('MAIL_SAVE_MISSION_REPLAY');
+    setRequestError(null);
+
+    try {
+      const data = await postGameAction<MailSaveMissionReplayData>('MAIL_SAVE_MISSION_REPLAY');
+      setReplaySaved(true);
+      if (!data.alreadySaved) {
+        setSettlementData((previous) => (
+          previous
+            ? {
+                ...previous,
+                canSaveReplay: false,
+                replayId: data.replay.replayId,
+              }
+            : previous
+        ));
+      }
+    } catch (error) {
+      setRequestError(toActionErrorMessage(error, '保存回放失败。'));
+    } finally {
+      setLoadingAction(null);
+    }
   };
 
   const handleSettlementConfirm = () => {
-    setBattlePlayback(null);
-    setBattleRoundIndex(0);
     setSettlementData(null);
-    setSettlementOpen(false);
     setPanelOpen(false);
     setSelectedOfferIndex(0);
     setMissionPresentation(null);
+    setReplaySaved(false);
   };
 
   const taskSceneStyle = taskBackgroundPath
@@ -562,7 +397,7 @@ export function TavernScene() {
   if (loading && !tavern) {
     return (
       <div className="scene scene--tavern scene-status">
-        <div className="scene-status__panel">正在同步酒馆情报...</div>
+        <div className="scene-status__panel">正在同步客栈情报...</div>
       </div>
     );
   }
@@ -571,103 +406,60 @@ export function TavernScene() {
     return (
       <div className="scene scene--tavern scene-status">
         <div className="scene-status__panel scene-status__panel--error">
-          {requestError ?? '酒馆状态暂不可用，请稍后重试。'}
+          {requestError ?? '客栈暂不可用，请稍后重试。'}
         </div>
       </div>
     );
   }
 
-  if (battlePlayback && battleHpState && currentPresentation && !settlementOpen) {
-    const playerHpPercent = battlePlayback.playerHpMax > 0
-      ? (battleHpState.playerHp / battlePlayback.playerHpMax) * 100
-      : 0;
-    const enemyHpPercent = battlePlayback.enemyHpMax > 0
-      ? (battleHpState.enemyHp / battlePlayback.enemyHpMax) * 100
-      : 0;
-
+  if (settlementData && currentPresentation) {
     return (
       <div className="scene scene--taskbackdrop" style={taskSceneStyle}>
         {requestError ? <div className="scene-error-banner">{requestError}</div> : null}
-        <div className="battle-stage">
-          <section className="battle-card battle-card--player">
-            <div className="battle-card__name">{battlePlayback.playerName}</div>
-            <div className="battle-card__bar">
-              <div className="battle-card__fill battle-card__fill--player" style={{ width: `${playerHpPercent}%` }} />
-            </div>
-            <div className="battle-card__hp">{battleHpState.playerHp} / {battlePlayback.playerHpMax}</div>
-          </section>
-
-          <section className="battle-card battle-card--enemy">
-            <div className="battle-card__name">{battlePlayback.enemyName}</div>
-            <div className="battle-card__bar">
-              <div className="battle-card__fill battle-card__fill--enemy" style={{ width: `${enemyHpPercent}%` }} />
-            </div>
-            <div className="battle-card__hp">{battleHpState.enemyHp} / {battlePlayback.enemyHpMax}</div>
-          </section>
-
-          <div className="battle-log">
-            {currentBattleRound ? (
-              <>
-                <div className="battle-log__actor">
-                  {currentBattleRound.attacker === 'player' ? '我方出手' : '敌方出手'}
+        <BattleReplay
+          battleResult={settlementData.battleResult}
+          heading={settlementData.result === 'SUCCESS' ? '任务得手' : '任务失利'}
+          subheading={`${currentPresentation.title} · ${currentPresentation.locationName ?? '未知地点'}`}
+          contextLabel="MISSION"
+          resultBody={(
+            <div className="battle-summary">
+              {settlementData.result === 'SUCCESS' ? (
+                <div className="battle-summary__reward-row">
+                  {settlementRewardSlots.map((reward) => (
+                    <div
+                      key={reward.key}
+                      className="battle-summary__reward"
+                      title={reward.label}
+                    >
+                      <img className="tavern-reward__slot" src="/assets/ui/token_slot_bg.png" alt="" />
+                      <img className="tavern-reward__icon" src={reward.iconSrc} alt={reward.label} />
+                      <div className="tavern-reward__value">{reward.amountText}</div>
+                    </div>
+                  ))}
                 </div>
-                <div className="battle-log__damage">
-                  -{currentBattleRound.damage}
-                  {currentBattleRound.wasCrit ? ' 暴击' : ''}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="battle-log__actor">交手前夕</div>
-                <div className="battle-log__damage">战斗即将开始</div>
-              </>
-            )}
-          </div>
-
-          <button className="battle-skip" type="button" onClick={handleSkipBattle}>
-            跳过演示
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (settlementOpen && settlementData && currentPresentation) {
-    return (
-      <div className="scene scene--taskbackdrop" style={taskSceneStyle}>
-        {requestError ? <div className="scene-error-banner">{requestError}</div> : null}
-        <div className="settlement-panel">
-          <div className="settlement-panel__title">
-            {settlementData.result === 'SUCCESS' ? '任务成功' : '任务失败'}
-          </div>
-          <div className="settlement-panel__subtitle">
-            {currentPresentation.title} · {currentPresentation.locationName ?? '未知地点'}
-          </div>
-
-          {settlementData.result === 'SUCCESS' ? (
-            settlementRewardSlots.map((reward, index) => (
-              <div
-                key={reward.key}
-                className="tavern-reward"
-                style={{
-                  left: `${REWARD_X_POSITIONS[index] ?? REWARD_X_POSITIONS[0]}px`,
-                  top: `${REWARD_BASE_Y}px`,
-                }}
-                title={reward.label}
-              >
-                <img className="tavern-reward__slot" src="/assets/ui/token_slot_bg.png" alt="" />
-                <img className="tavern-reward__icon" src={reward.iconSrc} alt={reward.label} />
-                <div className="tavern-reward__value">{reward.amountText}</div>
-              </div>
-            ))
-          ) : (
-            <div className="settlement-panel__failure">这趟空手而归，下次再试。</div>
+              ) : (
+                <div className="battle-summary__failure">此行空手而归，待整顿后再走一遭。</div>
+              )}
+            </div>
           )}
-
-          <button className="settlement-panel__confirm" type="button" onClick={handleSettlementConfirm}>
-            确认收取
-          </button>
-        </div>
+          actions={[
+            ...(settlementData.canSaveReplay && !replaySaved
+              ? [{
+                  key: 'save',
+                  label: loadingAction === 'MAIL_SAVE_MISSION_REPLAY' ? '保存中...' : '保存回放',
+                  onClick: () => void handleSaveReplay(),
+                  disabled: loadingAction === 'MAIL_SAVE_MISSION_REPLAY',
+                  variant: 'secondary' as const,
+                }]
+              : []),
+            {
+              key: 'confirm',
+              label: '确认收取',
+              onClick: handleSettlementConfirm,
+              variant: 'primary' as const,
+            },
+          ]}
+        />
       </div>
     );
   }
@@ -680,11 +472,11 @@ export function TavernScene() {
           <div className="journey-screen__title">赶路中</div>
           <div className="journey-screen__location">前往 {currentPresentation.locationName ?? '未知地点'}</div>
           <div className="journey-screen__mission">{currentPresentation.title}</div>
-          <div className="journey-screen__countdown">{formatRemainingTime(remainingSec)}</div>
+          <div className="journey-screen__countdown">{formatCountdown(remainingSec * 1000)}</div>
           <div className="journey-screen__progress">
             <div className="journey-screen__progress-fill" style={{ width: `${countdownProgress * 100}%` }} />
           </div>
-          <div className="journey-screen__hint">倒计时结束后，将自动进入服务端已结算的战斗演示。</div>
+          <div className="journey-screen__hint">倒计时结束后将直接播放服务端已结算的战斗回放。</div>
           <button
             className="journey-screen__skip"
             type="button"
@@ -761,15 +553,11 @@ export function TavernScene() {
               className="tavern-panel__action tavern-panel__action--confirm"
               type="button"
               disabled={loadingAction === 'START_MISSION'}
-              onClick={handleStartMission}
+              onClick={() => void handleStartMission()}
             >
               {loadingAction === 'START_MISSION' ? '领取中...' : '领取任务'}
             </button>
-            <button
-              className="tavern-panel__action tavern-panel__action--close"
-              type="button"
-              onClick={() => setPanelOpen(false)}
-            >
+            <button className="tavern-panel__action tavern-panel__action--close" type="button" onClick={() => setPanelOpen(false)}>
               关闭
             </button>
           </div>

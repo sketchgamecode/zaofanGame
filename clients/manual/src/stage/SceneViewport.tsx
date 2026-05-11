@@ -1,9 +1,11 @@
 import { layout } from '../config/layout';
-import { CityScene } from '../scenes/CityScene';
+import { ArenaScene } from '../scenes/ArenaScene';
 import { BlackMarketScene } from '../scenes/BlackMarketScene';
+import { CityScene } from '../scenes/CityScene';
+import { DungeonScene } from '../scenes/DungeonScene';
 import { InventoryScene } from '../scenes/InventoryScene';
+import { MailScene } from '../scenes/MailScene';
 import { TavernScene } from '../scenes/TavernScene';
-import { WorldScene } from '../scenes/WorldScene';
 import type { SceneId } from '../types/game';
 
 type SceneViewportProps = {
@@ -20,8 +22,12 @@ function renderScene(sceneId: SceneId, onSceneChange: (sceneId: SceneId) => void
       return <BlackMarketScene />;
     case 'inventory':
       return <InventoryScene />;
-    case 'world':
-      return <WorldScene />;
+    case 'dungeon':
+      return <DungeonScene />;
+    case 'arena':
+      return <ArenaScene />;
+    case 'mail':
+      return <MailScene />;
     case 'tavern':
     default:
       return <TavernScene />;

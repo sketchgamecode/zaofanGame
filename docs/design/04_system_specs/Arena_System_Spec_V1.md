@@ -4,6 +4,8 @@ Designer: Antigravity
 
 ---
 
+> 当前实现范围（2026-05-11）：本轮 server 交接只实现竞技场挑战页动作：`ARENA_GET_INFO`、`ARENA_REFRESH_CANDIDATES`、`ARENA_FIGHT`、`ARENA_SKIP_COOLDOWN`。英雄谱 / Hall of Fame 的列表、搜索、排名定位、他人镜像详情 API 尚未实现；client 本轮只应做占位入口或静态 UI，不要按真实 server 数据对接。
+
 ## 1. 系统概述 (Overview)
 
 **演武场 (Martial Arts Field)** 是《大宋造反模拟器》的核心 PvP 交互系统。它不仅是玩家实战验证、策略比拼的舞台，也是获取声望、铜钱和全服排名的主要途径。

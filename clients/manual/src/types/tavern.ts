@@ -1,3 +1,5 @@
+import type { BattleResultV2 } from './combat';
+
 export type TavernStatus = 'IDLE' | 'IN_PROGRESS' | 'READY_TO_COMPLETE';
 
 export type VisibleReward = {
@@ -128,31 +130,18 @@ export type PlayerDelta = {
   prestigeAfter: number;
 };
 
-export type BattleRound = {
-  attacker: 'player' | 'enemy';
-  damage: number;
-  targetHpAfter: number;
-  wasCrit?: boolean;
-};
-
-export type BattleResult = {
-  playerWon: boolean;
-  rounds: BattleRound[];
-  playerHpEnd: number;
-  enemyHpEnd: number;
-  totalRounds: number;
-};
-
 export type CompleteMissionResult = 'SUCCESS' | 'FAILED' | 'ALREADY_SETTLED';
 
 export type CompleteMissionData = {
   result: CompleteMissionResult;
   missionId: string;
   offerSetId: string;
-  battleResult: BattleResult;
+  battleResult: BattleResultV2;
   rewardGranted: boolean;
   grantedReward: GrantedReward;
   playerDelta: PlayerDelta;
   nextMissionOffers: MissionOffer[];
   tavern: TavernSummaryView;
+  canSaveReplay?: boolean;
+  replayId?: string | null;
 };
