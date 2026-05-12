@@ -1,10 +1,15 @@
+import { ItemTooltip, type ItemTooltipState } from '../components/ui/ItemTooltip';
+import { StandardModal } from '../components/ui/StandardModal';
+
 type OverlayRootProps = {
+  itemTooltip: ItemTooltipState | null;
   showLogoutConfirm: boolean;
   onConfirmLogout: () => void;
   onCancelLogout: () => void;
 };
 
 export function OverlayRoot({
+  itemTooltip,
   showLogoutConfirm,
   onConfirmLogout,
   onCancelLogout,
@@ -12,21 +17,16 @@ export function OverlayRoot({
   return (
     <div className="overlay-root">
       {showLogoutConfirm ? (
-        <div className="decision-modal">
-          <div className="decision-modal__panel">
-            <div className="decision-modal__title">退出当前账号？</div>
-            <div className="decision-modal__copy">当前位于城市系统。关闭场景将退出登录并返回凭帖页。</div>
-            <div className="decision-modal__actions">
-              <button className="decision-modal__button decision-modal__button--quiet" type="button" onClick={onCancelLogout}>
-                取消
-              </button>
-              <button className="decision-modal__button" type="button" onClick={onConfirmLogout}>
-                确认退出
-              </button>
-            </div>
-          </div>
-        </div>
+        <StandardModal
+          cancelLabel="取消"
+          confirmLabel="确认退出"
+          copy="当前位于城市系统。关闭场景将退出登录并返回凭帖页。"
+          title="退出当前账号？"
+          onCancel={onCancelLogout}
+          onConfirm={onConfirmLogout}
+        />
       ) : null}
+      {itemTooltip ? <ItemTooltip tooltip={itemTooltip} /> : null}
     </div>
   );
 }

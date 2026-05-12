@@ -1,9 +1,8 @@
-import {
-  useDraggable,
-  useDroppable,
-} from '@dnd-kit/core';
+import { useDroppable } from '@dnd-kit/core';
 import { CLASS_META, getAvatarUrl } from '../../config/characterCatalog';
 import { getNextLevelXp } from '../../config/xpTable';
+import { DraggableItemSlot, ItemSlot } from '../ui/ItemSlot';
+import type { ItemTooltipState } from '../ui/ItemTooltip';
 import {
   ATTRIBUTE_KEYS,
   EQUIPMENT_SLOT_LABELS,
@@ -13,12 +12,6 @@ import {
   type EquipmentItem,
   type EquipmentSlot,
 } from '../../types/game';
-
-type ItemTooltipState = {
-  item: EquipmentItem;
-  x: number;
-  y: number;
-};
 
 type CharacterPanelProps = {
   character: CharacterInfoView;
@@ -59,56 +52,6 @@ function getDerivedStat(character: CharacterInfoView, key: AttributeKey) {
   }
 }
 
-function DraggableEquipmentItem({
-  item,
-  onItemTooltipChange,
-}: {
-  item: EquipmentItem;
-  onItemTooltipChange: CharacterPanelProps['onItemTooltipChange'];
-}) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `equip-item:${item.id}`,
-    data: {
-      source: 'equipment',
-      item,
-    },
-  });
-
-  return (
-    <button
-      ref={setNodeRef}
-      className="inventory-item-card inventory-item-card--equipped"
-      style={{
-        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-        opacity: isDragging ? 0.2 : 1,
-      }}
-      type="button"
-      {...listeners}
-      {...attributes}
-      onPointerEnter={(event) => {
-        onItemTooltipChange({
-          item,
-          x: event.clientX,
-          y: event.clientY,
-        });
-      }}
-      onPointerMove={(event) => {
-        onItemTooltipChange({
-          item,
-          x: event.clientX,
-          y: event.clientY,
-        });
-      }}
-      onPointerLeave={() => onItemTooltipChange(null)}
-    >
-      <div className="inventory-item-card__name">{item.name}</div>
-      <div className="inventory-item-card__sub">
-        {item.armor ? `甲 ${item.armor}` : item.weaponDamage ? `伤 ${item.weaponDamage.min}-${item.weaponDamage.max}` : '装备'}
-      </div>
-    </button>
-  );
-}
-
 function EquipmentSlotCell({
   slot,
   item,
@@ -128,8 +71,18 @@ function EquipmentSlotCell({
 
   return (
     <div ref={setNodeRef} className={`character-panel__equip-slot${isOver ? ' character-panel__equip-slot--over' : ''}`}>
-      <div className="character-panel__equip-label">{EQUIPMENT_SLOT_LABELS[slot]}</div>
-      {item ? <DraggableEquipmentItem item={item} onItemTooltipChange={onItemTooltipChange} /> : null}
+      {item ? (
+        <DraggableItemSlot
+          compact
+          item={item}
+          label={EQUIPMENT_SLOT_LABELS[slot]}
+          slot={slot}
+          source="equipment"
+          onItemTooltipChange={onItemTooltipChange}
+        />
+      ) : (
+        <ItemSlot compact isDropTarget={isOver} item={null} label={EQUIPMENT_SLOT_LABELS[slot]} />
+      )}
     </div>
   );
 }

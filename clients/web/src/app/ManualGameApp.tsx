@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AuthScreen } from '../components/AuthScreen';
 import { CharacterCreationScreen } from '../components/creation/CharacterCreationScreen';
+import type { ItemTooltipState } from '../components/ui/ItemTooltip';
 import { GameStateProvider, useGameState } from '../state/GameStateContext';
 import { BottomHud } from '../stage/BottomHud';
 import { OverlayRoot } from '../stage/OverlayRoot';
@@ -12,7 +13,13 @@ import type { SceneId } from '../types/game';
 function ManualGameShell() {
   const { authLoading, bootLoading, character, errorMessage, session, saveState, signOut } = useGameState();
   const [sceneId, setSceneId] = useState<SceneId>('city');
+  const [itemTooltip, setItemTooltip] = useState<ItemTooltipState | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const handleSceneChange = (nextSceneId: SceneId) => {
+    setItemTooltip(null);
+    setSceneId(nextSceneId);
+  };
 
   if (authLoading) {
     return <div className="manual-loading">正在校验登录状态...</div>;
@@ -47,7 +54,9 @@ function ManualGameShell() {
     <RootStage>
       <SceneViewport
         sceneId={sceneId}
+        onItemTooltipChange={setItemTooltip}
         onRequestClose={() => {
+          setItemTooltip(null);
           if (sceneId === 'city') {
             setShowLogoutConfirm(true);
             return;
@@ -55,11 +64,12 @@ function ManualGameShell() {
 
           setSceneId('city');
         }}
-        onSceneChange={setSceneId}
+        onSceneChange={handleSceneChange}
       />
-      <RightRail activeSceneId={sceneId} onInventoryOpen={() => setSceneId('inventory')} onSceneChange={setSceneId} />
+      <RightRail activeSceneId={sceneId} onInventoryOpen={() => handleSceneChange('inventory')} onSceneChange={handleSceneChange} />
       <BottomHud />
       <OverlayRoot
+        itemTooltip={itemTooltip}
         onCancelLogout={() => setShowLogoutConfirm(false)}
         onConfirmLogout={() => {
           setShowLogoutConfirm(false);

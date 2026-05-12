@@ -1,5 +1,6 @@
 import { layout } from '../config/layout';
 import { getNextLevelXp } from '../config/xpTable';
+import { ResourceBadge } from '../components/ui/ResourceBadge';
 import { useGameState } from '../state/GameStateContext';
 
 export function BottomHud() {
@@ -38,17 +39,12 @@ export function BottomHud() {
         }}
       >
         {resources.map((resource) => (
-          <div
+          <ResourceBadge
             key={resource.label}
-            className="resource-chip"
-            style={{ width: `${layout.bottomResourceRow.chipWidth}px` }}
-          >
-            <div className="resource-chip__icon" />
-            <div className="resource-chip__text">
-              <div className="resource-chip__label">{resource.label}</div>
-              <div className="resource-chip__value">{resource.value}</div>
-            </div>
-          </div>
+            label={resource.label}
+            value={resource.value}
+            width={layout.bottomResourceRow.chipWidth}
+          />
         ))}
       </div>
 
