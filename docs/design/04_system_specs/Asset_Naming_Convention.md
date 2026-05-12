@@ -21,9 +21,10 @@ Designer: Antigravity
 /public/assets/
   ├── /ui/                 # 通用界面框架、按钮、图标
   ├── /backgrounds/        # 全屏场景或半屏背景
-  ├── /npcs/               # 各类商人、发牌员等静态立绘
+  ├── /foregrounds/        # 各类商人、发牌员等静态立绘
   ├── /items/              # 装备、道具、消耗品图标
   └── /sfx/                # 音频文件
+  └── /figure/             # 角色头像等同规格，同类型下数量较大的角色相关资源。
 ```
 
 ---
@@ -46,13 +47,11 @@ Designer: Antigravity
 
 ### 3.2 场景背景 (Backgrounds)
 **目录**: `/assets/backgrounds/`
-**尺寸**: `1024x1024 px` (或根据屏幕高宽比适配的 JPG/PNG)
+**尺寸**: `1528*980 px` (或根据屏幕高宽比适配的 JPG/PNG)
 
-*   命名格式：`bg_[system_name].jpg` 或 `bg_[system_name].png`
+*   命名格式：`bg_system_[system_name].jpg` 或 `bg_system_[system_name].png`
 *   示例：
-    *   兵器铺：`bg_weapon_shop.png`
-    *   奇珍阁：`bg_magic_shop.png`
-    *   酒馆：`bg_tavern.png`
+    *   bg_system_pvp.png
 
 ### 3.3 NPC 立绘 (NPC Figures)
 **目录**: `/assets/npcs/`

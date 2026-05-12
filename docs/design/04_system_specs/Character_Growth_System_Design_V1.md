@@ -106,7 +106,7 @@ $$CritChance = \min(50\%, \frac{Luck \times 2.5}{EnemyLevel \times 100})$$
         ```
 3.  **头像系统 (Portrait System)**：
     *   目前不实现复杂的 Avatar 拼装系统。
-    *   前端提供 `clients/manual/public/assets/figure/portrait/` 目录下的 64 张预设头像供玩家选择。
+    *   前端提供 `clients/web/public/assets/figure/portrait/` 目录下的 64 张预设头像供玩家选择。
     *   头像寻址格式：`avatar_placeholder_{000-063}`。
 
 补充说明：
