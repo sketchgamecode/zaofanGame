@@ -32,7 +32,7 @@ export type RaceId =
 export type AttributeKey = (typeof ATTRIBUTE_KEYS)[number];
 export type EquipmentSlot = (typeof EQUIPMENT_SLOTS)[number];
 export type ItemRarity = 0 | 1 | 2 | 3 | 4;
-export type SceneId = 'city' | 'tavern' | 'blackmarket' | 'inventory' | 'dungeon' | 'arena' | 'mail';
+export type SceneId = 'city' | 'tavern' | 'weaponshop' | 'magicshop' | 'blackmarket' | 'inventory' | 'dungeon' | 'arena' | 'mail';
 
 export type AttributeValues = Record<AttributeKey, number>;
 
@@ -140,6 +140,28 @@ export type CreateCharacterPayload = {
   classId: PlayerClassId;
   raceId: RaceId;
   avatarId: string;
+};
+
+export type BlackMarketView = {
+  status: 'ACTIVE';
+  items: EquipmentItem[];
+  nextAutoRefreshMs: number;
+};
+
+export type BuyItemView = {
+  purchasedItemId: string;
+  copperSpent: number;
+  remainingItems: EquipmentItem[];
+  nextAutoRefreshMs: number;
+};
+
+export type BuyAndEquipView = BuyItemView & {
+  unequippedItem: EquipmentItem | null;
+};
+
+export type SellItemView = {
+  soldItemId: string;
+  copperGained: number;
 };
 
 export const EQUIPMENT_SLOT_LABELS: Record<EquipmentSlot, string> = {

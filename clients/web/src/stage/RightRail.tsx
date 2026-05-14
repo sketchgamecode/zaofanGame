@@ -12,7 +12,8 @@ type RightRailProps = {
 
 const menuItems: Array<{ id: string; sceneId: SceneId; label: string; subtitle: string }> = [
   { id: 'tavern', sceneId: 'tavern', label: '客栈', subtitle: '接任务' },
-  { id: 'blackmarket', sceneId: 'blackmarket', label: '黑市', subtitle: '兵器奇珍' },
+  { id: 'weaponshop', sceneId: 'weaponshop', label: '兵器铺', subtitle: '刀枪甲胄' },
+  { id: 'magicshop', sceneId: 'magicshop', label: '奇珍阁', subtitle: '符器饰物' },
   { id: 'inventory', sceneId: 'inventory', label: '行囊', subtitle: '属性装备' },
   { id: 'dungeon', sceneId: 'dungeon', label: '江湖', subtitle: '地界历练' },
   { id: 'arena', sceneId: 'arena', label: '校场', subtitle: '挑战排名' },

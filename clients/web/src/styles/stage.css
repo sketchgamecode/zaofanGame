@@ -635,6 +635,252 @@ body {
   cursor: pointer;
 }
 
+.blackmarket-scene {
+  position: absolute;
+  inset: 0;
+}
+
+.blackmarket-scene__character,
+.blackmarket-scene__shop,
+.blackmarket-scene__sell-zone,
+.blackmarket-scene__ledger {
+  border: 2px solid rgba(102, 74, 46, 0.85);
+  background: rgba(18, 13, 11, 0.58);
+  box-shadow: var(--shadow-heavy);
+}
+
+.blackmarket-scene__character {
+  position: absolute;
+  left: 36px;
+  top: 42px;
+  width: 594px;
+  height: 886px;
+  overflow: hidden;
+}
+
+.blackmarket-scene__shop {
+  position: absolute;
+  left: 648px;
+  top: 42px;
+  width: 848px;
+  height: 454px;
+  padding: 0;
+  overflow: visible;
+  background:
+    radial-gradient(circle at 83% 36%, rgba(238, 177, 86, 0.26), transparent 24%),
+    radial-gradient(circle at 34% 16%, rgba(186, 102, 47, 0.2), transparent 30%),
+    linear-gradient(180deg, rgba(74, 44, 27, 0.94), rgba(24, 17, 13, 0.96));
+}
+
+.blackmarket-scene__shop--magic {
+  background:
+    radial-gradient(circle at 82% 38%, rgba(152, 102, 214, 0.24), transparent 24%),
+    radial-gradient(circle at 36% 18%, rgba(69, 135, 178, 0.22), transparent 30%),
+    linear-gradient(180deg, rgba(43, 34, 68, 0.94), rgba(17, 15, 27, 0.96));
+}
+
+.blackmarket-scene__shop-header {
+  position: absolute;
+  inset: 16px 18px auto 18px;
+  height: 52px;
+  display: block;
+}
+
+.blackmarket-scene__title {
+  position: absolute;
+  left: 300px;
+  top: 0;
+  width: 300px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(134, 92, 48, 0.76);
+  background: linear-gradient(180deg, rgba(48, 31, 19, 0.92), rgba(22, 15, 11, 0.88));
+  color: #f4e1bd;
+  font-size: 36px;
+  text-shadow: 0 2px 2px rgba(0, 0, 0, 0.55);
+}
+
+.blackmarket-scene__flavor {
+  position: absolute;
+  left: 22px;
+  top: 360px;
+  width: 760px;
+  color: rgba(245, 225, 196, 0.72);
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.blackmarket-scene__info {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(152, 111, 59, 0.8);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(238, 199, 119, 0.96), rgba(135, 84, 36, 0.96));
+  color: #2b180d;
+  cursor: pointer;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.blackmarket-scene__refresh {
+  position: absolute;
+  left: 308px;
+  top: 354px;
+  width: 292px;
+  height: 66px;
+  border: 1px solid rgba(131, 92, 47, 0.84);
+  background: linear-gradient(180deg, rgba(178, 118, 59, 0.98), rgba(122, 67, 31, 0.98));
+  color: #fff1d4;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.blackmarket-scene__refresh:disabled {
+  opacity: 0.58;
+  cursor: wait;
+}
+
+.blackmarket-scene__npc {
+  position: absolute;
+  right: 48px;
+  top: 110px;
+  width: 210px;
+  height: 294px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border: 2px solid rgba(88, 57, 34, 0.72);
+  background:
+    radial-gradient(ellipse at 50% 28%, rgba(244, 210, 139, 0.24), transparent 44%),
+    linear-gradient(180deg, rgba(112, 72, 39, 0.42), rgba(20, 14, 10, 0.88));
+  color: rgba(255, 232, 185, 0.84);
+  font-size: 30px;
+  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.72);
+}
+
+.blackmarket-scene__shop--magic .blackmarket-scene__npc {
+  background:
+    radial-gradient(ellipse at 50% 28%, rgba(184, 142, 244, 0.24), transparent 44%),
+    linear-gradient(180deg, rgba(58, 56, 104, 0.5), rgba(16, 13, 26, 0.88));
+}
+
+.blackmarket-scene__body {
+  position: absolute;
+  inset: 0;
+}
+
+.blackmarket-scene__sell-zone {
+  position: absolute;
+  left: 214px;
+  top: 58px;
+  width: 340px;
+  height: 300px;
+  padding: 0;
+  display: grid;
+  grid-template-rows: 34px 1fr;
+  gap: 10px;
+  border-color: transparent;
+  background:
+    radial-gradient(circle at 48% 46%, rgba(228, 154, 65, 0.16), transparent 50%),
+    transparent;
+  box-shadow: none;
+}
+
+.blackmarket-scene__sell-zone--over {
+  box-shadow:
+    0 0 0 2px rgba(221, 171, 88, 0.38) inset,
+    var(--shadow-heavy);
+}
+
+.blackmarket-scene__goods-head,
+.blackmarket-scene__inventory-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: baseline;
+  color: rgba(245, 225, 196, 0.74);
+}
+
+.blackmarket-scene__goods-head span:first-child,
+.blackmarket-scene__inventory-head span:first-child {
+  color: #f4e1bd;
+  font-size: 22px;
+}
+
+.blackmarket-scene__goods-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 118px;
+  gap: 12px;
+}
+
+.blackmarket-scene__goods-cell,
+.blackmarket-scene__inventory-cell {
+  min-height: 0;
+}
+
+.blackmarket-scene__loading {
+  display: grid;
+  place-items: center;
+  color: rgba(247, 223, 192, 0.7);
+  font-size: 28px;
+}
+
+.blackmarket-scene__sell-copy {
+  position: absolute;
+  left: -174px;
+  top: 408px;
+  width: 744px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(173, 128, 68, 0.55);
+  color: rgba(245, 225, 196, 0.62);
+  font-size: 16px;
+}
+
+.blackmarket-scene__ledger {
+  position: absolute;
+  left: 648px;
+  top: 520px;
+  width: 848px;
+  height: 404px;
+  padding: 24px 40px 28px;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 14px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(191, 124, 54, 0.12), transparent 42%),
+    rgba(12, 9, 8, 0.72);
+}
+
+.blackmarket-scene__resources {
+  display: flex;
+  gap: 12px;
+}
+
+.blackmarket-scene__resources .resource-chip {
+  min-width: 184px;
+}
+
+.blackmarket-scene__inventory-grid {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-rows: 116px;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.blackmarket-scene__inventory-cell--over {
+  box-shadow: 0 0 0 2px rgba(208, 171, 103, 0.42) inset;
+}
+
 .character-board {
   left: 132px;
   top: 188px;
@@ -756,7 +1002,7 @@ body {
 
 .right-nav {
   position: absolute;
-  height: 640px;
+  height: 620px;
 }
 
 .right-nav__button {
@@ -766,7 +1012,7 @@ body {
     linear-gradient(180deg, rgba(16, 10, 8, 0.06), rgba(16, 10, 8, 0.12)),
     url("/assets/ui/bg_side_menu_btn.png");
   background-repeat: no-repeat;
-  background-size: 276px 98px;
+  background-size: 100% 100%;
   color: var(--text-main);
   box-shadow: var(--shadow-soft);
   cursor: pointer;
@@ -788,15 +1034,15 @@ body {
 }
 
 .right-nav__title {
-  font-size: 40px;
-  letter-spacing: 0.08em;
+  font-size: 32px;
+  letter-spacing: 0;
   line-height: 1;
   text-shadow: 0 2px 2px rgba(0, 0, 0, 0.28);
 }
 
 .right-nav__subtitle {
-  margin-top: 6px;
-  font-size: 16px;
+  margin-top: 5px;
+  font-size: 14px;
   color: rgba(248, 223, 191, 0.76);
 }
 
@@ -1237,6 +1483,11 @@ body {
   top: 96px;
 }
 
+.city-scene__node--magicshop {
+  left: 336px;
+  top: 318px;
+}
+
 .city-scene__node--inventory {
   right: 356px;
   top: 126px;
@@ -1347,53 +1598,80 @@ body {
 }
 
 .character-panel {
+  position: relative;
+  width: 100%;
   height: 100%;
-  padding: 22px 24px 24px;
-  display: grid;
-  grid-template-rows: auto auto auto 1fr;
-  gap: 18px;
-}
-
-.character-panel__header {
-  display: grid;
-  grid-template-columns: 180px 1fr;
-  gap: 20px;
-  align-items: center;
-}
-
-.character-panel__avatar-frame {
-  width: 180px;
-  height: 180px;
-  border: 2px solid rgba(129, 91, 48, 0.84);
-  background: rgba(12, 10, 9, 0.82);
+  min-height: 760px;
+  padding: 0;
   overflow: hidden;
 }
 
-.character-panel__avatar,
-.character-panel__hero-portrait {
+.character-panel__paper {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(205, 139, 61, 0.16), transparent 30%),
+    linear-gradient(180deg, rgba(71, 46, 28, 0.92), rgba(27, 19, 14, 0.96));
+  border: 2px solid rgba(102, 74, 46, 0.85);
+  box-shadow:
+    inset 0 0 0 4px rgba(235, 193, 120, 0.08),
+    var(--shadow-heavy);
+}
+
+.character-panel__portrait-frame {
+  position: absolute;
+  left: 25.25%;
+  top: 2.25%;
+  width: 49.16%;
+  height: 31.83%;
+  border: 2px solid rgba(129, 91, 48, 0.84);
+  background:
+    radial-gradient(circle at 50% 16%, rgba(226, 174, 96, 0.14), transparent 46%),
+    rgba(12, 10, 9, 0.82);
+  overflow: hidden;
+}
+
+.character-panel__portrait {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.character-panel__name {
-  font-size: 38px;
+.character-panel__info-button {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 38px;
+  height: 46px;
+  border: 1px solid rgba(152, 111, 59, 0.8);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(238, 199, 119, 0.96), rgba(135, 84, 36, 0.96));
+  color: #2b180d;
+  cursor: pointer;
+  font-size: 26px;
+  font-weight: 700;
 }
 
-.character-panel__class {
-  margin-top: 8px;
-  color: #d5ad72;
+.character-panel__nameplate {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 12px;
+  display: grid;
+  place-items: center;
+  min-height: 48px;
+  background: linear-gradient(180deg, rgba(41, 27, 17, 0.88), rgba(14, 10, 8, 0.82));
+  border: 1px solid rgba(126, 88, 45, 0.72);
+  color: #f4e1bd;
   font-size: 24px;
+  text-align: center;
 }
 
-.character-panel__level-row {
-  margin-top: 18px;
-  display: flex;
-  justify-content: space-between;
-  color: rgba(247, 223, 192, 0.78);
+.character-panel__nameplate small {
+  color: #d5ad72;
+  font-size: 14px;
 }
 
-.character-panel__xp-bar,
 .portrait-summary__xp-bar {
   margin-top: 10px;
   height: 18px;
@@ -1402,69 +1680,86 @@ body {
   overflow: hidden;
 }
 
-.character-panel__xp-fill,
 .portrait-summary__xp-fill {
   height: 100%;
   background: linear-gradient(90deg, #8b5824 0%, #ebb56a 100%);
 }
 
-.character-panel__equip-layout {
-  display: grid;
-  grid-template-columns: 120px 1fr 120px;
-  gap: 18px;
-  min-height: 284px;
-}
-
-.character-panel__equip-column,
-.character-panel__bottom-slots {
-  display: grid;
-  gap: 12px;
-}
-
-.character-panel__bottom-slots {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.character-panel__center {
-  display: grid;
-  grid-template-rows: 1fr auto;
-  gap: 16px;
-}
-
-.character-panel__hero-card {
-  border: 2px solid rgba(129, 91, 48, 0.78);
-  background: rgba(8, 8, 7, 0.72);
+.character-panel__level-bar {
+  position: absolute;
+  left: 25.25%;
+  top: 35%;
+  width: 49.16%;
+  height: 34px;
+  border: 1px solid rgba(109, 78, 43, 0.7);
+  background: rgba(9, 8, 7, 0.84);
   overflow: hidden;
 }
 
-.character-panel__equip-slot {
-  position: relative;
-  min-height: 56px;
-  padding: 8px;
-  border: 1px solid rgba(118, 84, 47, 0.74);
-  background: rgba(8, 7, 6, 0.72);
+.character-panel__xp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8b5824 0%, #ebb56a 100%);
 }
 
-.character-panel__equip-label {
+.character-panel__level-bar span {
   position: absolute;
-  right: 8px;
-  top: 6px;
-  font-size: 12px;
-  letter-spacing: 0.14em;
-  color: rgba(247, 223, 192, 0.38);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff0ce;
+  font-size: 18px;
+  text-shadow: 0 1px 2px #000;
+}
+
+.character-panel__equip-slot {
+  position: absolute;
+  width: 18.86%;
+  height: 12.64%;
+  min-height: 0;
+  padding: 6px;
+  border: 1px solid rgba(118, 84, 47, 0.74);
+  background:
+    radial-gradient(circle at 50% 40%, rgba(207, 151, 75, 0.12), transparent 56%),
+    rgba(8, 7, 6, 0.72);
+}
+
+.character-panel__equip-slot--head { left: 3.03%; top: 2.7%; }
+.character-panel__equip-slot--body { left: 3.03%; top: 16.7%; }
+.character-panel__equip-slot--hands { left: 3.03%; top: 30.7%; }
+.character-panel__equip-slot--feet { left: 3.03%; top: 44.7%; }
+.character-panel__equip-slot--neck { left: 78.11%; top: 2.7%; }
+.character-panel__equip-slot--belt { left: 78.11%; top: 16.7%; }
+.character-panel__equip-slot--ring { left: 78.11%; top: 30.7%; }
+.character-panel__equip-slot--trinket { left: 78.11%; top: 44.7%; }
+.character-panel__equip-slot--weapon { left: 34.68%; top: 42%; }
+.character-panel__equip-slot--offHand { left: 54.88%; top: 42%; }
+
+.character-panel__equip-slot .item-slot {
+  padding: 8px;
+}
+
+.character-panel__equip-slot .item-slot__name {
+  font-size: 13px;
 }
 
 .character-panel__tabs {
+  position: absolute;
+  left: 3.03%;
+  top: 58.69%;
+  width: 93.94%;
+  height: 56px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .character-panel__tab {
-  min-height: 56px;
+  min-height: 0;
   border: 1px solid rgba(118, 84, 47, 0.74);
   background: rgba(15, 11, 9, 0.82);
   color: rgba(247, 223, 192, 0.76);
+  font-size: 13px;
+  overflow: hidden;
 }
 
 .character-panel__tab--active {
@@ -1473,25 +1768,32 @@ body {
 }
 
 .character-panel__stats-grid {
+  position: absolute;
+  left: 3.03%;
+  top: 66.6%;
+  width: 93.94%;
+  height: 20.9%;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
 }
 
 .character-panel__stats-column {
   display: grid;
-  gap: 12px;
+  gap: 8px;
+  min-height: 0;
 }
 
 .character-panel__stat-row {
-  min-height: 92px;
-  padding: 12px 12px 12px 16px;
+  min-height: 0;
+  padding: 8px 8px 8px 10px;
   border: 1px solid rgba(118, 84, 47, 0.72);
   background: rgba(10, 8, 7, 0.76);
   display: grid;
-  grid-template-columns: 1fr 48px;
-  gap: 12px;
+  grid-template-columns: 1fr 34px;
+  gap: 8px;
   align-items: center;
+  overflow: hidden;
 }
 
 .character-panel__stat-row--static {
@@ -1507,28 +1809,28 @@ body {
 }
 
 .character-panel__stat-head {
-  font-size: 18px;
-}
-
-.character-panel__stat-derived {
-  margin-top: 10px;
-  color: #d4aa70;
   font-size: 14px;
 }
 
+.character-panel__stat-derived {
+  margin-top: 4px;
+  color: #d4aa70;
+  font-size: 12px;
+}
+
 .character-panel__stat-breakdown {
-  margin-top: 8px;
+  margin-top: 4px;
   color: rgba(247, 223, 192, 0.58);
-  font-size: 13px;
+  font-size: 11px;
 }
 
 .character-panel__upgrade {
-  width: 48px;
-  height: 48px;
+  width: 34px;
+  height: 34px;
   border: 1px solid rgba(131, 92, 47, 0.86);
   background: linear-gradient(180deg, rgba(222, 179, 92, 0.96), rgba(170, 111, 36, 0.96));
   color: #29190d;
-  font-size: 32px;
+  font-size: 24px;
   cursor: pointer;
 }
 
@@ -1540,6 +1842,33 @@ body {
 .character-panel__upgrade--ghost {
   opacity: 0;
   pointer-events: none;
+}
+
+.character-panel__bottom-slots {
+  position: absolute;
+  left: 3.03%;
+  top: 90.29%;
+  width: 43.1%;
+  height: 68px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.character-panel__potion-slot,
+.character-panel__special-slot {
+  border: 1px solid rgba(118, 84, 47, 0.74);
+  background:
+    radial-gradient(circle at 50% 40%, rgba(207, 151, 75, 0.12), transparent 56%),
+    rgba(8, 7, 6, 0.72);
+}
+
+.character-panel__special-slot {
+  position: absolute;
+  left: 72.39%;
+  top: 88.49%;
+  width: 16.16%;
+  height: 9.26%;
 }
 
 .item-slot-drag-handle {

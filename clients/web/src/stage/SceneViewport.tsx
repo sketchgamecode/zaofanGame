@@ -1,6 +1,6 @@
 import { layout } from '../config/layout';
 import { ArenaScene } from '../scenes/ArenaScene';
-import { BlackMarketScene } from '../scenes/BlackMarketScene';
+import { BlackMarketScene, MagicShopScene, WeaponShopScene } from '../scenes/BlackMarketScene';
 import { CityScene } from '../scenes/CityScene';
 import { DungeonScene } from '../scenes/DungeonScene';
 import { InventoryScene } from '../scenes/InventoryScene';
@@ -24,8 +24,12 @@ function renderScene(
   switch (sceneId) {
     case 'city':
       return <CityScene onSceneChange={onSceneChange} />;
+    case 'weaponshop':
+      return <WeaponShopScene onItemTooltipChange={onItemTooltipChange} />;
+    case 'magicshop':
+      return <MagicShopScene onItemTooltipChange={onItemTooltipChange} />;
     case 'blackmarket':
-      return <BlackMarketScene />;
+      return <BlackMarketScene onItemTooltipChange={onItemTooltipChange} />;
     case 'inventory':
       return <InventoryScene onItemTooltipChange={onItemTooltipChange} />;
     case 'dungeon':

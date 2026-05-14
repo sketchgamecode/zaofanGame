@@ -2,6 +2,24 @@
 Status: Draft
 Designer Intent Source: User concept art + Codex implementation scaffold
 Implementation Allowed: Yes
+Current Version: V1.1
+
+---
+
+## 0. Version History
+
+### V1.1 - 2026-05-13
+
+本次版本纠偏以下问题：
+
+1. 将商店从单一 `BlackMarketScene` + tab 的 app 面板模式，修正为两个独立场景：`WeaponShopScene` 与 `MagicShopScene`。
+2. 明确商店体验是“玩家角色走访不同 NPC 店铺”，不是商品管理后台。
+3. 新增 `CharacterPanel` 坐标级蓝图，要求按 Shakes & Fidget 的角色面板语法实现。
+4. 明确右侧导航栏与 `CityScene` 地标入口可以持续新增场景入口，新增场景不需要塞进旧的黑市 tab。
+
+### V1.0 - 2026-05-10
+
+初版定义固定 `1920x1080` 舞台、常驻右栏/底栏、`SceneViewport` 场景切换与基础复用组件方向。
 
 ---
 
@@ -49,7 +67,7 @@ Implementation Allowed: Yes
 说明：
 
 1. `InventoryScene` 是一个完整主场景，不属于 `OverlayRoot`。
-2. `CharacterPanel` 是可复用场景组件，可出现在 `InventoryScene`、`BlackMarketScene` 等场景内，不默认作为全局覆盖层打开。
+2. `CharacterPanel` 是可复用场景组件，可出现在 `InventoryScene`、`WeaponShopScene`、`MagicShopScene` 等场景内，不默认作为全局覆盖层打开。
 3. `OverlayRoot` 只承载跨场景的临时覆盖内容，避免把主玩法面板误做成弹窗系统。
 
 ---
@@ -69,7 +87,7 @@ Implementation Allowed: Yes
 | Zone | X | Y | W | H |
 | :--- | ---: | ---: | ---: | ---: |
 | `PortraitCard` | 1562 | 18 | 320 | 252 |
-| `RightNav` | 1584 | 394 | 276 | auto |
+| `RightNav` | 1584 | 292 | 276 | auto |
 | `SealButton` | 1810 | 928 | 82 | 128 |
 
 底栏内部：
@@ -117,23 +135,45 @@ Implementation Allowed: Yes
 3. 热点层
 4. 特定系统弹出层
 
-### 4.2 BlackMarket
+### 4.2 Shops: WeaponShopScene / MagicShopScene
 
-黑市场景不是独立整页，而是占据 `SceneViewport` 的一个场景版本。
+商店不是一个 app 式操作面板，而是玩家角色走访不同 NPC 店铺的场景。
 
-建议布局：参考 docs\design\03_external_reports\s&f_screenshot\weaponshop\system_weaponshop.JPG
+参考：
 
-1. 左半'CharacterPanel', 这应该是一个通用组件
-2. 右半'购物面板'，这应该是一个通用组件，可以通过背景图和出现的商品作为各种商店如武器店，藏宝阁等使用。
-3. 购物面板区域有个独立的铺满背景的背景图。其分上下区域，上半截是商店货品区，下半截是玩家的简易 `InventoryGrid` 区。玩家的 Inventory 区域如果显示不完整，可以上下滑动以显示更多格子。
-4. 购物面板上半截货品区显示 2*3 的物品格，即单个商店页展示 6 件商品。
-5. 服务端 `REFRESH_BLACKMARKET` 当前返回 `BlackMarketView.items` 共 12 件商品，约定为“兵器铺 6 件 + 奇珍阁 6 件”。前端应按商店类型、页签或商品 `slot/subType` 将其拆成两个 2*3 面板，不应把 12 件直接塞进单个 2*3 区域。
-6. 购物面板货品区有一个刷新售卖物品的按钮，按钮上写着 "换批货"，并显示会消耗 1 个 token。免费自动刷新倒计时应读取服务端返回的 `nextAutoRefreshMs`，不要在本地推断。
-7. `CharacterPanel`、购物面板和 `InventoryGrid` 中的所有装备格物品，都可以相互拖拽。拖入购物面板区的物品在鼠标释放时，当做出售请求处理。 从购物区域拖入 Inventory 或者 CharacterPanel 区域对应的身体部位格，能成功装备上的，当做购买请求处理；购买成功后，物品存入 Inventory 或直接装备在身体部位格上，而之前装备在 CharacterPanel 中身体部位格的物品，则由服务端决定是否自动放入 Inventory 的空余格子内。
-8. 如果 Inventory 格子满了，则阻断任何购入新物品或得到新物品的操作，提示玩家格子满了，让玩家点击确认。
-9. 补充一个游戏全局交互规则：当玩家操作游戏，开始任意确定会得到会存入 Inventory 的玩法前，比如能得到道具的酒馆任务、能得到道具的 Dungeon 挑战、商店购买物品等，在玩家尝试执行前，客户端可以基于当前 `CharacterInfoView.inventory` 做预检查，满了则先提示玩家腾出空间。
-10. 但客户端预检查只用于体验优化，不能成为最终规则裁定。服务端必须继续作为唯一权威，最终判断背包容量、购买条件、出售结果和装备替换结果。若服务端返回背包已满或资源不足错误，客户端必须使用 `StandardModal` 或同级阻断提示展示错误，不得本地补发、吞掉或改写结果。
+1. `docs/design/03_external_reports/s&f_screenshot/shops/system_weaponshop.JPG`
+2. `docs/design/03_external_reports/s&f_screenshot/shops/system_magicshop.JPG`
 
+场景拆分：
+
+1. `WeaponShopScene`：兵器铺，出售武器、副手、头、衣、手、靴等战斗装备。
+2. `MagicShopScene`：奇珍阁，出售项链、腰带、戒指、饰品等奇珍法器。
+3. 两者可以共用同一个内部 `ShopScene` 实现，但对玩家必须表现为两个不同店铺、不同 NPC、不同背景的拜访场景。
+4. `CityScene` 地标入口和右侧 `RightRail` 导航按钮都可以持续新增对应入口。
+
+Shop Scene 坐标蓝图（基于 `SceneViewport 1534x980`）：
+
+| Zone | X | Y | W | H | 说明 |
+| :--- | ---: | ---: | ---: | ---: | :--- |
+| `ShopCharacterPanel` | 36 | 42 | 594 | 886 | 左侧角色面板，复用 `CharacterPanel` |
+| `ShopStage` | 648 | 42 | 848 | 454 | 右上店铺舞台，包含背景、NPC、商品和刷新按钮 |
+| `ShopTitle` | 956 | 58 | 300 | 44 | 店铺标题 |
+| `ShopInfoButton` | 1448 | 62 | 44 | 44 | 信息按钮，占位 |
+| `ShopNpc` | 1240 | 152 | 210 | 294 | NPC 立绘区域 |
+| `ShopGoodsGrid` | 862 | 100 | 340 | 300 | 2*3 商品格 |
+| `ShopRefreshButton` | 956 | 412 | 292 | 66 | “换批货 · 1 令牌” |
+| `ShopInventoryDrawer` | 648 | 520 | 848 | 404 | 右下背包抽屉 |
+| `ShopInventoryGrid` | 688 | 612 | 744 | 250 | 背包格，可滚动 |
+| `ShopSellDropZone` | 688 | 866 | 744 | 44 | 出售拖拽区域 |
+
+数据契约：
+
+1. 服务端 `REFRESH_BLACKMARKET` 当前返回 `BlackMarketView.items` 共 12 件商品，约定为“兵器铺 6 件 + 奇珍阁 6 件”。
+2. `WeaponShopScene` 过滤 `weapon/offHand/head/body/hands/feet`。
+3. `MagicShopScene` 过滤 `neck/belt/ring/trinket` 等非兵器铺装备。
+4. 前端不得使用 tab 把两个店铺合并成一个 app 页面。
+5. 免费自动刷新倒计时读取服务端 `nextAutoRefreshMs`，不要在本地推断。
+6. 客户端预检查只用于体验优化，最终购买、出售、穿戴、背包容量判断必须来自服务端 action。
 
 ### 4.3 Inventory
 
@@ -191,11 +231,10 @@ Figma 不是运行时 UI 编辑器，也不应被当作工程双向同步源。
 
 在当前骨架基础上，下一步建议优先做：
 
-1. 以 `clients/web/src/config/layout.ts` 为准，继续保持所有主框架坐标集中管理。
-2. 抽出第一批通用 UI 组件：`ItemSlot`、`ItemTooltip`、`ResourceBadge`、`ActionButton`、`StandardModal`。
-3. 将 `CharacterPanel` 内的装备格和 `InventoryScene` 内的背包格逐步替换为统一的 `ItemSlot`。
-4. 重做 `BlackMarketScene`：左侧复用 `CharacterPanel`，右侧实现商店 2*3 商品区 + 简易 `InventoryGrid`，并对接 `REFRESH_BLACKMARKET`、`BUY_ITEM`、`BUY_AND_EQUIP_ITEM`、`SELL_ITEM`。
-5. 将全局 tooltip 和阻断式确认提示收敛到 `OverlayRoot` 或由 `OverlayRoot` 管理的全局层，避免被 `SceneViewport` 裁剪。
+1. 按 V1.1 蓝图重构 `CharacterPanel`，优先复刻 Shakes & Fidget 的角色面板构图。
+2. 将 `BlackMarketScene` 拆成 `WeaponShopScene` 与 `MagicShopScene` 两个入口。
+3. 为 `RightRail` 与 `CityScene` 新增两个店铺入口。
+4. 保留现有服务端 action 对接，但将视觉结构从 app tab 修正为两个独立 NPC 店铺场景。
 
 ---
 
@@ -335,7 +374,41 @@ UI 布局
 角色信息主面板，用于展示角色的核心外观、装备状态、核心数值以及系统功能扩展入口。作为跨系统复用的通用组件，必须保持高度统一，可常驻出现在背包（Inventory）、各类商店（Shop）等场景的左侧半屏。该组件需具备随玩家等级和系统解锁“渐进式展示”的能力。
 
 UI 布局 (Layout)
-整个面板采用固定窗口设计，自上而下划分为三个主要区域，并在高级状态下支持各类附加挂件, 参考图片见以下目录中的低级角色和高级角色的characterpanel截图 docs\design\03_external_reports\s&f_screenshot\common\charaterPanel ：
+整个面板采用固定窗口设计，必须按 Shakes & Fidget 的构图语法实现。参考图片见：
+
+1. `docs/design/03_external_reports/s&f_screenshot/common/charaterPanel/lowlevelcharacter.jfif`
+2. `docs/design/03_external_reports/s&f_screenshot/common/charaterPanel/highlevelcharacter.jfif`
+
+CharacterPanel 坐标蓝图（基准尺寸 `594x886`）：
+
+| Zone | X | Y | W | H | 说明 |
+| :--- | ---: | ---: | ---: | ---: | :--- |
+| `PanelFrame` | 0 | 0 | 594 | 886 | 外框 |
+| `PortraitFrame` | 150 | 20 | 292 | 282 | 中央大头像 |
+| `InfoButton` | 396 | 34 | 38 | 48 | 头像右上信息按钮 |
+| `NameLine` | 150 | 232 | 292 | 36 | 名字/帮会名叠在头像下部 |
+| `LevelBar` | 150 | 310 | 292 | 34 | 等级条 |
+| `SlotHead` | 18 | 24 | 112 | 112 | 左上装备槽 |
+| `SlotBody` | 18 | 148 | 112 | 112 | 左中装备槽 |
+| `SlotHands` | 18 | 272 | 112 | 112 | 左中下装备槽 |
+| `SlotFeet` | 18 | 396 | 112 | 112 | 左下装备槽 |
+| `SlotNeck` | 464 | 24 | 112 | 112 | 右上装备槽 |
+| `SlotBelt` | 464 | 148 | 112 | 112 | 右中装备槽 |
+| `SlotRing` | 464 | 272 | 112 | 112 | 右中下装备槽 |
+| `SlotTrinket` | 464 | 396 | 112 | 112 | 右下装备槽 |
+| `SlotWeapon` | 206 | 372 | 112 | 112 | 中下主手 |
+| `SlotOffHand` | 326 | 372 | 112 | 112 | 中下副手 |
+| `Tabs` | 18 | 520 | 558 | 56 | ATTRIBUTES/DESCRIPTION/INFO/INTERACTIONS |
+| `StatsGrid` | 18 | 590 | 558 | 188 | 两列属性区 |
+| `BottomSlots` | 18 | 800 | 256 | 68 | 3 个药水槽 |
+| `SpecialSlot` | 430 | 784 | 96 | 82 | 高级特殊道具槽，占位 |
+
+实现纪律：
+
+1. `CharacterPanel` 不使用普通 app 左右分栏布局。
+2. 装备槽必须围绕中央头像分布。
+3. 属性区必须位于 tabs 下方，并保持 2 列块状展示。
+4. 当前美术资源不足时，可使用占位图和边框，但坐标比例不得自由重排。
 
 头部与身份区 (Header & Avatar)
 

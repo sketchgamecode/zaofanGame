@@ -1,1 +1,1 @@
-export type SceneId = 'city' | 'tavern' | 'blackmarket' | 'inventory' | 'dungeon' | 'arena' | 'mail';
+export type SceneId = 'city' | 'tavern' | 'weaponshop' | 'magicshop' | 'blackmarket' | 'inventory' | 'dungeon' | 'arena' | 'mail';

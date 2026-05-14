@@ -6,7 +6,8 @@ type CitySceneProps = {
 
 const CITY_NODES: Array<{ sceneId: SceneId; label: string; flavor: string; className: string }> = [
   { sceneId: 'tavern', label: '客栈', flavor: '接差事', className: 'city-scene__node city-scene__node--tavern' },
-  { sceneId: 'blackmarket', label: '黑市', flavor: '淘兵刃', className: 'city-scene__node city-scene__node--market' },
+  { sceneId: 'weaponshop', label: '兵器铺', flavor: '淘兵刃', className: 'city-scene__node city-scene__node--market' },
+  { sceneId: 'magicshop', label: '奇珍阁', flavor: '寻法器', className: 'city-scene__node city-scene__node--magicshop' },
   { sceneId: 'inventory', label: '行囊', flavor: '整装备', className: 'city-scene__node city-scene__node--inventory' },
   { sceneId: 'dungeon', label: '江湖', flavor: '闯地界', className: 'city-scene__node city-scene__node--dungeon' },
   { sceneId: 'arena', label: '校场', flavor: '争名次', className: 'city-scene__node city-scene__node--arena' },

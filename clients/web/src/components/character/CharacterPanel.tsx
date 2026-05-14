@@ -56,10 +56,12 @@ function EquipmentSlotCell({
   slot,
   item,
   onItemTooltipChange,
+  className,
 }: {
   slot: EquipmentSlot;
   item: EquipmentItem | null;
   onItemTooltipChange: CharacterPanelProps['onItemTooltipChange'];
+  className?: string;
 }) {
   const { isOver, setNodeRef } = useDroppable({
     id: `equip-slot:${slot}`,
@@ -70,7 +72,10 @@ function EquipmentSlotCell({
   });
 
   return (
-    <div ref={setNodeRef} className={`character-panel__equip-slot${isOver ? ' character-panel__equip-slot--over' : ''}`}>
+    <div
+      ref={setNodeRef}
+      className={`character-panel__equip-slot character-panel__equip-slot--${slot}${className ? ` ${className}` : ''}${isOver ? ' character-panel__equip-slot--over' : ''}`}
+    >
       {item ? (
         <DraggableItemSlot
           compact
@@ -152,120 +157,94 @@ export function CharacterPanel({
   const classMeta = CLASS_META[character.player.classId];
   const nextLevelXp = getNextLevelXp(character.player.level);
   const xpProgress = Math.min(1, Math.max(0, character.player.exp / Math.max(1, nextLevelXp)));
-  const leftSlots = EQUIPMENT_SLOTS.slice(0, 4);
-  const rightSlots = EQUIPMENT_SLOTS.slice(4, 8);
-  const bottomSlots = EQUIPMENT_SLOTS.slice(8, 10);
 
   return (
     <section className="character-panel">
-      <header className="character-panel__header">
-        <div className="character-panel__avatar-frame">
-          <img alt={character.player.displayName || '角色头像'} className="character-panel__avatar" src={getAvatarUrl(character.player.avatarId)} />
-        </div>
-
-        <div className="character-panel__header-copy">
-          <div className="character-panel__name">{character.player.displayName || '无名好汉'}</div>
-          <div className="character-panel__class">{classMeta.name}</div>
-          <div className="character-panel__level-row">
-            <span>Lv.{character.player.level}</span>
-            <span>{character.player.exp} / {nextLevelXp}</span>
-          </div>
-          <div className="character-panel__xp-bar">
-            <div className="character-panel__xp-fill" style={{ width: `${xpProgress * 100}%` }} />
+      <div className="character-panel__paper">
+        <div className="character-panel__portrait-frame">
+          <img
+            alt={character.player.displayName || '角色头像'}
+            className="character-panel__portrait"
+            src={getAvatarUrl(character.player.avatarId)}
+          />
+          <button className="character-panel__info-button" type="button">i</button>
+          <div className="character-panel__nameplate">
+            <div>{character.player.displayName || '无名好汉'}</div>
+            <small>{classMeta.name}</small>
           </div>
         </div>
-      </header>
 
-      <div className="character-panel__equip-layout">
-        <div className="character-panel__equip-column">
-          {leftSlots.map((slot) => (
-            <EquipmentSlotCell
-              key={slot}
-              slot={slot}
-              item={character.equipment.equipped[slot]}
-              onItemTooltipChange={onItemTooltipChange}
-            />
-          ))}
+        <div className="character-panel__level-bar">
+          <div className="character-panel__xp-fill" style={{ width: `${xpProgress * 100}%` }} />
+          <span>Level {character.player.level}</span>
         </div>
 
-        <div className="character-panel__center">
-          <div className="character-panel__hero-card">
-            <img alt={character.player.displayName || '头像'} className="character-panel__hero-portrait" src={getAvatarUrl(character.player.avatarId)} />
-          </div>
+        {EQUIPMENT_SLOTS.map((slot) => (
+          <EquipmentSlotCell
+            key={slot}
+            slot={slot}
+            item={character.equipment.equipped[slot]}
+            onItemTooltipChange={onItemTooltipChange}
+          />
+        ))}
 
-          <div className="character-panel__bottom-slots">
-            {bottomSlots.map((slot) => (
-              <EquipmentSlotCell
-                key={slot}
-                slot={slot}
-                item={character.equipment.equipped[slot]}
-                onItemTooltipChange={onItemTooltipChange}
+        <div className="character-panel__tabs">
+          <button className="character-panel__tab character-panel__tab--active" type="button">ATTRIBUTES</button>
+          <button className="character-panel__tab" type="button">DESCRIPTION</button>
+          <button className="character-panel__tab" type="button">INFO</button>
+          <button className="character-panel__tab" type="button">INTERACTIONS</button>
+        </div>
+
+        <div className="character-panel__stats-grid">
+          <div className="character-panel__stats-column">
+            {ATTRIBUTE_KEYS.slice(0, 3).map((attribute) => (
+              <StatRow
+                key={attribute}
+                attribute={attribute}
+                character={character}
+                pendingAction={pendingAction}
+                onUpgradeAttribute={onUpgradeAttribute}
               />
             ))}
           </div>
-        </div>
 
-        <div className="character-panel__equip-column">
-          {rightSlots.map((slot) => (
-            <EquipmentSlotCell
-              key={slot}
-              slot={slot}
-              item={character.equipment.equipped[slot]}
-              onItemTooltipChange={onItemTooltipChange}
-            />
-          ))}
-        </div>
-      </div>
+          <div className="character-panel__stats-column">
+            {ATTRIBUTE_KEYS.slice(3).map((attribute) => (
+              <StatRow
+                key={attribute}
+                attribute={attribute}
+                character={character}
+                pendingAction={pendingAction}
+                onUpgradeAttribute={onUpgradeAttribute}
+              />
+            ))}
 
-      <div className="character-panel__tabs">
-        <button className="character-panel__tab character-panel__tab--active" type="button">ATTRIBUTES</button>
-        <button className="character-panel__tab" type="button">DESCRIPTION</button>
-        <button className="character-panel__tab" type="button">INFO</button>
-        <button className="character-panel__tab" type="button">INTERACTIONS</button>
-      </div>
-
-      <div className="character-panel__stats-grid">
-        <div className="character-panel__stats-column">
-          {ATTRIBUTE_KEYS.slice(0, 3).map((attribute) => (
-            <StatRow
-              key={attribute}
-              attribute={attribute}
-              character={character}
-              pendingAction={pendingAction}
-              onUpgradeAttribute={onUpgradeAttribute}
-            />
-          ))}
-        </div>
-
-        <div className="character-panel__stats-column">
-          {ATTRIBUTE_KEYS.slice(3).map((attribute) => (
-            <StatRow
-              key={attribute}
-              attribute={attribute}
-              character={character}
-              pendingAction={pendingAction}
-              onUpgradeAttribute={onUpgradeAttribute}
-            />
-          ))}
-
-          <div className="character-panel__stat-row character-panel__stat-row--static">
-            <div className="character-panel__stat-main">
-              <div className="character-panel__stat-head">
-                <span>ARMOR</span>
-                <span>{character.combatPreview.armor}</span>
+            <div className="character-panel__stat-row character-panel__stat-row--static">
+              <div className="character-panel__stat-main">
+                <div className="character-panel__stat-head">
+                  <span>ARMOR</span>
+                  <span>{character.combatPreview.armor}</span>
+                </div>
+                <div className="character-panel__stat-derived">
+                  <span>DAMAGE RED.</span>
+                  <span>{Math.min(classMeta.armorCap, Math.floor(character.combatPreview.armor / Math.max(1, character.player.level)))}%</span>
+                </div>
+                <div className="character-panel__stat-breakdown">
+                  <span>Combat Rating</span>
+                  <span>{character.combatPreview.combatRating}</span>
+                </div>
               </div>
-              <div className="character-panel__stat-derived">
-                <span>DAMAGE RED.</span>
-                <span>{Math.min(classMeta.armorCap, Math.floor(character.combatPreview.armor / Math.max(1, character.player.level)))}%</span>
-              </div>
-              <div className="character-panel__stat-breakdown">
-                <span>Combat Rating</span>
-                <span>{character.combatPreview.combatRating}</span>
-              </div>
+              <div className="character-panel__upgrade character-panel__upgrade--ghost" />
             </div>
-            <div className="character-panel__upgrade character-panel__upgrade--ghost" />
           </div>
         </div>
+
+        <div className="character-panel__bottom-slots">
+          <div className="character-panel__potion-slot" />
+          <div className="character-panel__potion-slot" />
+          <div className="character-panel__potion-slot" />
+        </div>
+        <div className="character-panel__special-slot" />
       </div>
     </section>
   );
