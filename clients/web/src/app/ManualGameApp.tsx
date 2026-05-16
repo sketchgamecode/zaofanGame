@@ -3,7 +3,6 @@ import { AuthScreen } from '../components/AuthScreen';
 import { CharacterCreationScreen } from '../components/creation/CharacterCreationScreen';
 import type { ItemTooltipState } from '../components/ui/ItemTooltip';
 import { GameStateProvider, useGameState } from '../state/GameStateContext';
-import { BottomHud } from '../stage/BottomHud';
 import { OverlayRoot } from '../stage/OverlayRoot';
 import { RightRail } from '../stage/RightRail';
 import { RootStage } from '../stage/RootStage';
@@ -67,7 +66,6 @@ function ManualGameShell() {
         onSceneChange={handleSceneChange}
       />
       <RightRail activeSceneId={sceneId} onInventoryOpen={() => handleSceneChange('inventory')} onSceneChange={handleSceneChange} />
-      <BottomHud />
       <OverlayRoot
         itemTooltip={itemTooltip}
         onCancelLogout={() => setShowLogoutConfirm(false)}

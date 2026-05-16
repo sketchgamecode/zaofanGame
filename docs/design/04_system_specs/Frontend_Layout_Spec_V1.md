@@ -2,11 +2,20 @@
 Status: Draft
 Designer Intent Source: User concept art + Codex implementation scaffold
 Implementation Allowed: Yes
-Current Version: V1.1
+Current Version: V1.2
 
 ---
 
 ## 0. Version History
+
+### V1.2 - 2026-05-14
+
+本次版本将顶层框架从“右栏 + 底栏”修正为“右栏常驻 + 左侧场景满高”：
+
+1. 移除顶层 `BottomHud`，避免底部 100px 常驻栏影响 Shakes & Fidget 式系统界面坐标复刻。
+2. `SceneViewport` 改为 `1534x1080`，左侧场景可吃满舞台高度。
+3. 铜钱、令牌、沙漏、声望等全局资源改为显示在右侧 `PortraitCard` 角色简报区。
+4. 场景内仍可按需要局部展示相关资源，例如商店背包抽屉上方显示铜钱和令牌。
 
 ### V1.1 - 2026-05-13
 
@@ -30,7 +39,7 @@ Current Version: V1.1
 核心原则：
 
 1. 使用固定逻辑画布 `1920x1080`。
-2. 登录成功后，右侧导航面板与底部 HUD 永久常驻。
+2. 登录成功后，右侧导航面板永久常驻；不再保留顶层底部 HUD。
 3. 系统切换只替换左侧场景区内容，不替换主框架。
 4. 客户端只渲染服务端结果与发送 action，不本地裁定游戏规则。
 
@@ -54,14 +63,11 @@ Current Version: V1.1
 2. `RightRail`
 右侧常驻导航面板，负责：
 
-1. 顶部角色简信息卡（头像、名字、等级、经验条）。
+1. 顶部角色简信息卡（头像、名字、等级、经验条、铜钱、令牌、沙漏、声望）。
 2. 主系统切换按钮。
 3. 特殊入口按钮。
 
-3. `BottomHud`
-底部常驻资源与经验条。
-
-4. `OverlayRoot`
+3. `OverlayRoot`
 全局覆盖层，负责全局 tooltip、阻断式弹窗、确认框、临时详情弹窗。
 
 说明：
@@ -78,9 +84,8 @@ Current Version: V1.1
 
 | Zone | X | Y | W | H |
 | :--- | ---: | ---: | ---: | ---: |
-| `SceneViewport` | 0 | 0 | 1534 | 980 |
+| `SceneViewport` | 0 | 0 | 1534 | 1080 |
 | `RightRail` | 1534 | 0 | 386 | 1080 |
-| `BottomHud` | 0 | 980 | 1534 | 100 |
 
 右栏内部：
 
@@ -89,13 +94,6 @@ Current Version: V1.1
 | `PortraitCard` | 1562 | 18 | 320 | 252 |
 | `RightNav` | 1584 | 292 | 276 | auto |
 | `SealButton` | 1810 | 928 | 82 | 128 |
-
-底栏内部：
-
-| Zone | X | Y | W | H |
-| :--- | ---: | ---: | ---: | ---: |
-| `ResourceRow` | 24 | 992 | 860 | 64 |
-| `XpPanel` | 916 | 992 | 590 | 64 |
 
 这些数值已同步写入：
 
@@ -151,20 +149,20 @@ Current Version: V1.1
 3. 两者可以共用同一个内部 `ShopScene` 实现，但对玩家必须表现为两个不同店铺、不同 NPC、不同背景的拜访场景。
 4. `CityScene` 地标入口和右侧 `RightRail` 导航按钮都可以持续新增对应入口。
 
-Shop Scene 坐标蓝图（基于 `SceneViewport 1534x980`）：
+Shop Scene 坐标蓝图（基于 `SceneViewport 1534x1080`）：
 
 | Zone | X | Y | W | H | 说明 |
 | :--- | ---: | ---: | ---: | ---: | :--- |
-| `ShopCharacterPanel` | 36 | 42 | 594 | 886 | 左侧角色面板，复用 `CharacterPanel` |
-| `ShopStage` | 648 | 42 | 848 | 454 | 右上店铺舞台，包含背景、NPC、商品和刷新按钮 |
-| `ShopTitle` | 956 | 58 | 300 | 44 | 店铺标题 |
-| `ShopInfoButton` | 1448 | 62 | 44 | 44 | 信息按钮，占位 |
-| `ShopNpc` | 1240 | 152 | 210 | 294 | NPC 立绘区域 |
-| `ShopGoodsGrid` | 862 | 100 | 340 | 300 | 2*3 商品格 |
-| `ShopRefreshButton` | 956 | 412 | 292 | 66 | “换批货 · 1 令牌” |
-| `ShopInventoryDrawer` | 648 | 520 | 848 | 404 | 右下背包抽屉 |
-| `ShopInventoryGrid` | 688 | 612 | 744 | 250 | 背包格，可滚动 |
-| `ShopSellDropZone` | 688 | 866 | 744 | 44 | 出售拖拽区域 |
+| `ShopCharacterPanel` | 24 | 42 | 654 | 976 | 左侧角色面板，按 `594x886` 等比放大，避免无底栏后左下空白 |
+| `ShopStage` | 688 | 42 | 808 | 454 | 右上店铺舞台，包含背景、NPC、商品和刷新按钮 |
+| `ShopTitle` | 1006 | 58 | 300 | 44 | 店铺标题 |
+| `ShopInfoButton` | 1434 | 62 | 44 | 44 | 信息按钮，占位 |
+| `ShopNpc` | 1230 | 152 | 210 | 294 | NPC 立绘区域 |
+| `ShopGoodsGrid` | 920 | 100 | 378 | 300 | 2*3 商品格，单格 `118x118` |
+| `ShopRefreshButton` | 1014 | 412 | 292 | 66 | “换批货 · 1 令牌” |
+| `ShopInventoryDrawer` | 688 | 520 | 808 | 518 | 右下背包抽屉，V1.2 后向下延展填补移除 BottomHud 后的高度 |
+| `ShopInventoryGrid` | 728 | 612 | 704 | 364 | 背包格，可滚动，单格 `116x116` |
+| `ShopSellDropZone` | 728 | 866 | 704 | 44 | 出售拖拽区域，临时保留在商店舞台和背包抽屉交界处 |
 
 数据契约：
 
@@ -337,7 +335,7 @@ UI 布局
 
 变体使用场景：
 
-在底部 HUD (BottomHud) 中作为资产总览展示。
+在右侧 `PortraitCard` 角色简报区作为资产总览展示。
 
 在 Tooltip 底部作为售卖价格展示。
 

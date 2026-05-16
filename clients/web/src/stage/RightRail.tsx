@@ -1,6 +1,7 @@
 import { layout } from '../config/layout';
 import { CLASS_META, getAvatarUrl } from '../config/characterCatalog';
 import { getNextLevelXp } from '../config/xpTable';
+import { ResourceBadge } from '../components/ui/ResourceBadge';
 import { useGameState } from '../state/GameStateContext';
 import type { SceneId } from '../types/game';
 
@@ -30,6 +31,12 @@ export function RightRail({ activeSceneId, onSceneChange, onInventoryOpen }: Rig
   const classMeta = CLASS_META[character.player.classId];
   const nextLevelXp = getNextLevelXp(character.player.level);
   const xpProgress = Math.min(1, Math.max(0, character.player.exp / Math.max(1, nextLevelXp)));
+  const resources = [
+    { label: '铜钱', type: 'copper' as const, value: character.resources.copper },
+    { label: '令牌', type: 'token' as const, value: character.resources.tokens },
+    { label: '沙漏', type: 'sandglass' as const, value: character.resources.hourglasses },
+    { label: '声望', type: 'reputation' as const, value: character.resources.prestige },
+  ];
 
   return (
     <aside
@@ -67,6 +74,16 @@ export function RightRail({ activeSceneId, onSceneChange, onInventoryOpen }: Rig
             </div>
             <div className="portrait-summary__xp-bar">
               <div className="portrait-summary__xp-fill" style={{ width: `${xpProgress * 100}%` }} />
+            </div>
+            <div className="portrait-summary__resources">
+              {resources.map((resource) => (
+                <ResourceBadge
+                  key={resource.type}
+                  label={resource.label}
+                  type={resource.type}
+                  value={resource.value}
+                />
+              ))}
             </div>
           </div>
         </button>

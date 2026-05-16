@@ -83,10 +83,11 @@ function EquipmentSlotCell({
           label={EQUIPMENT_SLOT_LABELS[slot]}
           slot={slot}
           source="equipment"
+          variant="equipment"
           onItemTooltipChange={onItemTooltipChange}
         />
       ) : (
-        <ItemSlot compact isDropTarget={isOver} item={null} label={EQUIPMENT_SLOT_LABELS[slot]} />
+        <ItemSlot compact isDropTarget={isOver} item={null} label={EQUIPMENT_SLOT_LABELS[slot]} variant="equipment" />
       )}
     </div>
   );

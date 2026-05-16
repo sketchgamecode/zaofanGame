@@ -6,7 +6,7 @@ export const layout = {
     x: 0,
     y: 0,
     width: 1534,
-    height: 980,
+    height: 1080,
   },
   rightRail: {
     x: 1534,
@@ -36,24 +36,4 @@ export const layout = {
     { x: 1584, y: 760, width: 276, height: 72 },
     { x: 1584, y: 838, width: 276, height: 72 },
   ] as const,
-  bottomHud: {
-    x: 0,
-    y: 980,
-    width: 1534,
-    height: 100,
-  },
-  bottomResourceRow: {
-    x: 24,
-    y: 992,
-    width: 860,
-    height: 64,
-    chipWidth: 196,
-    gap: 16,
-  },
-  xpPanel: {
-    x: 916,
-    y: 992,
-    width: 590,
-    height: 64,
-  },
 } as const;

@@ -36,9 +36,9 @@ function InventoryCell({
   return (
     <div ref={setNodeRef} className={`inventory-scene__cell${isOver ? ' inventory-scene__cell--over' : ''}`}>
       {item ? (
-        <DraggableItemSlot item={item} source="inventory" onItemTooltipChange={onItemTooltipChange} />
+        <DraggableItemSlot item={item} source="inventory" variant="inventory" onItemTooltipChange={onItemTooltipChange} />
       ) : (
-        <ItemSlot isDropTarget={isOver} item={null} />
+        <ItemSlot isDropTarget={isOver} item={null} variant="inventory" />
       )}
     </div>
   );
@@ -149,7 +149,7 @@ export function InventoryScene({
         <DragOverlay>
           {activeItem ? (
             <div className="item-slot-overlay">
-              <ItemSlot compact item={activeItem} />
+              <ItemSlot compact item={activeItem} variant="inventory" />
             </div>
           ) : null}
         </DragOverlay>

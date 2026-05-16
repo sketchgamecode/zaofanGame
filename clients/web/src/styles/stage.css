@@ -33,7 +33,6 @@ body {
 
 .scene-viewport,
 .right-rail,
-.bottom-hud,
 .overlay-root {
   position: absolute;
 }
@@ -54,7 +53,7 @@ body {
   background:
     linear-gradient(180deg, rgba(35, 21, 14, 0.18), rgba(20, 15, 13, 0.08)),
     url("/assets/backgrounds/bg_system_tavern.png");
-  background-size: 1534px 980px;
+  background-size: 1534px 1080px;
   background-repeat: no-repeat;
 }
 
@@ -68,7 +67,7 @@ body {
 }
 
 .scene--taskbackdrop {
-  background-size: 1534px 980px;
+  background-size: 1534px 1080px;
   background-repeat: no-repeat;
 }
 
@@ -82,9 +81,7 @@ body {
 }
 
 .scene--blackmarket {
-  background:
-    radial-gradient(circle at top right, rgba(240, 145, 36, 0.24), transparent 30%),
-    linear-gradient(180deg, #40251d 0%, #221816 58%, #191211 100%);
+  background: black;
 }
 
 .scene--arena,
@@ -640,6 +637,25 @@ body {
   inset: 0;
 }
 
+.blackmarket-scene::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-position: left top;
+  background-size: 1534px 1080px;
+}
+
+.blackmarket-scene--weapon::before {
+  background-image: url("/assets/backgrounds/bg_system_weaponshop.jpg");
+  background-size: 100%;
+}
+
+.blackmarket-scene--magic::before {
+  background-image: url("/assets/backgrounds/bg_system_magicshop.png");
+  background-size: 100%;
+}
+
 .blackmarket-scene__character,
 .blackmarket-scene__shop,
 .blackmarket-scene__sell-zone,
@@ -651,32 +667,32 @@ body {
 
 .blackmarket-scene__character {
   position: absolute;
-  left: 36px;
-  top: 42px;
-  width: 594px;
-  height: 886px;
+  left: 0;
+  top: 0;
+  width: 755px;
+  height: 1080px;
   overflow: hidden;
+  z-index: 1;
+  animation: bm-slide-in-left 0.45s ease-out both;
 }
 
 .blackmarket-scene__shop {
   position: absolute;
-  left: 648px;
-  top: 42px;
-  width: 848px;
+  left: 755px;
+  top: 0px;
+  width: 779px;
   height: 454px;
   padding: 0;
   overflow: visible;
-  background:
-    radial-gradient(circle at 83% 36%, rgba(238, 177, 86, 0.26), transparent 24%),
-    radial-gradient(circle at 34% 16%, rgba(186, 102, 47, 0.2), transparent 30%),
-    linear-gradient(180deg, rgba(74, 44, 27, 0.94), rgba(24, 17, 13, 0.96));
+  background-color: rgba(0, 0, 0, 0.6);
+  background-image: url("/assets/ui/shop/bg_shop_goods_stage_weapon.png") no-repeat left top;
+  background-size: 100% 100%;
+  z-index: 1;
+  animation: bm-slide-in-right 0.45s ease-out 0.1s both;
 }
 
 .blackmarket-scene__shop--magic {
-  background:
-    radial-gradient(circle at 82% 38%, rgba(152, 102, 214, 0.24), transparent 24%),
-    radial-gradient(circle at 36% 18%, rgba(69, 135, 178, 0.22), transparent 30%),
-    linear-gradient(180deg, rgba(43, 34, 68, 0.94), rgba(17, 15, 27, 0.96));
+  background-image: url("/assets/ui/shop/bg_shop_goods_stage_magic.png");
 }
 
 .blackmarket-scene__shop-header {
@@ -750,22 +766,15 @@ body {
   top: 110px;
   width: 210px;
   height: 294px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  border: 2px solid rgba(88, 57, 34, 0.72);
-  background:
-    radial-gradient(ellipse at 50% 28%, rgba(244, 210, 139, 0.24), transparent 44%),
-    linear-gradient(180deg, rgba(112, 72, 39, 0.42), rgba(20, 14, 10, 0.88));
-  color: rgba(255, 232, 185, 0.84);
+  background: url("/assets/figure/npc/npc_weaponshop_keeper.png") no-repeat center bottom;
+  background-size: contain;
+  color: rgba(255, 232, 185, 0);
   font-size: 30px;
   text-shadow: 0 2px 3px rgba(0, 0, 0, 0.72);
 }
 
 .blackmarket-scene__shop--magic .blackmarket-scene__npc {
-  background:
-    radial-gradient(ellipse at 50% 28%, rgba(184, 142, 244, 0.24), transparent 44%),
-    linear-gradient(180deg, rgba(58, 56, 104, 0.5), rgba(16, 13, 26, 0.88));
+  background-image: url("/assets/figure/npc/npc_magicshop_keeper.png");
 }
 
 .blackmarket-scene__body {
@@ -777,7 +786,7 @@ body {
   position: absolute;
   left: 214px;
   top: 58px;
-  width: 340px;
+  width: 378px;
   height: 300px;
   padding: 0;
   display: grid;
@@ -813,7 +822,7 @@ body {
 
 .blackmarket-scene__goods-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, 118px);
   grid-auto-rows: 118px;
   gap: 12px;
 }
@@ -845,17 +854,18 @@ body {
 
 .blackmarket-scene__ledger {
   position: absolute;
-  left: 648px;
+  left: 755px;
   top: 520px;
-  width: 848px;
-  height: 404px;
+  width: 808px;
+  height: 626px;
   padding: 24px 40px 28px;
   display: grid;
   grid-template-rows: auto auto 1fr;
   gap: 14px;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(191, 124, 54, 0.12), transparent 42%),
-    rgba(12, 9, 8, 0.72);
+  background: url("/assets/ui/shop/bg_shop_inventory_drawer.png") no-repeat left top;
+  background-size: 100% 100%;
+  z-index: 1;
+  animation: bm-slide-in-right 0.45s ease-out 0.2s both;
 }
 
 .blackmarket-scene__resources {
@@ -871,9 +881,9 @@ body {
   min-height: 0;
   overflow: auto;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(6, 116px);
   grid-auto-rows: 116px;
-  gap: 10px;
+  gap: 8px;
   padding-right: 4px;
 }
 
@@ -954,13 +964,14 @@ body {
 
 .right-rail {
   background: url("/assets/ui/bg_frame_side_menu.png") no-repeat top left;
-  background-size: 386px 1074px;
+  background-size: 386px 1080px;
 }
 
 .portrait-card {
   position: absolute;
-  padding: 18px;
-  background: linear-gradient(180deg, rgba(218, 195, 162, 0.72), rgba(187, 163, 130, 0.7));
+  padding: 0;
+  background: url("/assets/ui/right_rail/bg_right_portrait_resource_panel.png") no-repeat center;
+  background-size: 100% 100%;
   color: var(--text-dark);
   box-shadow: var(--shadow-soft);
 }
@@ -1060,93 +1071,51 @@ body {
   letter-spacing: 0.08em;
 }
 
-.bottom-hud {
-  background: url("/assets/ui/bg_frame_bottom_menu.png") no-repeat top left;
-  background-size: 1534px 100px;
-}
-
-.bottom-hud__resources,
-.xp-panel {
-  position: absolute;
-}
-
-.bottom-hud__resources {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
 .resource-chip {
-  height: 64px;
-  border-radius: 24px;
+  height: 42px;
   border: 1px solid rgba(99, 71, 44, 0.5);
-  background: rgba(48, 36, 28, 0.66);
+  background: rgba(48, 36, 28, 0.58);
   display: flex;
   align-items: center;
-  padding: 0 18px;
+  padding: 0 10px;
   box-shadow: none;
+  min-width: 0;
 }
 
 .resource-chip__icon {
-  width: 36px;
-  height: 36px;
-  margin-right: 14px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #ddbb74 0%, #9d6b24 100%);
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  flex: 0 0 auto;
+}
+
+.resource-chip--copper .resource-chip__icon {
+  background-image: url("/assets/ui/resource/icon_resource_copper.png");
+}
+
+.resource-chip--token .resource-chip__icon {
+  background-image: url("/assets/ui/resource/icon_resource_token.png");
+}
+
+.resource-chip--sandglass .resource-chip__icon {
+  background-image: url("/assets/ui/resource/icon_resource_sandglass.png");
+}
+
+.resource-chip--reputation .resource-chip__icon {
+  background-image: url("/assets/ui/resource/icon_resource_reputation.png");
 }
 
 .resource-chip__label {
-  font-size: 14px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
 .resource-chip__value {
-  font-size: 24px;
+  font-size: 18px;
   line-height: 1.1;
-}
-
-.xp-panel {
-  display: flex;
-  align-items: center;
-  padding: 0 18px;
-  border-radius: 22px;
-  border: 1px solid rgba(99, 71, 44, 0.45);
-  background: rgba(40, 29, 23, 0.72);
-  box-shadow: none;
-}
-
-.xp-panel__level {
-  width: 48px;
-  height: 48px;
-  margin-right: 14px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #d8ae69 0%, #996421 100%);
-  color: #2f1b0d;
-  display: grid;
-  place-items: center;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.xp-panel__bar {
-  position: relative;
-  flex: 1;
-  height: 18px;
-  margin-right: 14px;
-  border-radius: 999px;
-  background: #160f0a;
-  overflow: hidden;
-}
-
-.xp-panel__fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #996126 0%, #efc481 100%);
-}
-
-.xp-panel__text {
-  font-size: 24px;
 }
 
 .overlay-root {
@@ -1572,16 +1541,15 @@ body {
 
 .inventory-scene__grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, 116px);
+  grid-auto-rows: 116px;
+  gap: 12px;
   align-content: start;
 }
 
 .inventory-scene__cell {
-  min-height: 126px;
-  border: 1px solid rgba(119, 84, 47, 0.72);
-  background: rgba(9, 8, 7, 0.56);
-  padding: 8px;
+  min-height: 0;
+  padding: 0;
   display: grid;
   place-items: center;
 }
@@ -1609,19 +1577,14 @@ body {
 .character-panel__paper {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 50% 24%, rgba(205, 139, 61, 0.16), transparent 30%),
-    linear-gradient(180deg, rgba(71, 46, 28, 0.92), rgba(27, 19, 14, 0.96));
-  border: 2px solid rgba(102, 74, 46, 0.85);
-  box-shadow:
-    inset 0 0 0 4px rgba(235, 193, 120, 0.08),
-    var(--shadow-heavy);
+  background: url("/assets/ui/character_panel/bg_character_panel.jpg") no-repeat left top;
+  background-size: 100% 100%;
 }
 
 .character-panel__portrait-frame {
   position: absolute;
   left: 25.25%;
-  top: 2.25%;
+  top: 4.4%;
   width: 49.16%;
   height: 31.83%;
   border: 2px solid rgba(129, 91, 48, 0.84);
@@ -1688,7 +1651,7 @@ body {
 .character-panel__level-bar {
   position: absolute;
   left: 25.25%;
-  top: 35%;
+  top: 33.6%;
   width: 49.16%;
   height: 34px;
   border: 1px solid rgba(109, 78, 43, 0.7);
@@ -1713,33 +1676,88 @@ body {
 
 .character-panel__equip-slot {
   position: absolute;
-  width: 18.86%;
-  height: 12.64%;
+  width: 128px;
+  height: 128px;
   min-height: 0;
-  padding: 6px;
-  border: 1px solid rgba(118, 84, 47, 0.74);
-  background:
-    radial-gradient(circle at 50% 40%, rgba(207, 151, 75, 0.12), transparent 56%),
-    rgba(8, 7, 6, 0.72);
+  padding: 0;
+  border: 0;
+  background: black;
 }
 
-.character-panel__equip-slot--head { left: 3.03%; top: 2.7%; }
-.character-panel__equip-slot--body { left: 3.03%; top: 16.7%; }
-.character-panel__equip-slot--hands { left: 3.03%; top: 30.7%; }
-.character-panel__equip-slot--feet { left: 3.03%; top: 44.7%; }
-.character-panel__equip-slot--neck { left: 78.11%; top: 2.7%; }
-.character-panel__equip-slot--belt { left: 78.11%; top: 16.7%; }
-.character-panel__equip-slot--ring { left: 78.11%; top: 30.7%; }
-.character-panel__equip-slot--trinket { left: 78.11%; top: 44.7%; }
-.character-panel__equip-slot--weapon { left: 34.68%; top: 42%; }
-.character-panel__equip-slot--offHand { left: 54.88%; top: 42%; }
+.character-panel__equip-slot--head {
+  left: 8.42%;
+  top: 4.85%;
+}
+
+.character-panel__equip-slot--body {
+  left: 8.42%;
+  top: 16.59%;
+}
+
+.character-panel__equip-slot--hands {
+  left: 8.42%;
+  top: 28.33%;
+}
+
+.character-panel__equip-slot--feet {
+  left: 8.42%;
+  top: 40.18%;
+}
+
+.character-panel__equip-slot--neck {
+  left: 78.62%;
+  top: 4.85%;
+}
+
+.character-panel__equip-slot--belt {
+  left: 78.62%;
+  top: 16.59%;
+}
+
+.character-panel__equip-slot--ring {
+  left: 78.62%;
+  top: 28.33%;
+}
+
+.character-panel__equip-slot--trinket {
+  left: 78.62%;
+  top: 40.18%;
+}
+
+.character-panel__equip-slot--weapon {
+  left: 25.25%;
+  top: 42.66%;
+}
+
+.character-panel__equip-slot--offHand {
+  left: 42.59%;
+  top: 42.66%;
+}
 
 .character-panel__equip-slot .item-slot {
   padding: 8px;
+  background-image: none;
+  background-color: gray;
 }
 
-.character-panel__equip-slot .item-slot__name {
-  font-size: 13px;
+.character-panel__equip-slot .item-slot--empty-state {
+  box-shadow: none;
+}
+
+.character-panel__equip-slot .item-slot__empty,
+.character-panel__equip-slot .item-slot__label,
+.character-panel__equip-slot .item-slot__name,
+.character-panel__equip-slot .item-slot__stat {
+  display: none;
+}
+
+.character-panel__equip-slot .item-slot__icon {
+  width: 112px;
+  height: 112px;
+}
+
+.character-panel__equip-slot .item-slot--over {
+  background-image: url("/assets/ui/item_slot/slot_equipment_valid_drop.png");
 }
 
 .character-panel__tabs {
@@ -1890,18 +1908,43 @@ body {
 .item-slot {
   position: relative;
   width: 100%;
+  height: 100%;
   min-height: 100%;
   padding: 12px;
-  border: 1px solid rgba(124, 88, 48, 0.74);
-  background:
-    radial-gradient(circle at 50% 24%, rgba(223, 185, 112, 0.12), transparent 44%),
-    linear-gradient(180deg, rgba(62, 43, 27, 0.96), rgba(31, 22, 15, 0.96));
+  border: 0;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
   color: #fff1d4;
   display: grid;
   grid-template-rows: 1fr auto auto;
   align-items: center;
   justify-items: stretch;
   overflow: hidden;
+}
+
+.item-slot--equipment {
+  background-image: url("/assets/ui/item_slot/slot_equipment_empty.png");
+}
+
+.item-slot--inventory {
+  background-image: url("/assets/ui/item_slot/slot_inventory_empty.png");
+}
+
+.item-slot--shop {
+  background-image: url("/assets/ui/item_slot/slot_shop_goods_empty.png");
+}
+
+.item-slot--equipment:hover {
+  background-image: url("/assets/ui/item_slot/slot_equipment_hover.png");
+}
+
+.item-slot--inventory:hover {
+  background-image: url("/assets/ui/item_slot/slot_inventory_hover.png");
+}
+
+.item-slot--shop:hover {
+  background-image: url("/assets/ui/item_slot/slot_shop_goods_hover.png");
 }
 
 .item-slot--compact {
@@ -1911,9 +1954,18 @@ body {
 
 .item-slot--over {
   box-shadow: 0 0 0 2px rgba(208, 171, 103, 0.42) inset;
-  background:
-    radial-gradient(circle at 50% 24%, rgba(231, 196, 123, 0.2), transparent 46%),
-    linear-gradient(180deg, rgba(73, 51, 29, 0.9), rgba(31, 22, 15, 0.92));
+}
+
+.item-slot--equipment.item-slot--over {
+  background-image: url("/assets/ui/item_slot/slot_equipment_valid_drop.png");
+}
+
+.item-slot--inventory.item-slot--over {
+  background-image: url("/assets/ui/item_slot/slot_inventory_hover.png");
+}
+
+.item-slot--shop.item-slot--over {
+  background-image: url("/assets/ui/item_slot/slot_shop_goods_hover.png");
 }
 
 .item-slot--rarity-1 {
@@ -1947,13 +1999,16 @@ body {
   width: 46px;
   height: 46px;
   margin: 0 auto;
-  border: 1px solid rgba(196, 146, 73, 0.62);
-  background: rgba(10, 8, 7, 0.58);
   display: grid;
   place-items: center;
-  color: #e8bd78;
-  font-size: 24px;
   line-height: 1;
+}
+
+.item-slot__icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .item-slot__name {
@@ -2068,15 +2123,17 @@ body {
   border: 0;
   background: transparent;
   display: grid;
-  grid-template-columns: 124px 1fr;
-  gap: 16px;
-  align-items: center;
+  grid-template-columns: 116px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 18px 16px;
   cursor: pointer;
+  text-align: left;
 }
 
 .portrait-summary__avatar-frame {
-  width: 124px;
-  height: 164px;
+  width: 116px;
+  height: 132px;
   border: 1px solid rgba(51, 33, 21, 0.48);
   overflow: hidden;
 }
@@ -2088,21 +2145,35 @@ body {
 }
 
 .portrait-summary__name {
-  font-size: 34px;
+  margin-top: 4px;
+  font-size: 28px;
+  line-height: 1.05;
 }
 
 .portrait-summary__class {
-  margin-top: 8px;
-  font-size: 22px;
+  margin-top: 6px;
+  font-size: 17px;
   color: rgba(54, 32, 18, 0.85);
 }
 
 .portrait-summary__level-row {
-  margin-top: 12px;
+  margin-top: 8px;
   display: flex;
   justify-content: space-between;
   color: rgba(43, 28, 16, 0.86);
-  font-size: 18px;
+  font-size: 15px;
+}
+
+.portrait-summary__resources {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.portrait-summary__resources .resource-chip {
+  height: 38px;
+  padding: 0 8px;
 }
 
 .scene-close-button {
@@ -2696,4 +2767,23 @@ body {
   text-align: center;
   font-size: 28px;
   color: #f4e1bd;
+}
+
+/* ── 黑市场景入场动画（木质面板实物感，无淡入） ── */
+@keyframes bm-slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes bm-slide-in-right {
+  from {
+    transform: translateX(80px);
+  }
+  to {
+    transform: translateX(0);
+  }
 }

@@ -10,7 +10,21 @@ type ItemSlotProps = {
   label?: string;
   compact?: boolean;
   isDropTarget?: boolean;
+  variant?: 'equipment' | 'inventory' | 'shop';
   onItemTooltipChange?: (nextValue: ItemTooltipState | null) => void;
+};
+
+const ITEM_ICON_BY_SLOT: Record<EquipmentSlot, string> = {
+  head: '/assets/items/icons/item_head_placeholder.png',
+  body: '/assets/items/icons/item_body_placeholder.png',
+  hands: '/assets/items/icons/item_hands_placeholder.png',
+  feet: '/assets/items/icons/item_feet_placeholder.png',
+  neck: '/assets/items/icons/item_neck_placeholder.png',
+  belt: '/assets/items/icons/item_belt_placeholder.png',
+  ring: '/assets/items/icons/item_ring_placeholder.png',
+  trinket: '/assets/items/icons/item_trinket_placeholder.png',
+  weapon: '/assets/items/icons/item_weapon_placeholder.png',
+  offHand: '/assets/items/icons/item_offhand_placeholder.png',
 };
 
 function getItemStatLabel(item: EquipmentItem) {
@@ -34,10 +48,13 @@ export function ItemSlot({
   label,
   compact = false,
   isDropTarget = false,
+  variant,
   onItemTooltipChange,
 }: ItemSlotProps) {
   const className = [
     'item-slot',
+    variant ? `item-slot--${variant}` : '',
+    item ? 'item-slot--filled' : 'item-slot--empty-state',
     compact ? 'item-slot--compact' : '',
     isDropTarget ? 'item-slot--over' : '',
     getRarityClass(item),
@@ -73,7 +90,9 @@ export function ItemSlot({
       {label ? <div className="item-slot__label">{label}</div> : null}
       {item ? (
         <>
-          <div className="item-slot__icon">{item.name.slice(0, 1)}</div>
+          <div className="item-slot__icon">
+            <img alt="" src={ITEM_ICON_BY_SLOT[item.slot]} />
+          </div>
           <div className="item-slot__name">{item.name}</div>
           <div className="item-slot__stat">{getItemStatLabel(item)}</div>
           <div className="item-slot__badge item-slot__badge--gem" />
@@ -92,6 +111,7 @@ export function DraggableItemSlot({
   slot,
   label,
   compact = false,
+  variant,
   onItemTooltipChange,
 }: {
   item: EquipmentItem;
@@ -99,6 +119,7 @@ export function DraggableItemSlot({
   slot?: EquipmentSlot;
   label?: string;
   compact?: boolean;
+  variant?: ItemSlotProps['variant'];
   onItemTooltipChange?: (nextValue: ItemTooltipState | null) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -126,6 +147,7 @@ export function DraggableItemSlot({
         compact={compact}
         item={item}
         label={label}
+        variant={variant}
         onItemTooltipChange={isDragging ? undefined : onItemTooltipChange}
       />
     </div>

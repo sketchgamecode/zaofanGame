@@ -85,9 +85,9 @@ function InventoryDropCell({
   return (
     <div ref={setNodeRef} className={`blackmarket-scene__inventory-cell${isOver ? ' blackmarket-scene__inventory-cell--over' : ''}`}>
       {item ? (
-        <DraggableItemSlot compact item={item} source="inventory" onItemTooltipChange={onItemTooltipChange} />
+        <DraggableItemSlot compact item={item} source="inventory" variant="inventory" onItemTooltipChange={onItemTooltipChange} />
       ) : (
-        <ItemSlot compact isDropTarget={isOver} item={null} />
+        <ItemSlot compact isDropTarget={isOver} item={null} variant="inventory" />
       )}
     </div>
   );
@@ -148,6 +148,15 @@ function ShopScene({
   useEffect(() => {
     void loadMarket(false);
   }, [loadMarket]);
+
+  // 面板入场时播放木框滑动音效
+  useEffect(() => {
+    const audio = new Audio('/assets/audio/ui_panel_slide_in.ogg');
+    audio.volume = 0.6;
+    audio.play().catch(() => {
+      // 浏览器策略限制（页面未交互前无法自动播放），静默失败
+    });
+  }, []);
 
   const shopItems = useMemo(() => {
     const items = market?.items ?? [];
@@ -311,10 +320,11 @@ function ShopScene({
                             compact
                             item={item}
                             source="shop"
+                            variant="shop"
                             onItemTooltipChange={onItemTooltipChange}
                           />
                         ) : (
-                          <ItemSlot compact item={null} />
+                          <ItemSlot compact item={null} variant="shop" />
                         )}
                       </div>
                     ))}
@@ -328,8 +338,8 @@ function ShopScene({
 
           <aside className="blackmarket-scene__ledger">
             <div className="blackmarket-scene__resources">
-              <ResourceBadge label="铜钱" value={character.resources.copper} />
-              <ResourceBadge label="令牌" value={character.resources.tokens} />
+              <ResourceBadge label="铜钱" type="copper" value={character.resources.copper} />
+              <ResourceBadge label="令牌" type="token" value={character.resources.tokens} />
             </div>
             <div className="blackmarket-scene__inventory-head">
               <span>随身行囊</span>
@@ -351,7 +361,7 @@ function ShopScene({
         <DragOverlay>
           {activeItem ? (
             <div className="item-slot-overlay">
-              <ItemSlot compact item={activeItem} />
+              <ItemSlot compact item={activeItem} variant="inventory" />
             </div>
           ) : null}
         </DragOverlay>
