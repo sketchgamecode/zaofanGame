@@ -1,3 +1,11 @@
+/**
+ * BlackMarketScene.tsx
+ *
+ * 商店场景（兵器铺 / 奇珍阁）。
+ * 使用 DroppableSlot / DroppableDraggableSlot，无 onItemTooltipChange 传递链。
+ * Tooltip 由全局 tooltipStore 驱动。
+ */
+
 import {
   DndContext,
   DragOverlay,
@@ -9,15 +17,15 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { postGameAction } from '../api/gameApi';
 import { CharacterPanel } from '../components/character/CharacterPanel';
+import { DroppableDraggableSlot } from '../components/ui/DroppableSlot';
 import { DraggableItemSlot, ItemSlot } from '../components/ui/ItemSlot';
-import type { ItemTooltipState } from '../components/ui/ItemTooltip';
 import { ResourceBadge } from '../components/ui/ResourceBadge';
 import { formatCountdown } from '../lib/formatters';
 import { toActionErrorMessage } from '../lib/manualErrors';
+import { useItemTooltip } from '../state/tooltipStore';
 import { useGameState } from '../state/GameStateContext';
 import type {
   BlackMarketView,
@@ -50,66 +58,35 @@ function getShopNpc(shopType: ShopType) {
   return shopType === 'weapon' ? '铁瞎子' : '杜半仙';
 }
 
-function ShopDropZone({ children }: { children: ReactNode }) {
+// ── 出售拖拽区 ────────────────────────────────────────────────────
+function ShopSellZone({ children }: { children: React.ReactNode }) {
   const { isOver, setNodeRef } = useDroppable({
     id: 'shop-sell-zone',
-    data: {
-      type: 'shop-sell-zone',
-    },
+    data: { type: 'shop-sell-zone' },
   });
 
   return (
-    <div ref={setNodeRef} className={`blackmarket-scene__sell-zone${isOver ? ' blackmarket-scene__sell-zone--over' : ''}`}>
+    <div
+      ref={setNodeRef}
+      className={`blackmarket-scene__sell-zone${isOver ? ' blackmarket-scene__sell-zone--over' : ''}`}
+    >
       {children}
     </div>
   );
 }
 
-function InventoryDropCell({
-  index,
-  item,
-  onItemTooltipChange,
-}: {
-  index: number;
-  item: EquipmentItem | null;
-  onItemTooltipChange: (nextValue: ItemTooltipState | null) => void;
-}) {
-  const { isOver, setNodeRef } = useDroppable({
-    id: `shop-inventory-slot:${index}`,
-    data: {
-      type: 'inventory-slot',
-      index,
-    },
-  });
-
-  return (
-    <div ref={setNodeRef} className={`blackmarket-scene__inventory-cell${isOver ? ' blackmarket-scene__inventory-cell--over' : ''}`}>
-      {item ? (
-        <DraggableItemSlot compact item={item} source="inventory" variant="inventory" onItemTooltipChange={onItemTooltipChange} />
-      ) : (
-        <ItemSlot compact isDropTarget={isOver} item={null} variant="inventory" />
-      )}
-    </div>
-  );
-}
-
-type ShopSceneProps = {
-  onItemTooltipChange: (nextValue: ItemTooltipState | null) => void;
-};
-
-function ShopScene({
-  shopType,
-  onItemTooltipChange,
-}: {
-  shopType: ShopType;
-  onItemTooltipChange: (nextValue: ItemTooltipState | null) => void;
-}) {
+// ── 商店主体 ──────────────────────────────────────────────────────
+function ShopScene({ shopType }: { shopType: ShopType }) {
   const {
     character,
+    equipItem,
     pendingAction: characterPendingAction,
     refreshCharacterInfo,
+    unequipItem,
     upgradeAttribute,
   } = useGameState();
+  const { setTooltip } = useItemTooltip();
+
   const [market, setMarket] = useState<BlackMarketView | null>(null);
   const [activeItem, setActiveItem] = useState<EquipmentItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,23 +94,13 @@ function ShopScene({
   const [requestError, setRequestError] = useState<string | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 6,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 150,
-        tolerance: 8,
-      },
-    }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
   );
 
   const loadMarket = useCallback(async (force = false) => {
     setPendingAction(force ? 'REFRESH_BLACKMARKET_FORCE' : 'REFRESH_BLACKMARKET');
     setRequestError(null);
-
     try {
       const data = await postGameAction<BlackMarketView>('REFRESH_BLACKMARKET', { force });
       setMarket(data);
@@ -145,17 +112,13 @@ function ShopScene({
     }
   }, []);
 
-  useEffect(() => {
-    void loadMarket(false);
-  }, [loadMarket]);
+  useEffect(() => { void loadMarket(false); }, [loadMarket]);
 
-  // 面板入场时播放木框滑动音效
+  // 入场音效
   useEffect(() => {
     const audio = new Audio('/assets/audio/ui_panel_slide_in.ogg');
     audio.volume = 0.6;
-    audio.play().catch(() => {
-      // 浏览器策略限制（页面未交互前无法自动播放），静默失败
-    });
+    audio.play().catch(() => {});
   }, []);
 
   const shopItems = useMemo(() => {
@@ -163,27 +126,26 @@ function ShopScene({
     return items.filter((item) => getShopTypeForItem(item) === shopType).slice(0, 6);
   }, [market?.items, shopType]);
 
-  const shopSlots = Array.from({ length: 6 }, (_, index) => shopItems[index] ?? null);
-  const inventoryCapacity = character ? Math.max(character.inventory.capacity ?? 5, character.inventory.items.length, 10) : 10;
-  const inventoryItems = character ? Array.from({ length: inventoryCapacity }, (_, index) => character.inventory.items[index] ?? null) : [];
+  const shopSlots = Array.from({ length: 6 }, (_, i) => shopItems[i] ?? null);
+
+  const inventoryCapacity = character
+    ? Math.max(character.inventory.capacity ?? 5, character.inventory.items.length, 10)
+    : 10;
+  const inventoryItems = character
+    ? Array.from({ length: inventoryCapacity }, (_, i) => character.inventory.items[i] ?? null)
+    : [];
+
   const refreshCountdown = market ? formatCountdown(market.nextAutoRefreshMs) : '--:--';
 
   const applyRemainingMarketItems = (remainingItems: EquipmentItem[], nextAutoRefreshMs: number) => {
-    setMarket((previous) => (
-      previous
-        ? {
-            ...previous,
-            items: remainingItems,
-            nextAutoRefreshMs,
-          }
-        : previous
-    ));
+    setMarket((prev) =>
+      prev ? { ...prev, items: remainingItems, nextAutoRefreshMs } : prev,
+    );
   };
 
   const handleBuyToInventory = async (item: EquipmentItem) => {
     setPendingAction(`BUY_ITEM:${item.id}`);
     setRequestError(null);
-
     try {
       const data = await postGameAction<BuyItemView>('BUY_ITEM', { itemId: item.id });
       applyRemainingMarketItems(data.remainingItems, data.nextAutoRefreshMs);
@@ -198,7 +160,6 @@ function ShopScene({
   const handleBuyAndEquip = async (item: EquipmentItem) => {
     setPendingAction(`BUY_AND_EQUIP_ITEM:${item.id}`);
     setRequestError(null);
-
     try {
       const data = await postGameAction<BuyAndEquipView>('BUY_AND_EQUIP_ITEM', { itemId: item.id });
       applyRemainingMarketItems(data.remainingItems, data.nextAutoRefreshMs);
@@ -213,7 +174,6 @@ function ShopScene({
   const handleSell = async (item: EquipmentItem) => {
     setPendingAction(`SELL_ITEM:${item.id}`);
     setRequestError(null);
-
     try {
       await postGameAction<SellItemView>('SELL_ITEM', { itemId: item.id });
       await refreshCharacterInfo();
@@ -226,22 +186,20 @@ function ShopScene({
 
   const handleDragStart = (event: DragStartEvent) => {
     const item = event.active.data.current?.item as EquipmentItem | undefined;
-    onItemTooltipChange(null);
+    setTooltip(null);
     setActiveItem(item ?? null);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveItem(null);
-    onItemTooltipChange(null);
+    setTooltip(null);
 
     const item = event.active.data.current?.item as EquipmentItem | undefined;
     const source = event.active.data.current?.source as 'inventory' | 'equipment' | 'shop' | undefined;
     const targetType = event.over?.data.current?.type as 'equip-slot' | 'inventory-slot' | 'shop-sell-zone' | undefined;
     const targetSlot = event.over?.data.current?.slot as EquipmentSlot | undefined;
 
-    if (!item || !event.over || pendingAction) {
-      return;
-    }
+    if (!item || !event.over || pendingAction) return;
 
     if (source === 'shop' && targetType === 'inventory-slot') {
       void handleBuyToInventory(item);
@@ -250,6 +208,16 @@ function ShopScene({
 
     if (source === 'shop' && targetType === 'equip-slot' && targetSlot === item.slot) {
       void handleBuyAndEquip(item);
+      return;
+    }
+
+    if (source === 'inventory' && targetType === 'equip-slot' && targetSlot === item.slot) {
+      void equipItem(item.id);
+      return;
+    }
+
+    if (source === 'equipment' && targetType === 'inventory-slot') {
+      void unequipItem(item.slot);
       return;
     }
 
@@ -272,15 +240,17 @@ function ShopScene({
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
         <div className={`blackmarket-scene blackmarket-scene--${shopType}`}>
+
+          {/* 左侧角色面板 */}
           <div className="blackmarket-scene__character">
             <CharacterPanel
               character={character}
               pendingAction={characterPendingAction}
-              onItemTooltipChange={onItemTooltipChange}
               onUpgradeAttribute={upgradeAttribute}
             />
           </div>
 
+          {/* 右上商店货架 */}
           <section className={`blackmarket-scene__shop blackmarket-scene__shop--${shopType}`}>
             <header className="blackmarket-scene__shop-header">
               <div>
@@ -303,7 +273,7 @@ function ShopScene({
             </div>
 
             <div className="blackmarket-scene__body">
-              <ShopDropZone>
+              <ShopSellZone>
                 <div className="blackmarket-scene__goods-head">
                   <span>货架</span>
                   <span>免费刷新 {refreshCountdown}</span>
@@ -314,17 +284,14 @@ function ShopScene({
                 ) : (
                   <div className="blackmarket-scene__goods-grid">
                     {shopSlots.map((item, index) => (
-                      <div key={item?.id ?? `empty-shop-slot-${index}`} className="blackmarket-scene__goods-cell">
+                      <div
+                        key={item?.id ?? `empty-shop-slot-${index}`}
+                        className="blackmarket-scene__goods-cell"
+                      >
                         {item ? (
-                          <DraggableItemSlot
-                            compact
-                            item={item}
-                            source="shop"
-                            variant="shop"
-                            onItemTooltipChange={onItemTooltipChange}
-                          />
+                          <DraggableItemSlot item={item} source="shop" variant="shop" />
                         ) : (
-                          <ItemSlot compact item={null} variant="shop" />
+                          <ItemSlot item={null} variant="shop" />
                         )}
                       </div>
                     ))}
@@ -332,10 +299,11 @@ function ShopScene({
                 )}
 
                 <div className="blackmarket-scene__sell-copy">把背包或身上的装备拖到这里出售。</div>
-              </ShopDropZone>
+              </ShopSellZone>
             </div>
           </section>
 
+          {/* 右下背包抽屉 */}
           <aside className="blackmarket-scene__ledger">
             <div className="blackmarket-scene__resources">
               <ResourceBadge label="铜钱" type="copper" value={character.resources.copper} />
@@ -347,21 +315,25 @@ function ShopScene({
             </div>
             <div className="blackmarket-scene__inventory-grid">
               {inventoryItems.map((item, index) => (
-                <InventoryDropCell
+                <DroppableDraggableSlot
                   key={`shop-inventory-slot-${index}`}
-                  index={index}
+                  className="blackmarket-scene__inventory-cell"
+                  droppableId={`shop-inventory-slot:${index}`}
+                  droppableData={{ type: 'inventory-slot', index }}
                   item={item}
-                  onItemTooltipChange={onItemTooltipChange}
+                  source="inventory"
+                  variant="inventory"
                 />
               ))}
             </div>
           </aside>
         </div>
 
+        {/* 拖拽幽灵 */}
         <DragOverlay>
           {activeItem ? (
             <div className="item-slot-overlay">
-              <ItemSlot compact item={activeItem} variant="inventory" />
+              <ItemSlot item={activeItem} variant="inventory" />
             </div>
           ) : null}
         </DragOverlay>
@@ -370,14 +342,14 @@ function ShopScene({
   );
 }
 
-export function WeaponShopScene({ onItemTooltipChange }: ShopSceneProps) {
-  return <ShopScene shopType="weapon" onItemTooltipChange={onItemTooltipChange} />;
+export function WeaponShopScene() {
+  return <ShopScene shopType="weapon" />;
 }
 
-export function MagicShopScene({ onItemTooltipChange }: ShopSceneProps) {
-  return <ShopScene shopType="magic" onItemTooltipChange={onItemTooltipChange} />;
+export function MagicShopScene() {
+  return <ShopScene shopType="magic" />;
 }
 
-export function BlackMarketScene({ onItemTooltipChange }: ShopSceneProps) {
-  return <ShopScene shopType="weapon" onItemTooltipChange={onItemTooltipChange} />;
+export function BlackMarketScene() {
+  return <ShopScene shopType="weapon" />;
 }

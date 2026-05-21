@@ -11,14 +11,13 @@ body {
 .manual-shell {
   width: 100vw;
   height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 16px;
+  overflow: auto;
+  background:
+    radial-gradient(circle at top, rgba(120, 78, 36, 0.2), transparent 30%),
+    linear-gradient(180deg, #120d09 0%, #060504 100%);
 }
 
-.manual-stage-viewport {
-  position: relative;
-}
+/* manual-stage-viewport 已删除，改为全屏容器直接内嵌 fixed stage */
 
 .manual-stage {
   position: relative;
@@ -700,6 +699,7 @@ body {
   inset: 16px 18px auto 18px;
   height: 52px;
   display: block;
+  z-index: 3;
 }
 
 .blackmarket-scene__title {
@@ -780,6 +780,7 @@ body {
 .blackmarket-scene__body {
   position: absolute;
   inset: 0;
+  z-index: 2;
 }
 
 .blackmarket-scene__sell-zone {
@@ -822,14 +823,15 @@ body {
 
 .blackmarket-scene__goods-grid {
   display: grid;
-  grid-template-columns: repeat(3, 118px);
-  grid-auto-rows: 118px;
+  grid-template-columns: repeat(3, 128px);
+  grid-auto-rows: 128px;
   gap: 12px;
 }
 
 .blackmarket-scene__goods-cell,
 .blackmarket-scene__inventory-cell {
-  min-height: 0;
+  width: 128px;
+  height: 128px;
 }
 
 .blackmarket-scene__loading {
@@ -881,14 +883,10 @@ body {
   min-height: 0;
   overflow: auto;
   display: grid;
-  grid-template-columns: repeat(6, 116px);
-  grid-auto-rows: 116px;
+  grid-template-columns: repeat(6, 128px);
+  grid-auto-rows: 128px;
   gap: 8px;
   padding-right: 4px;
-}
-
-.blackmarket-scene__inventory-cell--over {
-  box-shadow: 0 0 0 2px rgba(208, 171, 103, 0.42) inset;
 }
 
 .character-board {
@@ -1171,6 +1169,145 @@ body {
   line-height: 1.7;
   letter-spacing: 0.04em;
   color: rgba(247, 223, 192, 0.82);
+}
+
+.debug-page {
+  height: 100vh;
+  min-height: 100vh;
+  overflow: auto;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background:
+    radial-gradient(circle at top, rgba(150, 94, 42, 0.2), transparent 34%),
+    linear-gradient(180deg, #120d09 0%, #060504 100%);
+}
+
+.debug-panel {
+  width: min(620px, calc(100vw - 40px));
+  padding: 30px;
+  border: 2px solid rgba(128, 87, 47, 0.78);
+  background: rgba(23, 16, 12, 0.94);
+  box-shadow: var(--shadow-heavy);
+}
+
+.debug-panel__eyebrow {
+  color: rgba(247, 223, 192, 0.62);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.debug-panel__title {
+  margin: 8px 0 22px;
+  color: #fff2d6;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.debug-panel__status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+  padding: 0 18px;
+  border: 1px solid rgba(117, 83, 46, 0.72);
+  background: rgba(12, 9, 7, 0.72);
+  color: rgba(247, 223, 192, 0.78);
+}
+
+.debug-panel__status strong {
+  color: #ffe2a8;
+  font-size: 28px;
+}
+
+.debug-panel__status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.debug-panel__multiplier-group {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(117, 83, 46, 0.42);
+}
+
+.debug-panel__group-title {
+  color: #f4e1bd;
+  font-size: 18px;
+}
+
+.debug-panel__presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.debug-panel__preset,
+.debug-panel__submit {
+  border: 1px solid rgba(117, 83, 46, 0.82);
+  color: #fff2d6;
+  cursor: pointer;
+}
+
+.debug-panel__preset {
+  min-height: 42px;
+  background: rgba(52, 39, 31, 0.96);
+}
+
+.debug-panel__preset:hover,
+.debug-panel__submit:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.debug-panel__field {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+  color: rgba(247, 223, 192, 0.78);
+}
+
+.debug-panel__field input {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1px solid rgba(117, 83, 46, 0.72);
+  background: rgba(12, 9, 7, 0.82);
+  color: #fff2d6;
+  font: inherit;
+}
+
+.debug-panel__submit {
+  width: 100%;
+  min-height: 54px;
+  margin-top: 18px;
+  background: linear-gradient(180deg, rgba(178, 118, 59, 0.98), rgba(122, 67, 31, 0.98));
+  font-size: 18px;
+}
+
+.debug-panel__submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.debug-panel__message {
+  margin-top: 16px;
+  padding: 12px 14px;
+  line-height: 1.6;
+}
+
+.debug-panel__message--error {
+  border: 1px solid rgba(191, 72, 57, 0.62);
+  background: rgba(96, 31, 24, 0.34);
+  color: #ffd0c5;
+}
+
+.debug-panel__message--success {
+  border: 1px solid rgba(116, 162, 78, 0.62);
+  background: rgba(45, 76, 32, 0.34);
+  color: #e1ffc8;
 }
 
 .auth-screen__panel,
@@ -1541,28 +1678,21 @@ body {
 
 .inventory-scene__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 116px);
-  grid-auto-rows: 116px;
+  grid-template-columns: repeat(auto-fill, 128px);
+  grid-auto-rows: 128px;
   gap: 12px;
   align-content: start;
 }
 
 .inventory-scene__cell {
-  min-height: 0;
-  padding: 0;
-  display: grid;
-  place-items: center;
+  width: 128px;
+  height: 128px;
 }
 
-.inventory-scene__cell--over,
+/* 拖放高亮由 ItemSlot .item-slot--over 处理，此处仅保留装备槽 over 态 */
 .character-panel__equip-slot--over {
   box-shadow: 0 0 0 2px rgba(208, 171, 103, 0.42) inset;
   background: rgba(73, 51, 29, 0.36);
-}
-
-.inventory-scene__empty {
-  color: rgba(247, 223, 192, 0.34);
-  letter-spacing: 0.12em;
 }
 
 .character-panel {
@@ -1581,58 +1711,114 @@ body {
   background-size: 100% 100%;
 }
 
-.character-panel__portrait-frame {
+.character-panel__portrait-card {
   position: absolute;
   left: 25.25%;
   top: 4.4%;
   width: 49.16%;
-  height: 31.83%;
-  border: 2px solid rgba(129, 91, 48, 0.84);
-  background:
-    radial-gradient(circle at 50% 16%, rgba(226, 174, 96, 0.14), transparent 46%),
-    rgba(12, 10, 9, 0.82);
+}
+
+.character-portrait-card {
+  position: relative;
+  aspect-ratio: 368 / 351;
+  overflow: hidden;
+  background: url("/assets/ui/character_portrait_card/character_portrait_card_frame_bg.png") no-repeat center;
+  background-size: 100% 100%;
+  color: #f8ead0;
+}
+
+.character-portrait-card__avatar {
+  position: absolute;
+  left: 6%;
+  bottom: 42px;
+  width: 76%;
+  height: 80%;
+  object-fit: cover;
+  object-position: center bottom;
+}
+
+.character-portrait-card__title,
+.character-portrait-card__name {
+  position: absolute;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  display: flex;
+  align-items: center;
+  color: #f5e6c8;
+  text-shadow: 0 2px 2px rgba(0, 0, 0, 0.72);
+}
+
+.character-portrait-card__title {
+  right: 61px;
+  top: 20px;
+  width: 36px;
+  height: 107px;
+  padding: 7px 0;
+  background: url("/assets/ui/character_portrait_card/vertical_title_bg.png") no-repeat center;
+  background-size: 100% 100%;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.character-portrait-card__name {
+  right: 20px;
+  top: 20px;
+  width: 36px;
+  min-height: 195px;
+  padding: 9px 0;
+  background: url("/assets/ui/character_portrait_card/vertical_name_bg.png") no-repeat top center;
+  background-size: 100% 100%;
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.character-portrait-card__xp-bar {
+  position: absolute;
+  left: 14px;
+  right: 13px;
+  bottom: 10px;
+  height: 46px;
+  background: url("/assets/ui/character_portrait_card/exp_process_bg.png") no-repeat center;
+  background-size: 100% 100%;
   overflow: hidden;
 }
 
-.character-panel__portrait {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.character-portrait-card__xp-fill {
+  position: absolute;
+  left: 16px;
+  top: 9px;
+  bottom: 9px;
+  max-width: calc(100% - 20px);
+  background: linear-gradient(180deg, #bdf044 0%, #8fca2e 100%);
 }
 
-.character-panel__info-button {
+.character-portrait-card__xp-bar span {
   position: absolute;
-  right: 8px;
-  top: 8px;
-  width: 38px;
-  height: 46px;
-  border: 1px solid rgba(152, 111, 59, 0.8);
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(238, 199, 119, 0.96), rgba(135, 84, 36, 0.96));
-  color: #2b180d;
-  cursor: pointer;
-  font-size: 26px;
-  font-weight: 700;
-}
-
-.character-panel__nameplate {
-  position: absolute;
-  left: 6%;
-  right: 6%;
-  bottom: 12px;
+  inset: 0;
   display: grid;
   place-items: center;
-  min-height: 48px;
-  background: linear-gradient(180deg, rgba(41, 27, 17, 0.88), rgba(14, 10, 8, 0.82));
-  border: 1px solid rgba(126, 88, 45, 0.72);
-  color: #f4e1bd;
-  font-size: 24px;
-  text-align: center;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.58),
+    0 -1px 0 rgba(0, 0, 0, 0.45);
 }
 
-.character-panel__nameplate small {
-  color: #d5ad72;
-  font-size: 14px;
+.character-portrait-card__info-button {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(37, 28, 17, 0.78);
+  border-radius: 50%;
+  background: rgba(36, 28, 17, 0.82);
+  color: #ead5ae;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
 }
 
 .portrait-summary__xp-bar {
@@ -1648,117 +1834,26 @@ body {
   background: linear-gradient(90deg, #8b5824 0%, #ebb56a 100%);
 }
 
-.character-panel__level-bar {
-  position: absolute;
-  left: 25.25%;
-  top: 33.6%;
-  width: 49.16%;
-  height: 34px;
-  border: 1px solid rgba(109, 78, 43, 0.7);
-  background: rgba(9, 8, 7, 0.84);
-  overflow: hidden;
-}
-
-.character-panel__xp-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #8b5824 0%, #ebb56a 100%);
-}
-
-.character-panel__level-bar span {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: #fff0ce;
-  font-size: 18px;
-  text-shadow: 0 1px 2px #000;
-}
-
+/* ── CharacterPanel 装备槽 ──────────────────────────────────────────
+   所有格子统一 128×128px，使用百分比定位于面板容器内。
+   不需要对内部 .item-slot 做任何额外覆盖，尺寸由外层容器决定。
+──────────────────────────────────────────────────────────────── */
 .character-panel__equip-slot {
   position: absolute;
   width: 128px;
   height: 128px;
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  background: black;
 }
 
-.character-panel__equip-slot--head {
-  left: 8.42%;
-  top: 4.85%;
-}
-
-.character-panel__equip-slot--body {
-  left: 8.42%;
-  top: 16.59%;
-}
-
-.character-panel__equip-slot--hands {
-  left: 8.42%;
-  top: 28.33%;
-}
-
-.character-panel__equip-slot--feet {
-  left: 8.42%;
-  top: 40.18%;
-}
-
-.character-panel__equip-slot--neck {
-  left: 78.62%;
-  top: 4.85%;
-}
-
-.character-panel__equip-slot--belt {
-  left: 78.62%;
-  top: 16.59%;
-}
-
-.character-panel__equip-slot--ring {
-  left: 78.62%;
-  top: 28.33%;
-}
-
-.character-panel__equip-slot--trinket {
-  left: 78.62%;
-  top: 40.18%;
-}
-
-.character-panel__equip-slot--weapon {
-  left: 25.25%;
-  top: 42.66%;
-}
-
-.character-panel__equip-slot--offHand {
-  left: 42.59%;
-  top: 42.66%;
-}
-
-.character-panel__equip-slot .item-slot {
-  padding: 8px;
-  background-image: none;
-  background-color: gray;
-}
-
-.character-panel__equip-slot .item-slot--empty-state {
-  box-shadow: none;
-}
-
-.character-panel__equip-slot .item-slot__empty,
-.character-panel__equip-slot .item-slot__label,
-.character-panel__equip-slot .item-slot__name,
-.character-panel__equip-slot .item-slot__stat {
-  display: none;
-}
-
-.character-panel__equip-slot .item-slot__icon {
-  width: 112px;
-  height: 112px;
-}
-
-.character-panel__equip-slot .item-slot--over {
-  background-image: url("/assets/ui/item_slot/slot_equipment_valid_drop.png");
-}
+.character-panel__equip-slot--head    { left: 5%;  top: 4.85%;  }
+.character-panel__equip-slot--body    { left: 5%;  top: 17.59%; }
+.character-panel__equip-slot--hands   { left: 5%;  top: 30.33%; }
+.character-panel__equip-slot--feet    { left: 5%;  top: 43.18%; }
+.character-panel__equip-slot--neck    { left: 78.62%; top: 4.85%;  }
+.character-panel__equip-slot--belt    { left: 78.62%; top: 17.59%; }
+.character-panel__equip-slot--ring    { left: 78.62%; top: 30.33%; }
+.character-panel__equip-slot--trinket { left: 78.62%; top: 43.18%; }
+.character-panel__equip-slot--weapon  { left: 30.25%; top: 43.66%; }
+.character-panel__equip-slot--offHand { left: 52.59%; top: 43.66%; }
 
 .character-panel__tabs {
   position: absolute;
@@ -1889,6 +1984,12 @@ body {
   height: 9.26%;
 }
 
+/* ════════════════════════════════════════════════════════════════
+   ItemSlot 通用原子组件
+   所有场景物品格统一 128×128px 基准尺寸。
+   不再有 name/stat/label/empty 文字渲染（信息在 Tooltip 中展示）。
+════════════════════════════════════════════════════════════════ */
+
 .item-slot-drag-handle {
   width: 100%;
   height: 100%;
@@ -1900,29 +2001,34 @@ body {
   cursor: grabbing;
 }
 
+/* 拖拽幽灵（DragOverlay 内渲染） */
 .item-slot-overlay {
-  width: 180px;
-  min-height: 110px;
+  width: 128px;
+  height: 128px;
+  pointer-events: none;
 }
 
+/* ── 基础格子 ────────────────────────────────────────────────── */
 .item-slot {
   position: relative;
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
-  padding: 12px;
-  border: 0;
+  width: 128px;
+  height: 128px;
   background-repeat: no-repeat;
   background-position: center;
   background-size: 100% 100%;
-  color: #fff1d4;
-  display: grid;
-  grid-template-rows: 1fr auto auto;
-  align-items: center;
-  justify-items: stretch;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* compact 模式（目前仅保留为 DragOverlay 等特殊用途缩小尺寸） */
+.item-slot--compact {
+  width: 80px;
+  height: 80px;
+}
+
+/* ── 背景底纹（空槽 / hover / over） ─────────────────────────── */
 .item-slot--equipment {
   background-image: url("/assets/ui/item_slot/slot_equipment_empty.png");
 }
@@ -1935,23 +2041,22 @@ body {
   background-image: url("/assets/ui/item_slot/slot_shop_goods_empty.png");
 }
 
-.item-slot--equipment:hover {
+.item-slot--equipment:hover,
+.item-slot--equipment.item-slot--filled:hover {
   background-image: url("/assets/ui/item_slot/slot_equipment_hover.png");
 }
 
-.item-slot--inventory:hover {
+.item-slot--inventory:hover,
+.item-slot--inventory.item-slot--filled:hover {
   background-image: url("/assets/ui/item_slot/slot_inventory_hover.png");
 }
 
-.item-slot--shop:hover {
+.item-slot--shop:hover,
+.item-slot--shop.item-slot--filled:hover {
   background-image: url("/assets/ui/item_slot/slot_shop_goods_hover.png");
 }
 
-.item-slot--compact {
-  min-height: 72px;
-  padding: 8px;
-}
-
+/* ── 拖放目标高亮 ────────────────────────────────────────────── */
 .item-slot--over {
   box-shadow: 0 0 0 2px rgba(208, 171, 103, 0.42) inset;
 }
@@ -1968,40 +2073,27 @@ body {
   background-image: url("/assets/ui/item_slot/slot_shop_goods_hover.png");
 }
 
-.item-slot--rarity-1 {
-  border-color: rgba(116, 165, 104, 0.78);
+/* ── 拖拽中（本体降透明度） ──────────────────────────────────── */
+.item-slot--dragging {
+  opacity: 0.25;
 }
 
-.item-slot--rarity-2 {
-  border-color: rgba(104, 137, 212, 0.78);
-}
-
-.item-slot--rarity-3 {
-  border-color: rgba(181, 99, 217, 0.82);
-}
-
+/* ── 稀有度边框 ──────────────────────────────────────────────── */
+.item-slot--rarity-1 { border: 1px solid rgba(116, 165, 104, 0.78); }
+.item-slot--rarity-2 { border: 1px solid rgba(104, 137, 212, 0.78); }
+.item-slot--rarity-3 { border: 1px solid rgba(181, 99,  217, 0.82); }
 .item-slot--rarity-4 {
-  border-color: rgba(228, 170, 58, 0.88);
+  border: 1px solid rgba(228, 170, 58, 0.88);
   box-shadow: 0 0 16px rgba(222, 156, 49, 0.22) inset;
 }
 
-.item-slot__label {
-  position: absolute;
-  right: 8px;
-  top: 6px;
-  z-index: 2;
-  font-size: 12px;
-  letter-spacing: 0.14em;
-  color: rgba(247, 223, 192, 0.46);
-}
-
+/* ── 物品 Icon ───────────────────────────────────────────────── */
 .item-slot__icon {
-  width: 46px;
-  height: 46px;
-  margin: 0 auto;
-  display: grid;
-  place-items: center;
-  line-height: 1;
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .item-slot__icon img {
@@ -2009,49 +2101,28 @@ body {
   height: 100%;
   object-fit: contain;
   display: block;
+  pointer-events: none;
 }
 
-.item-slot__name {
-  margin-top: 8px;
-  font-size: 18px;
-  line-height: 1.25;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.item-slot__stat {
-  margin-top: 6px;
-  color: rgba(247, 223, 192, 0.7);
-  font-size: 14px;
-  line-height: 1.2;
-}
-
-.item-slot__empty {
-  align-self: center;
-  justify-self: center;
-  color: rgba(247, 223, 192, 0.34);
-  letter-spacing: 0.12em;
-}
-
+/* ── 角标（宝石/符文），绝对定位 ──────────────────────────────── */
 .item-slot__badge {
   position: absolute;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border: 1px solid rgba(234, 202, 137, 0.38);
   background: rgba(12, 9, 7, 0.72);
   opacity: 0.5;
 }
 
 .item-slot__badge--gem {
-  right: 6px;
-  bottom: 6px;
+  right: 5px;
+  bottom: 5px;
   transform: rotate(45deg);
 }
 
 .item-slot__badge--rune {
-  left: 6px;
-  bottom: 6px;
+  left: 5px;
+  bottom: 5px;
   border-radius: 50%;
 }
 
@@ -2091,26 +2162,58 @@ body {
 .item-tooltip {
   position: absolute;
   z-index: 20;
-  width: 280px;
+  width: 300px;
   padding: 14px 16px;
   border: 1px solid rgba(118, 84, 47, 0.84);
   background: rgba(12, 10, 9, 0.96);
   box-shadow: var(--shadow-heavy);
   pointer-events: none;
+  user-select: none;
 }
 
 .item-tooltip__name {
-  font-size: 22px;
+  font-size: 20px;
+  color: #f4e1bd;
+}
+
+/* 稀有度颜色 */
+.item-tooltip__name--rarity-1 { color: #7fc46a; }
+.item-tooltip__name--rarity-2 { color: #7091e6; }
+.item-tooltip__name--rarity-3 { color: #c870e8; }
+.item-tooltip__name--rarity-4 { color: #e8b43a; }
+
+.item-tooltip__rarity {
+  margin-top: 2px;
+  font-size: 13px;
+  color: rgba(247, 223, 192, 0.55);
+  letter-spacing: 0.08em;
+}
+
+.item-tooltip__divider {
+  margin: 8px 0;
+  height: 1px;
+  background: rgba(118, 84, 47, 0.45);
 }
 
 .item-tooltip__line {
-  margin-top: 8px;
+  margin-top: 5px;
   font-size: 14px;
   line-height: 1.5;
+  color: #f4e1bd;
 }
 
 .item-tooltip__line--muted {
-  color: rgba(247, 223, 192, 0.72);
+  color: rgba(247, 223, 192, 0.65);
+}
+
+.item-tooltip__line--flavor {
+  color: rgba(247, 223, 192, 0.55);
+  font-style: italic;
+}
+
+.item-tooltip__line--price {
+  color: #e8b43a;
+  margin-top: 8px;
 }
 
 .right-nav__button--disabled {
@@ -2774,6 +2877,7 @@ body {
   from {
     transform: translateX(-100%);
   }
+
   to {
     transform: translateX(0);
   }
@@ -2783,6 +2887,7 @@ body {
   from {
     transform: translateX(80px);
   }
+
   to {
     transform: translateX(0);
   }

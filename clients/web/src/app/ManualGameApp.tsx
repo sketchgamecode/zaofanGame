@@ -1,8 +1,15 @@
+/**
+ * ManualGameApp.tsx
+ *
+ * 应用根组件。TooltipProvider 挂载在最外层，所有子组件可通过 useItemTooltip() 访问全局 tooltip。
+ */
+
 import { useState } from 'react';
 import { AuthScreen } from '../components/AuthScreen';
 import { CharacterCreationScreen } from '../components/creation/CharacterCreationScreen';
-import type { ItemTooltipState } from '../components/ui/ItemTooltip';
+import { TooltipProvider } from '../state/tooltipStore';
 import { GameStateProvider, useGameState } from '../state/GameStateContext';
+import { DebugConfigPage } from './DebugConfigPage';
 import { OverlayRoot } from '../stage/OverlayRoot';
 import { RightRail } from '../stage/RightRail';
 import { RootStage } from '../stage/RootStage';
@@ -12,11 +19,9 @@ import type { SceneId } from '../types/game';
 function ManualGameShell() {
   const { authLoading, bootLoading, character, errorMessage, session, saveState, signOut } = useGameState();
   const [sceneId, setSceneId] = useState<SceneId>('city');
-  const [itemTooltip, setItemTooltip] = useState<ItemTooltipState | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const handleSceneChange = (nextSceneId: SceneId) => {
-    setItemTooltip(null);
     setSceneId(nextSceneId);
   };
 
@@ -53,36 +58,43 @@ function ManualGameShell() {
     <RootStage>
       <SceneViewport
         sceneId={sceneId}
-        onItemTooltipChange={setItemTooltip}
         onRequestClose={() => {
-          setItemTooltip(null);
           if (sceneId === 'city') {
             setShowLogoutConfirm(true);
             return;
           }
-
           setSceneId('city');
         }}
         onSceneChange={handleSceneChange}
       />
-      <RightRail activeSceneId={sceneId} onInventoryOpen={() => handleSceneChange('inventory')} onSceneChange={handleSceneChange} />
+      <RightRail
+        activeSceneId={sceneId}
+        onInventoryOpen={() => handleSceneChange('inventory')}
+        onSceneChange={handleSceneChange}
+      />
       <OverlayRoot
-        itemTooltip={itemTooltip}
+        showLogoutConfirm={showLogoutConfirm}
         onCancelLogout={() => setShowLogoutConfirm(false)}
         onConfirmLogout={() => {
           setShowLogoutConfirm(false);
           void signOut();
         }}
-        showLogoutConfirm={showLogoutConfirm}
       />
     </RootStage>
   );
 }
 
 export function ManualGameApp() {
+  if (window.location.pathname === '/debug') {
+    return <DebugConfigPage />;
+  }
+
   return (
-    <GameStateProvider>
-      <ManualGameShell />
-    </GameStateProvider>
+    // TooltipProvider 挂在最外层，确保 DndContext 内的 ItemSlot 和 OverlayRoot 都能访问
+    <TooltipProvider>
+      <GameStateProvider>
+        <ManualGameShell />
+      </GameStateProvider>
+    </TooltipProvider>
   );
 }

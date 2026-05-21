@@ -1,19 +1,19 @@
-import { ItemTooltip, type ItemTooltipState } from '../components/ui/ItemTooltip';
+/**
+ * OverlayRoot.tsx
+ *
+ * 全局覆盖层。ItemTooltip 从 useItemTooltip() 读取状态，不接收 props。
+ */
+
+import { ItemTooltip } from '../components/ui/ItemTooltip';
 import { StandardModal } from '../components/ui/StandardModal';
 
 type OverlayRootProps = {
-  itemTooltip: ItemTooltipState | null;
   showLogoutConfirm: boolean;
   onConfirmLogout: () => void;
   onCancelLogout: () => void;
 };
 
-export function OverlayRoot({
-  itemTooltip,
-  showLogoutConfirm,
-  onConfirmLogout,
-  onCancelLogout,
-}: OverlayRootProps) {
+export function OverlayRoot({ showLogoutConfirm, onConfirmLogout, onCancelLogout }: OverlayRootProps) {
   return (
     <div className="overlay-root">
       {showLogoutConfirm ? (
@@ -26,7 +26,8 @@ export function OverlayRoot({
           onConfirm={onConfirmLogout}
         />
       ) : null}
-      {itemTooltip ? <ItemTooltip tooltip={itemTooltip} /> : null}
+      {/* ItemTooltip 直接读取全局 tooltipStore，无需 props */}
+      <ItemTooltip />
     </div>
   );
 }

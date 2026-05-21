@@ -1,11 +1,17 @@
-import { useDroppable } from '@dnd-kit/core';
+/**
+ * CharacterPanel.tsx
+ *
+ * 角色信息主面板，跨场景复用组件（背包、商店等）。
+ * 使用 DroppableSlot + ItemSlot，不再自持 tooltip 状态。
+ */
+
 import { CLASS_META, getAvatarUrl } from '../../config/characterCatalog';
 import { getNextLevelXp } from '../../config/xpTable';
+import { DroppableSlot } from '../ui/DroppableSlot';
 import { DraggableItemSlot, ItemSlot } from '../ui/ItemSlot';
-import type { ItemTooltipState } from '../ui/ItemTooltip';
+import { CharacterPortraitCard } from './CharacterPortraitCard';
 import {
   ATTRIBUTE_KEYS,
-  EQUIPMENT_SLOT_LABELS,
   EQUIPMENT_SLOTS,
   type AttributeKey,
   type CharacterInfoView,
@@ -17,16 +23,12 @@ type CharacterPanelProps = {
   character: CharacterInfoView;
   pendingAction: string | null;
   onUpgradeAttribute: (attribute: AttributeKey) => void;
-  onItemTooltipChange: (nextValue: ItemTooltipState | null) => void;
 };
 
 function getDerivedStat(character: CharacterInfoView, key: AttributeKey) {
   switch (key) {
     case 'strength':
-      return {
-        label: 'DEFENSE',
-        value: `${character.combatPreview.armor}`,
-      };
+      return { label: 'DEFENSE', value: `${character.combatPreview.armor}` };
     case 'agility':
       return {
         label: 'DODGE',
@@ -52,47 +54,32 @@ function getDerivedStat(character: CharacterInfoView, key: AttributeKey) {
   }
 }
 
+// ── 装备槽格子 ────────────────────────────────────────────────────
 function EquipmentSlotCell({
   slot,
   item,
-  onItemTooltipChange,
-  className,
 }: {
   slot: EquipmentSlot;
   item: EquipmentItem | null;
-  onItemTooltipChange: CharacterPanelProps['onItemTooltipChange'];
-  className?: string;
 }) {
-  const { isOver, setNodeRef } = useDroppable({
-    id: `equip-slot:${slot}`,
-    data: {
-      type: 'equip-slot',
-      slot,
-    },
-  });
-
   return (
-    <div
-      ref={setNodeRef}
-      className={`character-panel__equip-slot character-panel__equip-slot--${slot}${className ? ` ${className}` : ''}${isOver ? ' character-panel__equip-slot--over' : ''}`}
+    <DroppableSlot
+      className={`character-panel__equip-slot character-panel__equip-slot--${slot}`}
+      droppableId={`equip-slot:${slot}`}
+      data={{ type: 'equip-slot', slot }}
     >
-      {item ? (
-        <DraggableItemSlot
-          compact
-          item={item}
-          label={EQUIPMENT_SLOT_LABELS[slot]}
-          slot={slot}
-          source="equipment"
-          variant="equipment"
-          onItemTooltipChange={onItemTooltipChange}
-        />
-      ) : (
-        <ItemSlot compact isDropTarget={isOver} item={null} label={EQUIPMENT_SLOT_LABELS[slot]} variant="equipment" />
-      )}
-    </div>
+      {(isOver) =>
+        item ? (
+          <DraggableItemSlot item={item} slot={slot} source="equipment" variant="equipment" />
+        ) : (
+          <ItemSlot isOver={isOver} item={null} variant="equipment" />
+        )
+      }
+    </DroppableSlot>
   );
 }
 
+// ── 属性行 ────────────────────────────────────────────────────────
 function StatRow({
   character,
   attribute,
@@ -138,9 +125,9 @@ function StatRow({
       </div>
       <button
         className="character-panel__upgrade"
-        type="button"
         disabled={!canUpgrade}
         title={`升级消耗 ${upgradeCost} 铜钱`}
+        type="button"
         onClick={() => onUpgradeAttribute(attribute)}
       >
         +
@@ -149,12 +136,8 @@ function StatRow({
   );
 }
 
-export function CharacterPanel({
-  character,
-  pendingAction,
-  onUpgradeAttribute,
-  onItemTooltipChange,
-}: CharacterPanelProps) {
+// ── CharacterPanel ────────────────────────────────────────────────
+export function CharacterPanel({ character, pendingAction, onUpgradeAttribute }: CharacterPanelProps) {
   const classMeta = CLASS_META[character.player.classId];
   const nextLevelXp = getNextLevelXp(character.player.level);
   const xpProgress = Math.min(1, Math.max(0, character.player.exp / Math.max(1, nextLevelXp)));
@@ -162,33 +145,27 @@ export function CharacterPanel({
   return (
     <section className="character-panel">
       <div className="character-panel__paper">
-        <div className="character-panel__portrait-frame">
-          <img
-            alt={character.player.displayName || '角色头像'}
-            className="character-panel__portrait"
-            src={getAvatarUrl(character.player.avatarId)}
-          />
-          <button className="character-panel__info-button" type="button">i</button>
-          <div className="character-panel__nameplate">
-            <div>{character.player.displayName || '无名好汉'}</div>
-            <small>{classMeta.name}</small>
-          </div>
-        </div>
+        <CharacterPortraitCard
+          avatarUrl={getAvatarUrl(character.player.avatarId)}
+          className="character-panel__portrait-card"
+          level={character.player.level}
+          name={character.player.displayName || '无名好汉'}
+          rankText={`江湖排名 ${character.combatPreview.combatRating}`}
+          showInfoButton
+          title={classMeta.name}
+          xpProgress={xpProgress}
+        />
 
-        <div className="character-panel__level-bar">
-          <div className="character-panel__xp-fill" style={{ width: `${xpProgress * 100}%` }} />
-          <span>Level {character.player.level}</span>
-        </div>
-
+        {/* 装备槽 */}
         {EQUIPMENT_SLOTS.map((slot) => (
           <EquipmentSlotCell
             key={slot}
-            slot={slot}
             item={character.equipment.equipped[slot]}
-            onItemTooltipChange={onItemTooltipChange}
+            slot={slot}
           />
         ))}
 
+        {/* 页签 */}
         <div className="character-panel__tabs">
           <button className="character-panel__tab character-panel__tab--active" type="button">ATTRIBUTES</button>
           <button className="character-panel__tab" type="button">DESCRIPTION</button>
@@ -196,6 +173,7 @@ export function CharacterPanel({
           <button className="character-panel__tab" type="button">INTERACTIONS</button>
         </div>
 
+        {/* 属性区 */}
         <div className="character-panel__stats-grid">
           <div className="character-panel__stats-column">
             {ATTRIBUTE_KEYS.slice(0, 3).map((attribute) => (
@@ -208,7 +186,6 @@ export function CharacterPanel({
               />
             ))}
           </div>
-
           <div className="character-panel__stats-column">
             {ATTRIBUTE_KEYS.slice(3).map((attribute) => (
               <StatRow
@@ -219,7 +196,6 @@ export function CharacterPanel({
                 onUpgradeAttribute={onUpgradeAttribute}
               />
             ))}
-
             <div className="character-panel__stat-row character-panel__stat-row--static">
               <div className="character-panel__stat-main">
                 <div className="character-panel__stat-head">
@@ -228,7 +204,12 @@ export function CharacterPanel({
                 </div>
                 <div className="character-panel__stat-derived">
                   <span>DAMAGE RED.</span>
-                  <span>{Math.min(classMeta.armorCap, Math.floor(character.combatPreview.armor / Math.max(1, character.player.level)))}%</span>
+                  <span>
+                    {Math.min(
+                      classMeta.armorCap,
+                      Math.floor(character.combatPreview.armor / Math.max(1, character.player.level)),
+                    )}%
+                  </span>
                 </div>
                 <div className="character-panel__stat-breakdown">
                   <span>Combat Rating</span>
@@ -240,6 +221,7 @@ export function CharacterPanel({
           </div>
         </div>
 
+        {/* 底部药水槽 */}
         <div className="character-panel__bottom-slots">
           <div className="character-panel__potion-slot" />
           <div className="character-panel__potion-slot" />

@@ -1,12 +1,22 @@
-# Frontend Layout Spec V1
+﻿# Frontend Layout Spec V1
 Status: Draft
 Designer Intent Source: User concept art + Codex implementation scaffold
 Implementation Allowed: Yes
-Current Version: V1.2
+Current Version: V1.3
 
 ---
 
 ## 0. Version History
+
+### V1.3 - 2026-05-17
+
+对比 `clients/web` 实际实现，纠偏以下信息：
+
+1. **CharacterPanel 坐标蓝图**：从"基准 `594x886` 绝对像素"改为"百分比定位实现说明"。装备槽统一 `128×128px`，位置由百分比值定位。
+2. **Shop 坐标蓝图**：纠正 `ShopCharacterPanel` (`655->755px` 宽，无外部偏移)、`ShopStage` (顶部 `y:42->0`)、`ShopInventoryDrawer` (高度 `518->626`) 的实际值。
+3. **ItemSlot 原子化完成**：统一 `128×128px`，移除文字渲染，全局 tooltip store，droppable 封装。
+4. **RootStage 缩放移除**：删除 CSS `transform: scale()` 自适应逻辑，修复历史拖拽坐标偏移。
+5. **Section §7 Next Step** 更新为当前阶段目标。
 
 ### V1.2 - 2026-05-14
 
@@ -149,19 +159,19 @@ Current Version: V1.2
 3. 两者可以共用同一个内部 `ShopScene` 实现，但对玩家必须表现为两个不同店铺、不同 NPC、不同背景的拜访场景。
 4. `CityScene` 地标入口和右侧 `RightRail` 导航按钮都可以持续新增对应入口。
 
-Shop Scene 坐标蓝图（基于 `SceneViewport 1534x1080`）：
+Shop Scene 坐标蓝图（V1.3 实际 CSS 值，基于 `SceneViewport 1534x1080`）：
 
 | Zone | X | Y | W | H | 说明 |
 | :--- | ---: | ---: | ---: | ---: | :--- |
-| `ShopCharacterPanel` | 24 | 42 | 654 | 976 | 左侧角色面板，按 `594x886` 等比放大，避免无底栏后左下空白 |
-| `ShopStage` | 688 | 42 | 808 | 454 | 右上店铺舞台，包含背景、NPC、商品和刷新按钮 |
+| `ShopCharacterPanel` | 0 | 0 | 755 | 1080 | 左侧角色面板，紧贴左上，无外部偏移，占满全高 |
+| `ShopStage` | 755 | 0 | 779 | 454 | 右上店铺舞台，紧贴顶部，无偏移 |
 | `ShopTitle` | 1006 | 58 | 300 | 44 | 店铺标题 |
 | `ShopInfoButton` | 1434 | 62 | 44 | 44 | 信息按钮，占位 |
 | `ShopNpc` | 1230 | 152 | 210 | 294 | NPC 立绘区域 |
-| `ShopGoodsGrid` | 920 | 100 | 378 | 300 | 2*3 商品格，单格 `118x118` |
+| `ShopGoodsGrid` | +214 | +58 | 3x128 | 2x128 | 3列2行商品格，单格 `128x128` |
 | `ShopRefreshButton` | 1014 | 412 | 292 | 66 | “换批货 · 1 令牌” |
-| `ShopInventoryDrawer` | 688 | 520 | 808 | 518 | 右下背包抽屉，V1.2 后向下延展填补移除 BottomHud 后的高度 |
-| `ShopInventoryGrid` | 728 | 612 | 704 | 364 | 背包格，可滚动，单格 `116x116` |
+| `ShopInventoryDrawer` | 755 | 520 | 808 | 626 | 右下背包抽屉，高度向下延展至底部 |
+| `ShopInventoryGrid` | — | — | 6x128 | — | 6列背包格，单格 `128x128` |
 | `ShopSellDropZone` | 728 | 866 | 704 | 44 | 出售拖拽区域，临时保留在商店舞台和背包抽屉交界处 |
 
 数据契约：
@@ -225,14 +235,23 @@ Figma 不是运行时 UI 编辑器，也不应被当作工程双向同步源。
 
 ---
 
-## 7. Immediate Next Step
+## 7. Immediate Next Step (V1.3 当前阶段)
 
-在当前骨架基础上，下一步建议优先做：
+### V1.0~V1.2 阶段已完成
 
-1. 按 V1.1 蓝图重构 `CharacterPanel`，优先复刻 Shakes & Fidget 的角色面板构图。
-2. 将 `BlackMarketScene` 拆成 `WeaponShopScene` 与 `MagicShopScene` 两个入口。
+1. 按 S&F 蓝图重构 `CharacterPanel`，装备槽围绕中央头像布局。
+2. 将 `BlackMarketScene` 拆分为 `WeaponShopScene` 与 `MagicShopScene` 两个独立场景。
 3. 为 `RightRail` 与 `CityScene` 新增两个店铺入口。
-4. 保留现有服务端 action 对接，但将视觉结构从 app tab 修正为两个独立 NPC 店铺场景。
+4. `ItemSlot` 原子化重构：`128x128px` 统一尺寸，移除文字渲染，全局 tooltip store，droppable 封装。
+5. 移除 CSS `transform: scale()` 自适应缩放，修复历史拖拽坐标偏移。
+
+### V1.3+ 当前阶段目标
+
+1. **场景布局精修**：各场景在固定 `1920x1080` 画布下重新校准区块尺寸，128x128 格子精确落位。
+2. **美术资源接入**：正式 PNG 替换 slot 占位图，接入 NPC 立绘和场景背景高清版。
+3. **CharacterPanel 精修**：验证装备槽百分比定位与角色头像框视觉对齐。
+4. **Tooltip 联动高亮**：Hover 背包物品时，对应装备槽高亮；属性对比差值 UI。
+5. **拖拽扩展**：从装备槽拖到背包（卸装）、背包格互换位置。
 
 ---
 
@@ -377,7 +396,7 @@ UI 布局 (Layout)
 1. `docs/design/03_external_reports/s&f_screenshot/common/charaterPanel/lowlevelcharacter.jfif`
 2. `docs/design/03_external_reports/s&f_screenshot/common/charaterPanel/highlevelcharacter.jfif`
 
-CharacterPanel 坐标蓝图（基准尺寸 `594x886`）：
+CharacterPanel 定位说明（V1.3 实现，百分比定位）：
 
 | Zone | X | Y | W | H | 说明 |
 | :--- | ---: | ---: | ---: | ---: | :--- |
