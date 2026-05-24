@@ -7,6 +7,7 @@
 
 import { CLASS_META, getAvatarUrl } from '../../config/characterCatalog';
 import { getNextLevelXp } from '../../config/xpTable';
+import { useItemTooltip } from '../../state/tooltipStore';
 import { DroppableSlot } from '../ui/DroppableSlot';
 import { DraggableItemSlot, ItemSlot } from '../ui/ItemSlot';
 import { CharacterPortraitCard } from './CharacterPortraitCard';
@@ -21,6 +22,7 @@ import {
 
 type CharacterPanelProps = {
   character: CharacterInfoView;
+  highlightedEquipmentSlot?: EquipmentSlot | null;
   pendingAction: string | null;
   onUpgradeAttribute: (attribute: AttributeKey) => void;
 };
@@ -28,25 +30,25 @@ type CharacterPanelProps = {
 function getDerivedStat(character: CharacterInfoView, key: AttributeKey) {
   switch (key) {
     case 'strength':
-      return { label: 'DEFENSE', value: `${character.combatPreview.armor}` };
+      return { label: '护身', value: `${character.combatPreview.armor}` };
     case 'agility':
       return {
-        label: 'DODGE',
+        label: '闪避',
         value: `${((character.combatPreview.dodgeChanceBp ?? 0) / 100).toFixed(2)}%`,
       };
     case 'intelligence':
       return {
-        label: 'DAMAGE',
+        label: '杀伤',
         value: `${character.combatPreview.damageMin} - ${character.combatPreview.damageMax}`,
       };
     case 'constitution':
       return {
-        label: 'HIT POINTS',
+        label: '气血',
         value: `${character.combatPreview.hp.toLocaleString()}`,
       };
     case 'luck':
       return {
-        label: 'CRITICAL HIT',
+        label: '会心',
         value: `${(character.combatPreview.critChanceBp / 100).toFixed(2)}%`,
       };
     default:
@@ -56,23 +58,31 @@ function getDerivedStat(character: CharacterInfoView, key: AttributeKey) {
 
 // ── 装备槽格子 ────────────────────────────────────────────────────
 function EquipmentSlotCell({
+  highlighted,
   slot,
   item,
 }: {
+  highlighted: boolean;
   slot: EquipmentSlot;
   item: EquipmentItem | null;
 }) {
   return (
     <DroppableSlot
-      className={`character-panel__equip-slot character-panel__equip-slot--${slot}`}
+      className={`character-panel__equip-slot character-panel__equip-slot--${slot}${highlighted ? ' character-panel__equip-slot--hint' : ''}`}
       droppableId={`equip-slot:${slot}`}
       data={{ type: 'equip-slot', slot }}
     >
       {(isOver) =>
         item ? (
-          <DraggableItemSlot item={item} slot={slot} source="equipment" variant="equipment" />
+          <DraggableItemSlot
+            isHighlighted={highlighted || isOver}
+            item={item}
+            slot={slot}
+            source="equipment"
+            variant="equipment"
+          />
         ) : (
-          <ItemSlot isOver={isOver} item={null} variant="equipment" />
+          <ItemSlot isHighlighted={highlighted} isOver={isOver} item={null} variant="equipment" />
         )
       }
     </DroppableSlot>
@@ -98,11 +108,11 @@ function StatRow({
   const upgradeCost = character.attributes.upgradeCosts[attribute];
   const canUpgrade = character.resources.copper >= upgradeCost && pendingAction === null;
   const labelMap: Record<AttributeKey, string> = {
-    strength: 'STRENGTH',
-    intelligence: 'INTELLIGENCE',
-    agility: 'DEXTERITY',
-    constitution: 'CONSTITUTION',
-    luck: 'LUCK',
+    strength: '膂力',
+    intelligence: '谋略',
+    agility: '身法',
+    constitution: '根骨',
+    luck: '气运',
   };
 
   return (
@@ -119,8 +129,8 @@ function StatRow({
           </div>
         ) : null}
         <div className="character-panel__stat-breakdown">
-          <span>Basis {base}</span>
-          <span>Equipment {equipment >= 0 ? `+${equipment}` : equipment}</span>
+          <span>根基 {base}</span>
+          <span>装备 {equipment >= 0 ? `+${equipment}` : equipment}</span>
         </div>
       </div>
       <button
@@ -137,10 +147,17 @@ function StatRow({
 }
 
 // ── CharacterPanel ────────────────────────────────────────────────
-export function CharacterPanel({ character, pendingAction, onUpgradeAttribute }: CharacterPanelProps) {
+export function CharacterPanel({
+  character,
+  highlightedEquipmentSlot = null,
+  pendingAction,
+  onUpgradeAttribute,
+}: CharacterPanelProps) {
+  const { tooltip } = useItemTooltip();
   const classMeta = CLASS_META[character.player.classId];
   const nextLevelXp = getNextLevelXp(character.player.level);
   const xpProgress = Math.min(1, Math.max(0, character.player.exp / Math.max(1, nextLevelXp)));
+  const activeHighlightedSlot = highlightedEquipmentSlot ?? tooltip?.item.slot ?? null;
 
   return (
     <section className="character-panel">
@@ -160,6 +177,7 @@ export function CharacterPanel({ character, pendingAction, onUpgradeAttribute }:
         {EQUIPMENT_SLOTS.map((slot) => (
           <EquipmentSlotCell
             key={slot}
+            highlighted={activeHighlightedSlot === slot}
             item={character.equipment.equipped[slot]}
             slot={slot}
           />
@@ -167,10 +185,10 @@ export function CharacterPanel({ character, pendingAction, onUpgradeAttribute }:
 
         {/* 页签 */}
         <div className="character-panel__tabs">
-          <button className="character-panel__tab character-panel__tab--active" type="button">ATTRIBUTES</button>
-          <button className="character-panel__tab" type="button">DESCRIPTION</button>
-          <button className="character-panel__tab" type="button">INFO</button>
-          <button className="character-panel__tab" type="button">INTERACTIONS</button>
+          <button className="character-panel__tab character-panel__tab--active" type="button">本领</button>
+          <button className="character-panel__tab" type="button">传记</button>
+          <button className="character-panel__tab" type="button">情报</button>
+          <button className="character-panel__tab" type="button">往来</button>
         </div>
 
         {/* 属性区 */}
@@ -199,11 +217,11 @@ export function CharacterPanel({ character, pendingAction, onUpgradeAttribute }:
             <div className="character-panel__stat-row character-panel__stat-row--static">
               <div className="character-panel__stat-main">
                 <div className="character-panel__stat-head">
-                  <span>ARMOR</span>
+                  <span>甲胄</span>
                   <span>{character.combatPreview.armor}</span>
                 </div>
                 <div className="character-panel__stat-derived">
-                  <span>DAMAGE RED.</span>
+                  <span>减伤</span>
                   <span>
                     {Math.min(
                       classMeta.armorCap,
@@ -212,7 +230,7 @@ export function CharacterPanel({ character, pendingAction, onUpgradeAttribute }:
                   </span>
                 </div>
                 <div className="character-panel__stat-breakdown">
-                  <span>Combat Rating</span>
+                  <span>战力评定</span>
                   <span>{character.combatPreview.combatRating}</span>
                 </div>
               </div>

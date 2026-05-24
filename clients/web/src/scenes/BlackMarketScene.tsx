@@ -82,6 +82,7 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
     equipItem,
     pendingAction: characterPendingAction,
     refreshCharacterInfo,
+    runServerAction,
     unequipItem,
     upgradeAttribute,
   } = useGameState();
@@ -102,7 +103,10 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
     setPendingAction(force ? 'REFRESH_BLACKMARKET_FORCE' : 'REFRESH_BLACKMARKET');
     setRequestError(null);
     try {
-      const data = await postGameAction<BlackMarketView>('REFRESH_BLACKMARKET', { force });
+      const data = await runServerAction(
+        force ? 'REFRESH_BLACKMARKET_FORCE' : 'REFRESH_BLACKMARKET',
+        () => postGameAction<BlackMarketView>('REFRESH_BLACKMARKET', { force }),
+      );
       setMarket(data);
     } catch (error) {
       setRequestError(toActionErrorMessage(error, '黑市货单读取失败。'));
@@ -110,7 +114,7 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
       setLoading(false);
       setPendingAction(null);
     }
-  }, []);
+  }, [runServerAction]);
 
   useEffect(() => { void loadMarket(false); }, [loadMarket]);
 
@@ -147,9 +151,12 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
     setPendingAction(`BUY_ITEM:${item.id}`);
     setRequestError(null);
     try {
-      const data = await postGameAction<BuyItemView>('BUY_ITEM', { itemId: item.id });
+      const data = await runServerAction(`BUY_ITEM:${item.id}`, async () => {
+        const result = await postGameAction<BuyItemView>('BUY_ITEM', { itemId: item.id });
+        await refreshCharacterInfo();
+        return result;
+      });
       applyRemainingMarketItems(data.remainingItems, data.nextAutoRefreshMs);
-      await refreshCharacterInfo();
     } catch (error) {
       setRequestError(toActionErrorMessage(error, '买入失败。'));
     } finally {
@@ -161,9 +168,12 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
     setPendingAction(`BUY_AND_EQUIP_ITEM:${item.id}`);
     setRequestError(null);
     try {
-      const data = await postGameAction<BuyAndEquipView>('BUY_AND_EQUIP_ITEM', { itemId: item.id });
+      const data = await runServerAction(`BUY_AND_EQUIP_ITEM:${item.id}`, async () => {
+        const result = await postGameAction<BuyAndEquipView>('BUY_AND_EQUIP_ITEM', { itemId: item.id });
+        await refreshCharacterInfo();
+        return result;
+      });
       applyRemainingMarketItems(data.remainingItems, data.nextAutoRefreshMs);
-      await refreshCharacterInfo();
     } catch (error) {
       setRequestError(toActionErrorMessage(error, '购买并穿戴失败。'));
     } finally {
@@ -175,8 +185,10 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
     setPendingAction(`SELL_ITEM:${item.id}`);
     setRequestError(null);
     try {
-      await postGameAction<SellItemView>('SELL_ITEM', { itemId: item.id });
-      await refreshCharacterInfo();
+      await runServerAction(`SELL_ITEM:${item.id}`, async () => {
+        await postGameAction<SellItemView>('SELL_ITEM', { itemId: item.id });
+        await refreshCharacterInfo();
+      });
     } catch (error) {
       setRequestError(toActionErrorMessage(error, '出售失败。'));
     } finally {
@@ -245,6 +257,7 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
           <div className="blackmarket-scene__character">
             <CharacterPanel
               character={character}
+              highlightedEquipmentSlot={activeItem?.slot ?? null}
               pendingAction={characterPendingAction}
               onUpgradeAttribute={upgradeAttribute}
             />
@@ -289,7 +302,12 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
                         className="blackmarket-scene__goods-cell"
                       >
                         {item ? (
-                          <DraggableItemSlot item={item} source="shop" variant="shop" />
+                          <DraggableItemSlot
+                            compareItem={character.equipment.equipped[item.slot]}
+                            item={item}
+                            source="shop"
+                            variant="shop"
+                          />
                         ) : (
                           <ItemSlot item={null} variant="shop" />
                         )}

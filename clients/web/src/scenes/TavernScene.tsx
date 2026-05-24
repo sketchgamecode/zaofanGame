@@ -149,7 +149,7 @@ function buildSettlementRewardSlots(data: CompleteMissionData): RewardSlot[] {
 }
 
 export function TavernScene() {
-  const { refreshCharacterInfo } = useGameState();
+  const { refreshCharacterInfo, runServerAction } = useGameState();
   const [tavernData, setTavernData] = useState<TavernInfoData | null>(null);
   const [loading, setLoading] = useState(true);
   const [requestError, setRequestError] = useState<string | null>(null);
@@ -186,14 +186,17 @@ export function TavernScene() {
     setRequestError(null);
 
     try {
-      const snapshot = await postGameAction<TavernInfoData>('TAVERN_GET_INFO');
+      const snapshot = await runServerAction(
+        'TAVERN_GET_INFO',
+        () => postGameAction<TavernInfoData>('TAVERN_GET_INFO'),
+      );
       applyTavernSnapshot(snapshot);
     } catch (error) {
       setRequestError(toActionErrorMessage(error, '客栈情报读取失败。'));
     } finally {
       setLoading(false);
     }
-  }, [applyTavernSnapshot]);
+  }, [applyTavernSnapshot, runServerAction]);
 
   useEffect(() => {
     void loadTavern();
@@ -262,7 +265,11 @@ export function TavernScene() {
     setRequestError(null);
 
     try {
-      const data = await postGameAction<CompleteMissionData>(action);
+      const data = await runServerAction(action, async () => {
+        const result = await postGameAction<CompleteMissionData>(action);
+        await refreshCharacterInfo().catch(() => {});
+        return result;
+      });
       setTavernData((previous) => (
         previous
           ? {
@@ -285,14 +292,13 @@ export function TavernScene() {
         setSettlementData(data);
       }
 
-      void refreshCharacterInfo().catch(() => {});
     } catch (error) {
       autoResolveMissionIdRef.current = null;
       setRequestError(toActionErrorMessage(error, '任务结算失败。'));
     } finally {
       setLoadingAction(null);
     }
-  }, [activeMission, loadingAction, missionPresentation, refreshCharacterInfo]);
+  }, [activeMission, loadingAction, missionPresentation, refreshCharacterInfo, runServerAction]);
 
   useEffect(() => {
     if (!activeMission || settlementData || loadingAction) {
@@ -333,10 +339,13 @@ export function TavernScene() {
     setRequestError(null);
 
     try {
-      const snapshot = await postGameAction<TavernInfoData>('START_MISSION', {
-        missionId: selectedOffer.missionId,
-        offerSetId: selectedOffer.offerSetId,
-      });
+      const snapshot = await runServerAction(
+        'START_MISSION',
+        () => postGameAction<TavernInfoData>('START_MISSION', {
+          missionId: selectedOffer.missionId,
+          offerSetId: selectedOffer.offerSetId,
+        }),
+      );
       setMissionPresentation(createPresentationFromOffer(selectedOffer));
       applyTavernSnapshot(snapshot);
       setPanelOpen(false);
@@ -360,7 +369,10 @@ export function TavernScene() {
     setRequestError(null);
 
     try {
-      const data = await postGameAction<MailSaveMissionReplayData>('MAIL_SAVE_MISSION_REPLAY');
+      const data = await runServerAction(
+        'MAIL_SAVE_MISSION_REPLAY',
+        () => postGameAction<MailSaveMissionReplayData>('MAIL_SAVE_MISSION_REPLAY'),
+      );
       setReplaySaved(true);
       if (!data.alreadySaved) {
         setSettlementData((previous) => (

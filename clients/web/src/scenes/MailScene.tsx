@@ -3,6 +3,7 @@ import { postGameAction } from '../api/gameApi';
 import { BattleReplay } from '../components/combat/BattleReplay';
 import { formatTimestamp } from '../lib/formatters';
 import { toActionErrorMessage } from '../lib/manualErrors';
+import { useGameState } from '../state/GameStateContext';
 import type {
   BattleReplayListItem,
   BattleReplayRecord,
@@ -20,6 +21,7 @@ const CONTEXT_LABELS: Record<BattleReplayRecord['context'], string> = {
 };
 
 export function MailScene() {
+  const { runServerAction } = useGameState();
   const [replays, setReplays] = useState<BattleReplayListItem[]>([]);
   const [selectedReplayId, setSelectedReplayId] = useState<string | null>(null);
   const [selectedReplay, setSelectedReplay] = useState<BattleReplayRecord | null>(null);
@@ -33,7 +35,10 @@ export function MailScene() {
     setRequestError(null);
 
     try {
-      const data = await postGameAction<MailBattleReplayListData>('MAIL_GET_BATTLE_REPLAYS', { limit: 50 });
+      const data = await runServerAction(
+        'MAIL_GET_BATTLE_REPLAYS',
+        () => postGameAction<MailBattleReplayListData>('MAIL_GET_BATTLE_REPLAYS', { limit: 50 }),
+      );
       setReplays(data.replays);
       setSelectedReplayId((previous) => previous ?? data.replays[0]?.replayId ?? null);
     } catch (error) {
@@ -41,7 +46,7 @@ export function MailScene() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [runServerAction]);
 
   useEffect(() => {
     void loadReplays();
@@ -57,7 +62,10 @@ export function MailScene() {
     setPendingAction('MAIL_GET_BATTLE_REPLAY');
     setRequestError(null);
 
-    void postGameAction<MailBattleReplayData>('MAIL_GET_BATTLE_REPLAY', { replayId: selectedReplayId })
+    void runServerAction(
+      'MAIL_GET_BATTLE_REPLAY',
+      () => postGameAction<MailBattleReplayData>('MAIL_GET_BATTLE_REPLAY', { replayId: selectedReplayId }),
+    )
       .then((data) => {
         if (!controller.signal.aborted) {
           setSelectedReplay(data.replay);
@@ -75,7 +83,7 @@ export function MailScene() {
       });
 
     return () => controller.abort();
-  }, [selectedReplayId]);
+  }, [runServerAction, selectedReplayId]);
 
   const handleDelete = async () => {
     if (!selectedReplay) {
@@ -87,9 +95,12 @@ export function MailScene() {
     setRequestError(null);
 
     try {
-      const data = await postGameAction<MailDeleteBattleReplayData>('MAIL_DELETE_BATTLE_REPLAY', {
-        replayId: replayIdToDelete,
-      });
+      const data = await runServerAction(
+        'MAIL_DELETE_BATTLE_REPLAY',
+        () => postGameAction<MailDeleteBattleReplayData>('MAIL_DELETE_BATTLE_REPLAY', {
+          replayId: replayIdToDelete,
+        }),
+      );
       const nextReplays = replays.filter((item) => item.replayId !== data.replayId);
       setReplays(nextReplays);
       setSelectedReplayId((current) => (current !== data.replayId ? current : nextReplays[0]?.replayId ?? null));

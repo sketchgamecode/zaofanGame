@@ -23,7 +23,7 @@ type ArenaPlaybackState = {
 };
 
 export function ArenaScene() {
-  const { refreshCharacterInfo } = useGameState();
+  const { refreshCharacterInfo, runServerAction } = useGameState();
   const [info, setInfo] = useState<ArenaGetInfoData | null>(null);
   const [loading, setLoading] = useState(true);
   const [requestError, setRequestError] = useState<string | null>(null);
@@ -42,14 +42,17 @@ export function ArenaScene() {
     setRequestError(null);
 
     try {
-      const data = await postGameAction<ArenaGetInfoData>('ARENA_GET_INFO');
+      const data = await runServerAction(
+        'ARENA_GET_INFO',
+        () => postGameAction<ArenaGetInfoData>('ARENA_GET_INFO'),
+      );
       applyArenaSnapshot(data);
     } catch (error) {
       setRequestError(toActionErrorMessage(error, '校场情报读取失败。'));
     } finally {
       setLoading(false);
     }
-  }, [applyArenaSnapshot]);
+  }, [applyArenaSnapshot, runServerAction]);
 
   useEffect(() => {
     void loadArena();
@@ -72,7 +75,10 @@ export function ArenaScene() {
     setRequestError(null);
 
     try {
-      const data = await postGameAction<ArenaRefreshCandidatesData>('ARENA_REFRESH_CANDIDATES');
+      const data = await runServerAction(
+        'ARENA_REFRESH_CANDIDATES',
+        () => postGameAction<ArenaRefreshCandidatesData>('ARENA_REFRESH_CANDIDATES'),
+      );
       setInfo((previous) => (
         previous
           ? {
@@ -90,7 +96,7 @@ export function ArenaScene() {
     } finally {
       setPendingAction(null);
     }
-  }, []);
+  }, [runServerAction]);
 
   const handleFight = useCallback(async (candidate: ArenaOpponentPreview) => {
     const candidateSetId = info?.arena.candidateSetId ?? null;
@@ -98,9 +104,15 @@ export function ArenaScene() {
     setRequestError(null);
 
     try {
-      const data = await postGameAction<ArenaFightData>('ARENA_FIGHT', {
-        targetPlayerId: candidate.playerId,
-        candidateSetId,
+      const data = await runServerAction(`ARENA_FIGHT:${candidate.playerId}`, async () => {
+        const result = await postGameAction<ArenaFightData>('ARENA_FIGHT', {
+          targetPlayerId: candidate.playerId,
+          candidateSetId,
+        });
+        const refreshed = await postGameAction<ArenaGetInfoData>('ARENA_GET_INFO');
+        applyArenaSnapshot(refreshed);
+        await refreshCharacterInfo().catch(() => {});
+        return result;
       });
       setPlayback({
         battleResult: data.battleResult,
@@ -109,22 +121,23 @@ export function ArenaScene() {
         rankDelta: data.rankDelta,
         result: data.result,
       });
-      const refreshed = await postGameAction<ArenaGetInfoData>('ARENA_GET_INFO');
-      applyArenaSnapshot(refreshed);
-      void refreshCharacterInfo().catch(() => {});
     } catch (error) {
       setRequestError(toActionErrorMessage(error, '挑战失败。'));
     } finally {
       setPendingAction(null);
     }
-  }, [info?.arena.candidateSetId, refreshCharacterInfo]);
+  }, [applyArenaSnapshot, info?.arena.candidateSetId, refreshCharacterInfo, runServerAction]);
 
   const handleSkipCooldown = useCallback(async () => {
     setPendingAction('ARENA_SKIP_COOLDOWN');
     setRequestError(null);
 
     try {
-      const data = await postGameAction<ArenaSkipCooldownData>('ARENA_SKIP_COOLDOWN');
+      const data = await runServerAction('ARENA_SKIP_COOLDOWN', async () => {
+        const result = await postGameAction<ArenaSkipCooldownData>('ARENA_SKIP_COOLDOWN');
+        await refreshCharacterInfo().catch(() => {});
+        return result;
+      });
       setInfo((previous) => (
         previous
           ? {
@@ -141,13 +154,12 @@ export function ArenaScene() {
           : previous
       ));
       setCooldownRemainingMs(0);
-      void refreshCharacterInfo().catch(() => {});
     } catch (error) {
       setRequestError(toActionErrorMessage(error, '跳过冷却失败。'));
     } finally {
       setPendingAction(null);
     }
-  }, [refreshCharacterInfo]);
+  }, [refreshCharacterInfo, runServerAction]);
 
   const candidates = info?.arena.candidates ?? [];
   const canFight = cooldownRemainingMs <= 0;

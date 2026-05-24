@@ -14,6 +14,7 @@ import type { EquipmentItem } from '../types/game';
 
 export type ItemTooltipState = {
   item: EquipmentItem;
+  compareItem?: EquipmentItem | null;
   priceMode?: 'buy' | 'sell';
   x: number;
   y: number;

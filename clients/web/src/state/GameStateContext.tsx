@@ -25,6 +25,8 @@ type GameStateContextValue = {
   authLoading: boolean;
   bootLoading: boolean;
   pendingAction: string | null;
+  serverBusyAction: string | null;
+  isServerBusy: boolean;
   saveState: GameSaveState | null;
   character: CharacterInfoView | null;
   errorMessage: string | null;
@@ -40,6 +42,7 @@ type GameStateContextValue = {
   upgradeAttribute: (attribute: AttributeKey) => Promise<void>;
   equipItem: (itemId: string) => Promise<void>;
   unequipItem: (slot: EquipmentSlot) => Promise<void>;
+  runServerAction: <TResult>(action: string, task: () => Promise<TResult>) => Promise<TResult>;
   clearMessages: () => void;
 };
 
@@ -62,6 +65,8 @@ export function GameStateProvider({ children }: PropsWithChildren) {
   const [authLoading, setAuthLoading] = useState(true);
   const [bootLoading, setBootLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [serverBusyAction, setServerBusyAction] = useState<string | null>(null);
+  const [serverBusyCount, setServerBusyCount] = useState(0);
   const [saveState, setSaveState] = useState<GameSaveState | null>(null);
   const [character, setCharacter] = useState<CharacterInfoView | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -71,6 +76,26 @@ export function GameStateProvider({ children }: PropsWithChildren) {
   const clearMessages = useCallback(() => {
     setErrorMessage(null);
     setInfoMessage(null);
+  }, []);
+
+  const runServerAction = useCallback(async <TResult,>(
+    action: string,
+    task: () => Promise<TResult>,
+  ): Promise<TResult> => {
+    setServerBusyAction(action);
+    setServerBusyCount((count) => count + 1);
+
+    try {
+      return await task();
+    } finally {
+      setServerBusyCount((count) => {
+        const nextCount = Math.max(0, count - 1);
+        if (nextCount === 0) {
+          setServerBusyAction(null);
+        }
+        return nextCount;
+      });
+    }
   }, []);
 
   const applyCharacterInfo = useCallback((nextCharacter: CharacterInfoView) => {
@@ -264,6 +289,8 @@ export function GameStateProvider({ children }: PropsWithChildren) {
     authLoading,
     bootLoading,
     pendingAction,
+    serverBusyAction,
+    isServerBusy: serverBusyCount > 0 || pendingAction !== null,
     saveState,
     character,
     errorMessage,
@@ -279,12 +306,15 @@ export function GameStateProvider({ children }: PropsWithChildren) {
     upgradeAttribute,
     equipItem,
     unequipItem,
+    runServerAction,
     clearMessages,
   }), [
     session,
     authLoading,
     bootLoading,
     pendingAction,
+    serverBusyAction,
+    serverBusyCount,
     saveState,
     character,
     errorMessage,
@@ -299,6 +329,7 @@ export function GameStateProvider({ children }: PropsWithChildren) {
     upgradeAttribute,
     equipItem,
     unequipItem,
+    runServerAction,
     clearMessages,
   ]);
 

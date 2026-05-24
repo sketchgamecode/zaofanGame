@@ -6,6 +6,8 @@
 
 import { ItemTooltip } from '../components/ui/ItemTooltip';
 import { StandardModal } from '../components/ui/StandardModal';
+import { GameBusyOverlay } from '../components/ui/GameBusyOverlay';
+import { useGameState } from '../state/GameStateContext';
 
 type OverlayRootProps = {
   showLogoutConfirm: boolean;
@@ -14,8 +16,11 @@ type OverlayRootProps = {
 };
 
 export function OverlayRoot({ showLogoutConfirm, onConfirmLogout, onCancelLogout }: OverlayRootProps) {
+  const { isServerBusy } = useGameState();
+
   return (
     <div className="overlay-root">
+      <GameBusyOverlay visible={isServerBusy} />
       {showLogoutConfirm ? (
         <StandardModal
           cancelLabel="取消"

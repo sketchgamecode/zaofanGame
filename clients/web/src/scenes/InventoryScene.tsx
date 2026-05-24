@@ -81,6 +81,7 @@ export function InventoryScene() {
           <div className="inventory-scene__panel">
             <CharacterPanel
               character={character}
+              highlightedEquipmentSlot={activeItem?.slot ?? null}
               pendingAction={pendingAction}
               onUpgradeAttribute={upgradeAttribute}
             />

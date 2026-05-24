@@ -22,22 +22,9 @@ import { useDraggable } from '@dnd-kit/core';
 import type { CSSProperties } from 'react';
 import type { EquipmentItem, EquipmentSlot } from '../../types/game';
 import { useItemTooltip } from '../../state/tooltipStore';
+import { getItemIconUrl } from '../../config/itemIconCatalog';
 
 export type ItemDragSource = 'inventory' | 'equipment' | 'shop';
-
-// 各装备槽物品图占位
-const ITEM_ICON_BY_SLOT: Record<EquipmentSlot, string> = {
-  head: '/assets/items/icons/item_head_placeholder.png',
-  body: '/assets/items/icons/item_body_placeholder.png',
-  hands: '/assets/items/icons/item_hands_placeholder.png',
-  feet: '/assets/items/icons/item_feet_placeholder.png',
-  neck: '/assets/items/icons/item_neck_placeholder.png',
-  belt: '/assets/items/icons/item_belt_placeholder.png',
-  ring: '/assets/items/icons/item_ring_placeholder.png',
-  trinket: '/assets/items/icons/item_trinket_placeholder.png',
-  weapon: '/assets/items/icons/item_weapon_placeholder.png',
-  offHand: '/assets/items/icons/item_offhand_placeholder.png',
-};
 
 function getRarityClass(item: EquipmentItem | null) {
   return item ? ` item-slot--rarity-${item.rarity}` : '';
@@ -48,6 +35,7 @@ export type ItemSlotVariant = 'equipment' | 'inventory' | 'shop';
 
 export type ItemSlotProps = {
   item: EquipmentItem | null;
+  compareItem?: EquipmentItem | null;
   variant: ItemSlotVariant;
   /** compact: 用于 DragOverlay 幽灵或特殊场合缩小显示。默认 false。 */
   compact?: boolean;
@@ -55,6 +43,7 @@ export type ItemSlotProps = {
   isOver?: boolean;
   /** DraggableItemSlot 拖拽中时传入，降低本体透明度 */
   isDragging?: boolean;
+  isHighlighted?: boolean;
   /** 是否显示宝石/符文角标，默认 true */
   showBadges?: boolean;
   className?: string;
@@ -63,10 +52,12 @@ export type ItemSlotProps = {
 // ── 核心原子组件 ──────────────────────────────────────────────────
 export function ItemSlot({
   item,
+  compareItem = null,
   variant,
   compact = false,
   isOver = false,
   isDragging = false,
+  isHighlighted = false,
   showBadges = true,
   className,
 }: ItemSlotProps) {
@@ -78,7 +69,7 @@ export function ItemSlot({
     `item-slot--${variant}`,
     item ? 'item-slot--filled' : 'item-slot--empty',
     compact ? 'item-slot--compact' : '',
-    isOver ? 'item-slot--over' : '',
+    isOver || isHighlighted ? 'item-slot--over' : '',
     isDragging ? 'item-slot--dragging' : '',
     getRarityClass(item),
     className ?? '',
@@ -90,17 +81,17 @@ export function ItemSlot({
     <div
       className={classNames}
       onPointerEnter={(e) => {
-        if (item) setTooltip({ item, priceMode, x: e.clientX, y: e.clientY });
+        if (item) setTooltip({ item, compareItem, priceMode, x: e.clientX, y: e.clientY });
       }}
       onPointerMove={(e) => {
-        if (item) setTooltip({ item, priceMode, x: e.clientX, y: e.clientY });
+        if (item) setTooltip({ item, compareItem, priceMode, x: e.clientX, y: e.clientY });
       }}
       onPointerLeave={() => setTooltip(null)}
     >
       {item ? (
         <>
           <div className="item-slot__icon">
-            <img alt="" src={ITEM_ICON_BY_SLOT[item.slot]} />
+            <img alt="" src={getItemIconUrl(item)} />
           </div>
           {showBadges && (
             <>
@@ -124,17 +115,21 @@ export function ItemSlot({
  * - 拖拽幽灵由场景层的 <DragOverlay> 渲染
  */
 export function DraggableItemSlot({
+  compareItem = null,
   item,
   source,
   slot,
   variant,
   compact = false,
+  isHighlighted = false,
 }: {
+  compareItem?: EquipmentItem | null;
   item: EquipmentItem;
   source: ItemDragSource;
   slot?: EquipmentSlot;
   variant: ItemSlotVariant;
   compact?: boolean;
+  isHighlighted?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `${source}-item:${item.id}`,
@@ -159,8 +154,10 @@ export function DraggableItemSlot({
       {...attributes}
     >
       <ItemSlot
+        compareItem={compareItem}
         compact={compact}
         isDragging={isDragging}
+        isHighlighted={isHighlighted}
         item={item}
         variant={variant}
       />

@@ -16,7 +16,7 @@ type DungeonPlaybackState = {
 };
 
 export function DungeonScene() {
-  const { character, refreshCharacterInfo } = useGameState();
+  const { character, refreshCharacterInfo, runServerAction } = useGameState();
   const [selectedChapterId, setSelectedChapterId] = useState(DUNGEON_CHAPTERS[0]?.id ?? 'chapter_1');
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
@@ -39,8 +39,12 @@ export function DungeonScene() {
     setRequestError(null);
 
     try {
-      const data = await postGameAction<DungeonFightData>('DUNGEON_FIGHT', {
-        chapterId: selectedChapter.id,
+      const data = await runServerAction('DUNGEON_FIGHT', async () => {
+        const result = await postGameAction<DungeonFightData>('DUNGEON_FIGHT', {
+          chapterId: selectedChapter.id,
+        });
+        await refreshCharacterInfo().catch(() => {});
+        return result;
       });
       setProgressByChapter((previous) => ({
         ...previous,
@@ -54,7 +58,6 @@ export function DungeonScene() {
         reward: data.grantedReward,
         battleResult: data.battleResult,
       });
-      void refreshCharacterInfo().catch(() => {});
     } catch (error) {
       setRequestError(toActionErrorMessage(error, '江湖历练失败。'));
     } finally {
