@@ -655,6 +655,64 @@ body {
   background-size: 100%;
 }
 
+.blackmarket-scene__intro {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border: 0;
+  padding: 0;
+  background:
+    linear-gradient(90deg, rgba(8, 6, 5, 0.18), rgba(8, 6, 5, 0.72) 58%, rgba(8, 6, 5, 0.34)),
+    transparent;
+  color: #f5e6c8;
+  cursor: pointer;
+  text-align: left;
+}
+
+.blackmarket-scene__intro-panel {
+  position: absolute;
+  left: 760px;
+  right: 108px;
+  bottom: 118px;
+  min-height: 210px;
+  padding: 28px 34px 24px;
+  border: 2px solid rgba(116, 78, 38, 0.92);
+  background:
+    linear-gradient(180deg, rgba(49, 34, 22, 0.96), rgba(15, 11, 9, 0.96));
+  box-shadow:
+    0 18px 38px rgba(0, 0, 0, 0.48),
+    inset 0 0 0 1px rgba(240, 197, 115, 0.14);
+}
+
+.blackmarket-scene__intro-place {
+  color: rgba(230, 177, 91, 0.88);
+  font-size: 20px;
+}
+
+.blackmarket-scene__intro-npc {
+  margin-top: 6px;
+  color: #fff0cc;
+  font-size: 36px;
+  font-weight: 700;
+  text-shadow: 0 2px 2px rgba(0, 0, 0, 0.62);
+}
+
+.blackmarket-scene__intro-panel p {
+  margin: 22px 0 0;
+  max-width: 820px;
+  color: rgba(250, 232, 201, 0.96);
+  font-size: 28px;
+  line-height: 1.55;
+}
+
+.blackmarket-scene__intro-panel span {
+  position: absolute;
+  right: 28px;
+  bottom: 20px;
+  color: rgba(230, 177, 91, 0.82);
+  font-size: 18px;
+}
+
 .blackmarket-scene__character,
 .blackmarket-scene__shop,
 .blackmarket-scene__sell-zone,
@@ -672,7 +730,7 @@ body {
   height: 1080px;
   overflow: hidden;
   z-index: 1;
-  animation: bm-slide-in-left 1.45s ease-out both;
+  animation: bm-slide-in-left 0.45s ease-out both;
 }
 
 .blackmarket-scene__shop {
@@ -687,7 +745,7 @@ body {
   background-image: url("/assets/ui/shop/bg_shop_goods_stage_weapon.png") no-repeat left top;
   background-size: 100% 100%;
   z-index: 1;
-  animation: bm-slide-in-right 2.85s ease-out 0.1s both;
+  animation: bm-slide-in-right 0.65s ease-out 0.1s both;
 }
 
 .blackmarket-scene__shop--magic {
@@ -766,15 +824,15 @@ body {
   top: 110px;
   width: 210px;
   height: 294px;
-  background: url("/assets/figure/npc/npc_weaponshop_keeper.png") no-repeat center bottom;
-  background-size: contain;
+  /* background: url("/assets/figure/npc/npc_weaponshop_keeper.png") no-repeat center bottom;
+  background-size: contain; */
   color: rgba(255, 232, 185, 0);
   font-size: 30px;
   text-shadow: 0 2px 3px rgba(0, 0, 0, 0.72);
 }
 
 .blackmarket-scene__shop--magic .blackmarket-scene__npc {
-  background-image: url("/assets/figure/npc/npc_magicshop_keeper.png");
+  /* background-image: url("/assets/figure/npc/npc_magicshop_keeper.png"); */
 }
 
 .blackmarket-scene__body {
@@ -858,25 +916,16 @@ body {
   position: absolute;
   left: 755px;
   top: 520px;
-  width: 808px;
+  width: 784px;
   height: 626px;
   padding: 24px 40px 28px;
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto 1fr;
   gap: 14px;
   background: url("/assets/ui/shop/bg_shop_inventory_drawer.png") no-repeat left top;
   background-size: 100% 100%;
   z-index: 1;
-  animation: bm-slide-in-right 2.45s ease-out 0.2s both;
-}
-
-.blackmarket-scene__resources {
-  display: flex;
-  gap: 12px;
-}
-
-.blackmarket-scene__resources .resource-chip {
-  min-width: 184px;
+  animation: bm-slide-in-right 0.45s ease-out 0.2s both;
 }
 
 .blackmarket-scene__inventory-grid {
@@ -961,17 +1010,22 @@ body {
 }
 
 .right-rail {
-  background: url("/assets/ui/bg_frame_side_menu.png") no-repeat top left;
+  /*background: url("/assets/ui/bg_frame_side_menu.png") no-repeat top left; */
+  background-color: rgba(24, 16, 11, 0.48);
   background-size: 386px 1080px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 28px 24px;
 }
 
-.portrait-card {
-  position: absolute;
-  padding: 0;
-  background: url("/assets/ui/right_rail/bg_right_portrait_resource_panel.png") no-repeat center;
-  background-size: 100% 100%;
-  color: var(--text-dark);
-  box-shadow: var(--shadow-soft);
+.right-rail__portrait-button {
+  width: 386px;
+  border: 0;
+  padding: 8px 0 0;
+  background: transparent;
+  cursor: pointer;
 }
 
 .portrait-card__nameplate {
@@ -1010,12 +1064,15 @@ body {
 }
 
 .right-nav {
-  position: absolute;
-  height: 620px;
+  width: 276px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .right-nav__button {
-  position: absolute;
+  width: 100%;
+  height: 72px;
   border: 0;
   background:
     linear-gradient(180deg, rgba(16, 10, 8, 0.06), rgba(16, 10, 8, 0.12)),
@@ -1035,7 +1092,7 @@ body {
 
 .right-nav__button--active {
   filter: brightness(1.08) saturate(1.08);
-  transform: translateX(-6px);
+  transform: translateX(-5px);
 }
 
 .right-nav__button--disabled {
@@ -1056,9 +1113,8 @@ body {
 }
 
 .seal-button {
-  position: absolute;
-  right: 28px;
-  bottom: 24px;
+  margin-top: auto;
+  align-self: flex-end;
   width: 82px;
   height: 128px;
   border: 1px solid rgba(44, 28, 17, 0.6);
@@ -1068,6 +1124,13 @@ body {
   writing-mode: vertical-rl;
   letter-spacing: 0.08em;
 }
+
+/* Module UI contract:
+   The following components are treated as player-facing reusable modules.
+   Their internal CSS must stay source-of-truth here; scenes may position the
+   module wrapper or pass explicit component props, but must not override
+   descendant internals such as .character-portrait-card__*, .resource-chip__*,
+   .item-slot__*, .item-icon-layer__*, or .right-nav__* from a scene selector. */
 
 .resource-chip {
   height: 42px;
@@ -1114,6 +1177,25 @@ body {
 .resource-chip__value {
   font-size: 18px;
   line-height: 1.1;
+}
+
+.resource-chip--compact {
+  height: 38px;
+  padding: 0 8px;
+}
+
+.resource-chip--compact .resource-chip__icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 6px;
+}
+
+.resource-chip--compact .resource-chip__label {
+  font-size: 10px;
+}
+
+.resource-chip--compact .resource-chip__value {
+  font-size: 17px;
 }
 
 .overlay-root {
@@ -1765,6 +1847,76 @@ body {
   width: 49.16%;
 }
 
+.character-panel__combat-rating {
+  position: absolute;
+  left: 31.6%;
+  top: 36.8%;
+  width: 36.8%;
+  height: 58px;
+  border: 1px solid rgba(129, 91, 48, 0.86);
+  background:
+    linear-gradient(180deg, rgba(52, 36, 21, 0.96), rgba(16, 12, 9, 0.96));
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.34),
+    inset 0 0 0 1px rgba(238, 190, 99, 0.16);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  color: rgba(247, 223, 192, 0.86);
+  outline: none;
+  z-index: 2;
+}
+
+.character-panel__combat-rating:hover,
+.character-panel__combat-rating:focus-visible {
+  border-color: rgba(231, 184, 95, 0.96);
+  background:
+    linear-gradient(180deg, rgba(68, 46, 25, 0.98), rgba(21, 15, 10, 0.98));
+}
+
+.character-panel__combat-rating span:first-child {
+  font-size: 18px;
+  white-space: nowrap;
+}
+
+.character-panel__combat-rating strong {
+  color: #fff0cc;
+  font-size: 34px;
+  line-height: 1;
+  text-align: right;
+  text-shadow:
+    0 2px 2px rgba(0, 0, 0, 0.68),
+    0 0 10px rgba(235, 181, 78, 0.32);
+}
+
+.character-panel__combat-rating-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 7px);
+  z-index: 8;
+  padding: 9px 11px;
+  border: 1px solid rgba(123, 86, 43, 0.92);
+  background:
+    linear-gradient(180deg, rgba(43, 29, 18, 0.98), rgba(18, 13, 10, 0.98));
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  color: rgba(250, 232, 201, 0.94);
+  font-size: 15px;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 120ms ease-out, transform 120ms ease-out;
+}
+
+.character-panel__combat-rating:hover .character-panel__combat-rating-hint,
+.character-panel__combat-rating:focus-visible .character-panel__combat-rating-hint {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .character-portrait-card {
   position: relative;
   aspect-ratio: 368 / 351;
@@ -1868,19 +2020,6 @@ body {
   line-height: 1;
 }
 
-.portrait-summary__xp-bar {
-  margin-top: 10px;
-  height: 18px;
-  border: 1px solid rgba(109, 78, 43, 0.7);
-  background: rgba(9, 8, 7, 0.84);
-  overflow: hidden;
-}
-
-.portrait-summary__xp-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #8b5824 0%, #ebb56a 100%);
-}
-
 /* ── CharacterPanel 装备槽 ──────────────────────────────────────────
    所有格子统一 128×128px，使用百分比定位于面板容器内。
    不需要对内部 .item-slot 做任何额外覆盖，尺寸由外层容器决定。
@@ -1892,7 +2031,17 @@ body {
 }
 
 .character-panel__equip-slot--hint {
-  filter: drop-shadow(0 0 12px rgba(235, 191, 93, 0.62));
+  filter: drop-shadow(0 0 10px rgba(235, 191, 93, 0.42));
+}
+
+.character-panel__equip-slot--hint::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: url("/assets/ui/item_slot/slot_equipment_bodypart_inner_glow.png") no-repeat center;
+  background-size: 100% 100%;
+  pointer-events: none;
 }
 
 .character-panel__equip-slot--head    { left: 5%;  top: 4.85%;  }
@@ -1906,95 +2055,180 @@ body {
 .character-panel__equip-slot--weapon  { left: 30.25%; top: 43.66%; }
 .character-panel__equip-slot--offHand { left: 52.59%; top: 43.66%; }
 
-.character-panel__tabs {
-  position: absolute;
-  left: 3.03%;
-  top: 58.69%;
-  width: 93.94%;
-  height: 56px;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.character-panel__tab {
-  min-height: 0;
-  border: 1px solid rgba(118, 84, 47, 0.74);
-  background: rgba(15, 11, 9, 0.82);
-  color: rgba(247, 223, 192, 0.76);
-  font-size: 13px;
-  overflow: hidden;
-}
-
-.character-panel__tab--active {
-  background: linear-gradient(180deg, rgba(101, 70, 35, 0.98), rgba(59, 39, 22, 0.98));
-  color: #fff1d4;
-}
-
 .character-panel__stats-grid {
   position: absolute;
   left: 3.03%;
-  top: 66.6%;
+  top: 58.6%;
   width: 93.94%;
-  height: 20.9%;
+  height: 38.1%;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.94fr);
+  gap: 16px;
 }
 
-.character-panel__stats-column {
+.character-panel__primary-stats,
+.character-panel__derived-stats {
   display: grid;
-  gap: 8px;
   min-height: 0;
+}
+
+.character-panel__primary-stats {
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.character-panel__derived-stats {
+  grid-template-rows: repeat(6, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .character-panel__stat-row {
+  position: relative;
   min-height: 0;
-  padding: 8px 8px 8px 10px;
+  padding: 0 12px 0 18px;
   border: 1px solid rgba(118, 84, 47, 0.72);
   background: rgba(10, 8, 7, 0.76);
   display: grid;
-  grid-template-columns: 1fr 34px;
-  gap: 8px;
+  grid-template-columns: 1fr 46px;
+  gap: 12px;
   align-items: center;
-  overflow: hidden;
+  overflow: visible;
+  outline: none;
 }
 
-.character-panel__stat-row--static {
-  cursor: default;
-}
-
-.character-panel__stat-head,
-.character-panel__stat-derived,
-.character-panel__stat-breakdown {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
+.character-panel__stat-row:hover,
+.character-panel__stat-row:focus-visible,
+.character-panel__stat-row:focus-within {
+  border-color: rgba(217, 171, 94, 0.9);
+  background: rgba(23, 16, 11, 0.9);
+  z-index: 5;
 }
 
 .character-panel__stat-head {
-  font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.character-panel__stat-derived {
-  margin-top: 4px;
-  color: #d4aa70;
+.character-panel__stat-head {
+  color: #fff0cc;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 2px 2px rgba(0, 0, 0, 0.58);
+}
+
+.character-panel__stat-hint {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(100% + 7px);
+  z-index: 8;
+  padding: 9px 11px;
+  border: 1px solid rgba(123, 86, 43, 0.92);
+  background:
+    linear-gradient(180deg, rgba(43, 29, 18, 0.98), rgba(18, 13, 10, 0.98));
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  color: rgba(250, 232, 201, 0.94);
+  font-size: 15px;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 120ms ease-out, transform 120ms ease-out;
+}
+
+.character-panel__stat-row:hover .character-panel__stat-hint,
+.character-panel__stat-row:focus-visible .character-panel__stat-hint,
+.character-panel__stat-row:focus-within .character-panel__stat-hint {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.character-panel__derived-row {
+  position: relative;
+  min-height: 0;
+  padding: 0 16px;
+  border: 1px solid rgba(118, 84, 47, 0.62);
+  background: rgba(10, 8, 7, 0.66);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  overflow: visible;
+  color: rgba(247, 223, 192, 0.78);
+  font-size: 21px;
+  outline: none;
+}
+
+.character-panel__derived-row:hover,
+.character-panel__derived-row:focus-visible {
+  border-color: rgba(217, 171, 94, 0.9);
+  background: rgba(23, 16, 11, 0.9);
+  z-index: 5;
+}
+
+.character-panel__derived-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.character-panel__derived-info {
+  width: 17px;
+  height: 17px;
+  border: 1px solid rgba(218, 174, 96, 0.78);
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  color: rgba(247, 223, 192, 0.9);
+  background: rgba(45, 31, 18, 0.82);
   font-size: 12px;
+  line-height: 1;
 }
 
-.character-panel__stat-breakdown {
-  margin-top: 4px;
-  color: rgba(247, 223, 192, 0.58);
-  font-size: 11px;
+.character-panel__derived-row strong {
+  color: #fff0cc;
+  font-size: 23px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-shadow: 0 2px 2px rgba(0, 0, 0, 0.56);
+}
+
+.character-panel__derived-hint {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(100% + 6px);
+  z-index: 8;
+  padding: 9px 11px;
+  border: 1px solid rgba(123, 86, 43, 0.92);
+  background:
+    linear-gradient(180deg, rgba(43, 29, 18, 0.98), rgba(18, 13, 10, 0.98));
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  color: rgba(250, 232, 201, 0.94);
+  font-size: 15px;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 120ms ease-out, transform 120ms ease-out;
+}
+
+.character-panel__derived-row:hover .character-panel__derived-hint,
+.character-panel__derived-row:focus-visible .character-panel__derived-hint {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .character-panel__upgrade {
-  width: 34px;
-  height: 34px;
+  width: 46px;
+  height: 46px;
   border: 1px solid rgba(131, 92, 47, 0.86);
   background: linear-gradient(180deg, rgba(222, 179, 92, 0.96), rgba(170, 111, 36, 0.96));
   color: #29190d;
-  font-size: 24px;
+  font-size: 32px;
   cursor: pointer;
 }
 
@@ -2003,52 +2237,30 @@ body {
   cursor: not-allowed;
 }
 
-.character-panel__upgrade--ghost {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.character-panel__bottom-slots {
-  position: absolute;
-  left: 3.03%;
-  top: 90.29%;
-  width: 43.1%;
-  height: 68px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.character-panel__potion-slot,
-.character-panel__special-slot {
-  border: 1px solid rgba(118, 84, 47, 0.74);
-  background:
-    radial-gradient(circle at 50% 40%, rgba(207, 151, 75, 0.12), transparent 56%),
-    rgba(8, 7, 6, 0.72);
-}
-
-.character-panel__special-slot {
-  position: absolute;
-  left: 72.39%;
-  top: 88.49%;
-  width: 16.16%;
-  height: 9.26%;
-}
-
 /* ════════════════════════════════════════════════════════════════
    ItemSlot 通用原子组件
    所有场景物品格统一 128×128px 基准尺寸。
    不再有 name/stat/label/empty 文字渲染（信息在 Tooltip 中展示）。
 ════════════════════════════════════════════════════════════════ */
 
-.item-slot-drag-handle {
+.item-slot-drag-frame {
+  position: relative;
   width: 100%;
   height: 100%;
+}
+
+.item-icon-drag-handle {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: grab;
   touch-action: none;
 }
 
-.item-slot-drag-handle:active {
+.item-icon-drag-handle:active {
   cursor: grabbing;
 }
 
@@ -2057,6 +2269,65 @@ body {
   width: 128px;
   height: 128px;
   pointer-events: none;
+}
+
+.item-drag-preview {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-icon-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter 120ms ease-out, transform 120ms ease-out;
+}
+
+.item-icon-layer__icon {
+  width: 96px;
+  height: 96px;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.58));
+}
+
+.item-icon-layer__icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+.item-icon-layer__badge {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(234, 202, 137, 0.38);
+  background: rgba(14, 10, 8, 0.82);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.45);
+}
+
+.item-icon-layer__badge--gem {
+  right: 18px;
+  bottom: 18px;
+  transform: rotate(45deg);
+}
+
+.item-icon-layer__badge--rune {
+  left: 18px;
+  bottom: 18px;
+  border-radius: 50%;
+}
+
+.item-icon-layer--drag-preview .item-icon-layer__icon {
+  width: 104px;
+  height: 104px;
 }
 
 /* ── 基础格子 ────────────────────────────────────────────────── */
@@ -2112,19 +2383,9 @@ body {
   background-image: url("/assets/ui/item_slot/slot_equipment_hover.png");
 }
 
-.item-slot--inventory:hover,
-.item-slot--inventory.item-slot--filled:hover {
-  background-image: url("/assets/ui/item_slot/slot_inventory_hover.png");
-}
-
-.item-slot--shop:hover,
-.item-slot--shop.item-slot--filled:hover {
-  background-image: url("/assets/ui/item_slot/slot_shop_goods_hover.png");
-}
-
 /* ── 拖放目标高亮 ────────────────────────────────────────────── */
 .item-slot--over {
-  box-shadow: 0 0 0 2px rgba(208, 171, 103, 0.42) inset;
+  box-shadow: none;
 }
 
 .item-slot--equipment.item-slot--over {
@@ -2132,11 +2393,11 @@ body {
 }
 
 .item-slot--inventory.item-slot--over {
-  background-image: url("/assets/ui/item_slot/slot_inventory_hover.png");
+  background-image: url("/assets/ui/item_slot/slot_inventory_empty.png");
 }
 
 .item-slot--shop.item-slot--over {
-  background-image: url("/assets/ui/item_slot/slot_shop_goods_hover.png");
+  background-image: url("/assets/ui/item_slot/slot_shop_goods_empty.png");
 }
 
 /* ── 拖拽中（本体降透明度） ──────────────────────────────────── */
@@ -2191,7 +2452,8 @@ body {
 }
 
 /* ── 物品 Icon ───────────────────────────────────────────────── */
-.item-slot__icon {
+.item-slot__icon,
+.item-icon-layer {
   position: relative;
   z-index: 1;
   width: 96px;
@@ -2199,6 +2461,15 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: filter 120ms ease-out, transform 120ms ease-out;
+}
+
+.item-slot--filled:hover .item-icon-layer,
+.item-slot--filled.item-slot--hinted .item-icon-layer {
+  filter:
+    brightness(1.2)
+    drop-shadow(0 0 8px rgba(247, 222, 159, 0.38));
+  transform: translateY(-1px) scale(1.04);
 }
 
 .item-slot__icon img {
@@ -2370,63 +2641,11 @@ body {
   opacity: 0.84;
 }
 
-.portrait-summary {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  background: transparent;
-  display: grid;
-  grid-template-columns: 116px 1fr;
-  gap: 12px;
-  align-items: start;
-  padding: 18px 16px;
-  cursor: pointer;
-  text-align: left;
-}
-
-.portrait-summary__avatar-frame {
-  width: 116px;
-  height: 132px;
-  border: 1px solid rgba(51, 33, 21, 0.48);
-  overflow: hidden;
-}
-
-.portrait-summary__avatar {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.portrait-summary__name {
-  margin-top: 4px;
-  font-size: 28px;
-  line-height: 1.05;
-}
-
-.portrait-summary__class {
-  margin-top: 6px;
-  font-size: 17px;
-  color: rgba(54, 32, 18, 0.85);
-}
-
-.portrait-summary__level-row {
-  margin-top: 8px;
-  display: flex;
-  justify-content: space-between;
-  color: rgba(43, 28, 16, 0.86);
-  font-size: 15px;
-}
-
-.portrait-summary__resources {
-  grid-column: 1 / -1;
+.player-resource-panel {
+  width: 276px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.portrait-summary__resources .resource-chip {
-  height: 38px;
-  padding: 0 8px;
+  gap: 6px;
 }
 
 .scene-close-button {

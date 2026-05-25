@@ -1,5 +1,11 @@
 import type { CSSProperties } from 'react';
 
+/**
+ * Modular UI component.
+ * Keep the visual contract sourced from `.character-portrait-card*` CSS only.
+ * Call sites may size or position the component wrapper, but should not override
+ * internal descendant styles for a specific scene.
+ */
 type CharacterPortraitCardProps = {
   avatarUrl: string;
   name: string;

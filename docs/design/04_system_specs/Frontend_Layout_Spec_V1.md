@@ -259,6 +259,16 @@ Figma 不是运行时 UI 编辑器，也不应被当作工程双向同步源。
 ## 8. 复用性组件 (Reusable Components)
 遵循“原子化设计”原则，由底层积木向高级复合面板构建。这些组件贯穿游戏各个子系统，需保持高度统一的外观和交互逻辑。
 
+### 8.0 模块化 UI 的 CSS 同源规则
+
+本项目中的“模块化 UI 组件”不是只指 React 组件复用，也包括视觉样式和交互表现复用。凡被列为可复用模块的 UI 部件，其内部 DOM 与 CSS 必须同源，避免同一个玩家感知组件在不同场景里出现多套局部样式。
+
+1. 模块内部样式只能由模块自己的基础 class 与 variant class 控制，例如 `.character-portrait-card*`、`.resource-chip*`、`.item-slot*`、`.item-icon-layer*`、`.right-nav*`。
+2. 场景或面板可以控制模块外层布局，例如位置、宽高、间距、排列方向，也可以通过组件 props 选择模块已经提供的变体，例如 `ResourceBadge size="compact"` 或 `width={184}`。
+3. 禁止用场景选择器覆写模块内部元素，例如 `.right-rail .character-portrait-card__name`、`.player-resource-panel .resource-chip__icon`、`.blackmarket-scene .item-slot__icon`。
+4. 如果某个场景确实需要不同视觉表现，先把差异沉淀成模块自己的 props 或 variant class，再由场景调用，不要在场景 CSS 里临时覆盖。
+5. 当前纳入 CSS 同源约束的模块包括：`CharacterPortraitCard`、`ResourceBadge` / `PlayerResourcePanel`、`ItemSlot` / `DraggableItemSlot` / `ItemDragPreview`、`RightRailNav`。后续新增 token、resource、panel 类复用模块默认也遵守此规则。
+
 1. 通用物品格 (ItemSlot)
 组件定位
 游戏内核心的、高度复用的基础交互组件。不仅存在于 CharacterPanel（角色已穿戴装备），同样广泛应用于 Inventory（背包）、各类商店（Shop）货架以及战利品结算界面。

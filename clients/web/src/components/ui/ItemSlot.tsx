@@ -16,6 +16,11 @@
  * 合成组件（同文件导出）：
  *   - DraggableItemSlot：可拖拽版本
  *   - DroppableDraggableSlot：在 DroppableSlot.tsx 中导出，或由场景层组合
+ *
+ * Modular UI contract:
+ * Item slot visuals are sourced from `.item-slot*` and `.item-icon-layer*`.
+ * Scenes may choose the variant or wrapper position, but should not override
+ * slot/icon descendant internals per scene.
  */
 
 import { useDraggable } from '@dnd-kit/core';
@@ -46,8 +51,33 @@ export type ItemSlotProps = {
   isHighlighted?: boolean;
   /** 是否显示宝石/符文角标，默认 true */
   showBadges?: boolean;
+  showItemContent?: boolean;
   className?: string;
 };
+
+function ItemIconLayer({
+  className = '',
+  item,
+  showBadges = true,
+}: {
+  className?: string;
+  item: EquipmentItem;
+  showBadges?: boolean;
+}) {
+  return (
+    <div className={`item-icon-layer ${className}`.trim()}>
+      <div className="item-icon-layer__icon">
+        <img alt="" src={getItemIconUrl(item)} />
+      </div>
+      {showBadges ? (
+        <>
+          <div className="item-icon-layer__badge item-icon-layer__badge--gem" />
+          <div className="item-icon-layer__badge item-icon-layer__badge--rune" />
+        </>
+      ) : null}
+    </div>
+  );
+}
 
 // ── 核心原子组件 ──────────────────────────────────────────────────
 export function ItemSlot({
@@ -59,6 +89,7 @@ export function ItemSlot({
   isDragging = false,
   isHighlighted = false,
   showBadges = true,
+  showItemContent = true,
   className,
 }: ItemSlotProps) {
   const { setTooltip } = useItemTooltip();
@@ -69,7 +100,8 @@ export function ItemSlot({
     `item-slot--${variant}`,
     item ? 'item-slot--filled' : 'item-slot--empty',
     compact ? 'item-slot--compact' : '',
-    isOver || isHighlighted ? 'item-slot--over' : '',
+    isOver ? 'item-slot--over' : '',
+    isHighlighted ? 'item-slot--hinted' : '',
     isDragging ? 'item-slot--dragging' : '',
     getRarityClass(item),
     className ?? '',
@@ -88,21 +120,11 @@ export function ItemSlot({
       }}
       onPointerLeave={() => setTooltip(null)}
     >
-      {item ? (
-        <>
-          <div className="item-slot__icon">
-            <img alt="" src={getItemIconUrl(item)} />
-          </div>
-          {showBadges && (
-            <>
-              <div className="item-slot__badge item-slot__badge--gem" />
-              <div className="item-slot__badge item-slot__badge--rune" />
-            </>
-          )}
-        </>
-      ) : (
+      {item && showItemContent ? (
+        <ItemIconLayer item={item} showBadges={showBadges} />
+      ) : !item ? (
         <div className="item-slot__empty-bg" />
-      )}
+      ) : null}
     </div>
   );
 }
@@ -131,15 +153,14 @@ export function DraggableItemSlot({
   compact?: boolean;
   isHighlighted?: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { setTooltip } = useItemTooltip();
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${source}-item:${item.id}`,
     data: { source, slot, item },
   });
+  const priceMode = variant === 'shop' ? 'buy' : 'sell';
 
   const style: CSSProperties = {
-    transform: transform
-      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
-      : undefined,
     opacity: isDragging ? 0.25 : 1,
     // 拖拽时屏蔽 pointer events，防止 Tooltip 在拖拽过程中意外触发
     pointerEvents: isDragging ? 'none' : undefined,
@@ -147,20 +168,40 @@ export function DraggableItemSlot({
 
   return (
     <div
-      ref={setNodeRef}
-      className="item-slot-drag-handle"
-      style={style}
-      {...listeners}
-      {...attributes}
+      className="item-slot-drag-frame"
+      onPointerEnter={(e) => {
+        setTooltip({ item, compareItem, priceMode, x: e.clientX, y: e.clientY });
+      }}
+      onPointerMove={(e) => {
+        setTooltip({ item, compareItem, priceMode, x: e.clientX, y: e.clientY });
+      }}
+      onPointerLeave={() => setTooltip(null)}
     >
       <ItemSlot
         compareItem={compareItem}
         compact={compact}
-        isDragging={isDragging}
         isHighlighted={isHighlighted}
         item={item}
+        showItemContent={false}
         variant={variant}
       />
+      <div
+        ref={setNodeRef}
+        className="item-icon-drag-handle"
+        style={style}
+        {...listeners}
+        {...attributes}
+      >
+        <ItemIconLayer item={item} />
+      </div>
+    </div>
+  );
+}
+
+export function ItemDragPreview({ item }: { item: EquipmentItem }) {
+  return (
+    <div className="item-drag-preview">
+      <ItemIconLayer className="item-icon-layer--drag-preview" item={item} />
     </div>
   );
 }

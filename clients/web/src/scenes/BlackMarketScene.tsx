@@ -21,8 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { postGameAction } from '../api/gameApi';
 import { CharacterPanel } from '../components/character/CharacterPanel';
 import { DroppableDraggableSlot } from '../components/ui/DroppableSlot';
-import { DraggableItemSlot, ItemSlot } from '../components/ui/ItemSlot';
-import { ResourceBadge } from '../components/ui/ResourceBadge';
+import { DraggableItemSlot, ItemDragPreview, ItemSlot } from '../components/ui/ItemSlot';
 import { formatCountdown } from '../lib/formatters';
 import { toActionErrorMessage } from '../lib/manualErrors';
 import { useItemTooltip } from '../state/tooltipStore';
@@ -45,17 +44,59 @@ function getShopTypeForItem(item: EquipmentItem): ShopType {
 }
 
 function getShopTitle(shopType: ShopType) {
-  return shopType === 'weapon' ? '兵器铺' : '奇珍阁';
+  return shopType === 'weapon' ? '神机营' : '内务府';
 }
 
 function getShopFlavor(shopType: ShopType) {
   return shopType === 'weapon'
-    ? '铁瞎子守着满墙刀枪甲胄，先看货，再谈命。'
-    : '杜半仙把符器饰物摆在烛火里，灵不灵另算，钱先收。';
+    ? '军械案牍齐备，刀枪甲胄明码交易。'
+    : '宫中旧物流转宫外，真假成色各凭眼力。';
 }
 
 function getShopNpc(shopType: ShopType) {
-  return shopType === 'weapon' ? '铁瞎子' : '杜半仙';
+  return shopType === 'weapon' ? '神机营军需官' : '内务府采办';
+}
+
+function getShopIntroLines(shopType: ShopType) {
+  return shopType === 'weapon'
+    ? [
+        '神机营军械入册出库，刀枪弓弩、甲胄护具皆可照价购买，莫问来路，只看银钱。',
+        '营中器械不赊不欠。想换趁手兵刃，先看货色，再掂掂自个儿的钱袋。',
+        '凡在此处买走的军械，皆有营中火漆为凭。拿去江湖上用，别说是偷来的便成。',
+      ]
+    : [
+        '这批物件是宫里娘娘身边人托出来的，簪环佩饰都有讲究，不过真假还得凭客官眼力。',
+        '内务府只管牵线，不管故事。说是宫里流出的，也有几件像是外头人硬往宫里攀的。',
+        '娘娘们换下来的旧物最讲缘分，灵不灵另说，体面总是有几分的。',
+      ];
+}
+
+function pickIntroLine(shopType: ShopType) {
+  const lines = getShopIntroLines(shopType);
+  return lines[Math.floor(Math.random() * lines.length)];
+}
+
+function SceneNpcIntro({
+  line,
+  npcName,
+  placeName,
+  onContinue,
+}: {
+  line: string;
+  npcName: string;
+  placeName: string;
+  onContinue: () => void;
+}) {
+  return (
+    <button className="blackmarket-scene__intro" type="button" onClick={onContinue}>
+      <div className="blackmarket-scene__intro-panel">
+        <div className="blackmarket-scene__intro-place">{placeName}</div>
+        <div className="blackmarket-scene__intro-npc">{npcName}</div>
+        <p>{line}</p>
+        <span>点击继续</span>
+      </div>
+    </button>
+  );
 }
 
 // ── 出售拖拽区 ────────────────────────────────────────────────────
@@ -93,6 +134,8 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
   const [loading, setLoading] = useState(true);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
+  const [introLine, setIntroLine] = useState(() => pickIntroLine(shopType));
+  const [introDismissed, setIntroDismissed] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -117,6 +160,11 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
   }, [runServerAction]);
 
   useEffect(() => { void loadMarket(false); }, [loadMarket]);
+
+  useEffect(() => {
+    setIntroLine(pickIntroLine(shopType));
+    setIntroDismissed(false);
+  }, [shopType]);
 
   // 入场音效
   useEffect(() => {
@@ -250,6 +298,16 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
     <div className="scene scene--blackmarket">
       {requestError ? <div className="scene-error-banner">{requestError}</div> : null}
 
+      {!introDismissed ? (
+        <div className={`blackmarket-scene blackmarket-scene--${shopType}`}>
+          <SceneNpcIntro
+            line={introLine}
+            npcName={getShopNpc(shopType)}
+            placeName={getShopTitle(shopType)}
+            onContinue={() => setIntroDismissed(true)}
+          />
+        </div>
+      ) : (
       <DndContext sensors={sensors} onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
         <div className={`blackmarket-scene blackmarket-scene--${shopType}`}>
 
@@ -323,10 +381,6 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
 
           {/* 右下背包抽屉 */}
           <aside className="blackmarket-scene__ledger">
-            <div className="blackmarket-scene__resources">
-              <ResourceBadge label="铜钱" type="copper" value={character.resources.copper} />
-              <ResourceBadge label="令牌" type="token" value={character.resources.tokens} />
-            </div>
             <div className="blackmarket-scene__inventory-head">
               <span>随身行囊</span>
               <span>{character.inventory.count} / {inventoryCapacity}</span>
@@ -348,14 +402,15 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
         </div>
 
         {/* 拖拽幽灵 */}
-        <DragOverlay>
+        <DragOverlay dropAnimation={null}>
           {activeItem ? (
             <div className="item-slot-overlay">
-              <ItemSlot item={activeItem} variant="inventory" />
+              <ItemDragPreview item={activeItem} />
             </div>
           ) : null}
         </DragOverlay>
       </DndContext>
+      )}
     </div>
   );
 }

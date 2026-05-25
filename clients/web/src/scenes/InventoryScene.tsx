@@ -18,7 +18,7 @@ import {
 import { useState } from 'react';
 import { CharacterPanel } from '../components/character/CharacterPanel';
 import { DroppableDraggableSlot } from '../components/ui/DroppableSlot';
-import { ItemSlot } from '../components/ui/ItemSlot';
+import { ItemDragPreview } from '../components/ui/ItemSlot';
 import { useItemTooltip } from '../state/tooltipStore';
 import { useGameState } from '../state/GameStateContext';
 import type { EquipmentItem } from '../types/game';
@@ -111,10 +111,10 @@ export function InventoryScene() {
         </div>
 
         {/* 拖拽幽灵 */}
-        <DragOverlay>
+        <DragOverlay dropAnimation={null}>
           {activeItem ? (
             <div className="item-slot-overlay">
-              <ItemSlot item={activeItem} variant="inventory" />
+              <ItemDragPreview item={activeItem} />
             </div>
           ) : null}
         </DragOverlay>
