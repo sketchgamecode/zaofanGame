@@ -10,7 +10,7 @@ export function GameBusyOverlay({ visible }: GameBusyOverlayProps) {
       <div className="game-busy-overlay__spinner">
         <img alt="" src="/assets/ui/token_1.png" />
       </div>
-      <div className="game-busy-overlay__text">江湖传信中...</div>
+      <div className="game-busy-overlay__text">衙门传信中...</div>
     </div>
   );
 }

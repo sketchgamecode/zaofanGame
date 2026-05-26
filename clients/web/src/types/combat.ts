@@ -1,4 +1,4 @@
-import type { AttributeValues, PlayerClassId, RaceId } from './game';
+import type { AttributeValues, PlayerClassId, PowerFactionId, RaceId } from './game';
 
 export type BattleContext =
   | 'MISSION'
@@ -214,5 +214,15 @@ export type DungeonFightData = {
   grantedReward: {
     xp: number;
     copper: number;
+  };
+  powerCase?: {
+    issuerFaction: PowerFactionId;
+    targetFactions: PowerFactionId[];
+    historicalHook: string;
+    suspicionDeltaOnWin?: Partial<Record<PowerFactionId, number>>;
+  };
+  powerResult?: {
+    suspicionDelta: Partial<Record<PowerFactionId, number>>;
+    suspicionAfter: Partial<Record<PowerFactionId, number>>;
   };
 };

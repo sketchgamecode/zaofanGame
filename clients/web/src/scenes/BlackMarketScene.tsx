@@ -1,7 +1,7 @@
 /**
  * BlackMarketScene.tsx
  *
- * 商店场景（兵器铺 / 奇珍阁）。
+ * 商店场景（神机营 / 内务府）。
  * 使用 DroppableSlot / DroppableDraggableSlot，无 onItemTooltipChange 传递链。
  * Tooltip 由全局 tooltipStore 驱动。
  */
@@ -62,7 +62,7 @@ function getShopIntroLines(shopType: ShopType) {
     ? [
         '神机营军械入册出库，刀枪弓弩、甲胄护具皆可照价购买，莫问来路，只看银钱。',
         '营中器械不赊不欠。想换趁手兵刃，先看货色，再掂掂自个儿的钱袋。',
-        '凡在此处买走的军械，皆有营中火漆为凭。拿去江湖上用，别说是偷来的便成。',
+        '凡在此处买走的军械，皆有营中火漆为凭。拿去办差用，别说是偷来的便成。',
       ]
     : [
         '这批物件是宫里娘娘身边人托出来的，簪环佩饰都有讲究，不过真假还得凭客官眼力。',
@@ -374,7 +374,7 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
                   </div>
                 )}
 
-                <div className="blackmarket-scene__sell-copy">把背包或身上的装备拖到这里出售。</div>
+                <div className="blackmarket-scene__sell-copy">把行囊或身上的装备拖到这里出售。</div>
               </ShopSellZone>
             </div>
           </section>

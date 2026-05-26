@@ -5,7 +5,13 @@
  * 使用 DroppableSlot + ItemSlot，不再自持 tooltip 状态。
  */
 
-import { CLASS_META, getAvatarUrl } from '../../config/characterCatalog';
+import {
+  CLASS_META,
+  getAvatarUrl,
+  POWER_FACTION_BADGES,
+  POWER_FACTION_HINTS,
+  POWER_FACTION_LABELS,
+} from '../../config/characterCatalog';
 import { getNextLevelXp } from '../../config/xpTable';
 import { useItemTooltip } from '../../state/tooltipStore';
 import { DroppableSlot } from '../ui/DroppableSlot';
@@ -18,6 +24,7 @@ import {
   type CharacterInfoView,
   type EquipmentItem,
   type EquipmentSlot,
+  type PowerFactionId,
 } from '../../types/game';
 
 type CharacterPanelProps = {
@@ -45,6 +52,17 @@ function formatBp(bp = 0) {
   return `${(bp / 100).toFixed(2)}%`;
 }
 
+function getTopSuspicion(
+  suspicion: CharacterInfoView['player']['suspicion'],
+): { faction: PowerFactionId; value: number } | null {
+  const entries = Object.entries(suspicion ?? {})
+    .filter((entry): entry is [PowerFactionId, number] => typeof entry[1] === 'number' && entry[1] > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  const top = entries[0];
+  return top ? { faction: top[0], value: top[1] } : null;
+}
+
 function getDerivedStats(character: CharacterInfoView, armorCap: number): DerivedStat[] {
   const reduction = Math.min(
     armorCap,
@@ -70,7 +88,7 @@ function getDerivedStats(character: CharacterInfoView, armorCap: number): Derive
     {
       label: '减伤',
       value: `${reduction}%`,
-      hint: '甲胄换算出的伤害减免比例，受等级和职业上限影响。',
+      hint: '甲胄换算出的伤害减免比例，受等级和职司上限影响。',
     },
     {
       label: '会心',
@@ -184,6 +202,16 @@ export function CharacterPanel({
 }: CharacterPanelProps) {
   const { tooltip } = useItemTooltip();
   const classMeta = CLASS_META[character.player.classId];
+  const powerFaction = character.player.powerFaction;
+  const powerBadge = powerFaction ? POWER_FACTION_BADGES[powerFaction] : '未入权局';
+  const powerLabel = powerFaction ? POWER_FACTION_LABELS[powerFaction] : '未定';
+  const powerHint = powerFaction
+    ? POWER_FACTION_HINTS[powerFaction]
+    : '旧存档尚未写入权力归属。重新创建角色后会按出身自动归属。';
+  const topSuspicion = getTopSuspicion(character.player.suspicion);
+  const suspicionHint = topSuspicion
+    ? `当前最受猜疑：${POWER_FACTION_LABELS[topSuspicion.faction]} ${topSuspicion.value}。`
+    : '当前尚无明显牵连。';
   const nextLevelXp = getNextLevelXp(character.player.level);
   const xpProgress = Math.min(1, Math.max(0, character.player.exp / Math.max(1, nextLevelXp)));
   const activeHighlightedSlot = highlightedEquipmentSlot ?? tooltip?.item.slot ?? null;
@@ -197,7 +225,7 @@ export function CharacterPanel({
           className="character-panel__portrait-card"
           level={character.player.level}
           name={character.player.displayName || '无名好汉'}
-          rankText={`江湖排名 ${character.combatPreview.combatRating}`}
+          rankText={`${powerBadge} · 官声排名 ${character.combatPreview.combatRating}`}
           showInfoButton
           title={classMeta.name}
           xpProgress={xpProgress}
@@ -207,6 +235,15 @@ export function CharacterPanel({
           <strong>{character.combatPreview.combatRating}</strong>
           <span className="character-panel__combat-rating-hint" role="tooltip">
             综合等级、属性、装备后的整体战斗评分。
+          </span>
+        </div>
+        <div className="character-panel__power-affiliation" tabIndex={0}>
+          <span>权力归属</span>
+          <strong>{powerLabel}</strong>
+          <span className="character-panel__power-affiliation-hint" role="tooltip">
+            {powerHint}
+            <br />
+            {suspicionHint}
           </span>
         </div>
 

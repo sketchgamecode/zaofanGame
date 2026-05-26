@@ -73,7 +73,7 @@ export function InventoryScene() {
 
   return (
     <div className="scene scene--inventory">
-      <div className="scene__banner scene__banner--left">角色行囊</div>
+      <div className="scene__banner scene__banner--left">资装行囊</div>
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
         <div className="inventory-scene">
@@ -90,7 +90,7 @@ export function InventoryScene() {
           {/* 右侧背包 */}
           <div className="inventory-scene__bag">
             <div className="inventory-scene__bag-head">
-              <div className="inventory-scene__bag-title">背包</div>
+              <div className="inventory-scene__bag-title">随身行囊</div>
               <div className="inventory-scene__bag-meta">{character.inventory.count} / {inventoryCapacity}</div>
             </div>
 

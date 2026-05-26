@@ -21,9 +21,9 @@ export function AuthScreen() {
   return (
     <div className="auth-screen">
       <div className="auth-screen__panel">
-        <div className="auth-screen__eyebrow">大宋造反模拟器</div>
+        <div className="auth-screen__eyebrow">大明差遣录</div>
         <h1 className="auth-screen__title">{authMode === 'login' ? '凭帖入局' : '造册立号'}</h1>
-        <p className="auth-screen__subtitle">此版本使用与主站相同的账号体系。</p>
+        <p className="auth-screen__subtitle">领牌入衙，先把名号和凭帖对上。</p>
 
         {errorMessage ? <div className="auth-screen__message auth-screen__message--error">{errorMessage}</div> : null}
         {infoMessage ? <div className="auth-screen__message auth-screen__message--info">{infoMessage}</div> : null}

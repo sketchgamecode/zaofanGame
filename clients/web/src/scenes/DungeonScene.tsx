@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { postGameAction } from '../api/gameApi';
 import { BattleReplay } from '../components/combat/BattleReplay';
+import { POWER_FACTION_LABELS } from '../config/characterCatalog';
 import { DUNGEON_CHAPTERS, getDungeonChapterMeta } from '../config/dungeonCatalog';
 import { toActionErrorMessage } from '../lib/manualErrors';
 import { useGameState } from '../state/GameStateContext';
 import type { DungeonFightData } from '../types/combat';
+import type { PowerFactionId, WorldActorsOverview } from '../types/game';
 
 type DungeonPlaybackState = {
   chapterName: string;
@@ -13,7 +15,50 @@ type DungeonPlaybackState = {
   progressAfter: number;
   reward: DungeonFightData['grantedReward'];
   battleResult: DungeonFightData['battleResult'];
+  powerCase?: DungeonFightData['powerCase'];
+  powerResult?: DungeonFightData['powerResult'];
 };
+
+function formatFaction(faction: PowerFactionId) {
+  return POWER_FACTION_LABELS[faction];
+}
+
+function formatFactionList(factions: PowerFactionId[]) {
+  return factions.map(formatFaction).join(' / ');
+}
+
+function formatPowerDelta(delta?: Partial<Record<PowerFactionId, number>>) {
+  const entries = Object.entries(delta ?? {})
+    .filter(([, value]) => typeof value === 'number' && value !== 0) as Array<[PowerFactionId, number]>;
+
+  if (entries.length === 0) {
+    return '无明显牵连';
+  }
+
+  return entries
+    .map(([faction, value]) => `${formatFaction(faction)} ${value > 0 ? '+' : ''}${value}`)
+    .join(' / ');
+}
+
+function formatPowerShare(value: number) {
+  return `${(value / 100).toFixed(2)}%`;
+}
+
+function formatTargetWorldPresence(overview: WorldActorsOverview | null, factions: PowerFactionId[]) {
+  if (!overview) {
+    return '世界角色池同步中';
+  }
+
+  return factions
+    .map((faction) => {
+      const entry = overview.byFaction.find((item) => item.faction === faction);
+      if (!entry) {
+        return `${formatFaction(faction)} 0人`;
+      }
+      return `${formatFaction(faction)} ${entry.actorCount}人 / 权柄${formatPowerShare(entry.powerShare)}`;
+    })
+    .join('；');
+}
 
 export function DungeonScene() {
   const { character, refreshCharacterInfo, runServerAction } = useGameState();
@@ -22,6 +67,8 @@ export function DungeonScene() {
   const [requestError, setRequestError] = useState<string | null>(null);
   const [playback, setPlayback] = useState<DungeonPlaybackState | null>(null);
   const [progressByChapter, setProgressByChapter] = useState<Record<string, number>>({});
+  const [worldOverview, setWorldOverview] = useState<WorldActorsOverview | null>(null);
+  const [worldOverviewError, setWorldOverviewError] = useState<string | null>(null);
 
   const selectedChapter = useMemo(
     () => getDungeonChapterMeta(selectedChapterId) ?? DUNGEON_CHAPTERS[0],
@@ -29,6 +76,33 @@ export function DungeonScene() {
   );
 
   const currentLevel = character?.player.level ?? 1;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWorldOverview() {
+      try {
+        const overview = await runServerAction(
+          'WORLD_ACTORS_GET_OVERVIEW',
+          () => postGameAction<WorldActorsOverview>('WORLD_ACTORS_GET_OVERVIEW'),
+        );
+        if (!cancelled) {
+          setWorldOverview(overview);
+          setWorldOverviewError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setWorldOverviewError(toActionErrorMessage(error, '世界权柄名册读取失败。'));
+        }
+      }
+    }
+
+    void loadWorldOverview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [runServerAction]);
 
   const handleFight = async () => {
     if (!selectedChapter) {
@@ -57,9 +131,11 @@ export function DungeonScene() {
         progressAfter: data.progressAfter,
         reward: data.grantedReward,
         battleResult: data.battleResult,
+        powerCase: data.powerCase,
+        powerResult: data.powerResult,
       });
     } catch (error) {
-      setRequestError(toActionErrorMessage(error, '江湖历练失败。'));
+      setRequestError(toActionErrorMessage(error, '案卷差事失败。'));
     } finally {
       setPendingAction(null);
     }
@@ -71,8 +147,13 @@ export function DungeonScene() {
 
       <div className="dungeon-scene">
         <section className="dungeon-scene__chapter-list">
-          <div className="dungeon-scene__heading">江湖地界</div>
-          <div className="dungeon-scene__subheading">按你的名望和功夫，逐章向外闯荡。</div>
+          <div className="dungeon-scene__heading">案牍房</div>
+          <div className="dungeon-scene__subheading">按你的资历和官声，逐件接办凶险差事。</div>
+          <div className="dungeon-scene__world-overview">
+            <span>大明权力名册</span>
+            <strong>{worldOverview ? `${worldOverview.totalActors}人 / 权柄${formatPowerShare(worldOverview.totalPowerShare)}` : '同步中'}</strong>
+            {worldOverviewError ? <em>{worldOverviewError}</em> : null}
+          </div>
           <div className="dungeon-scene__chapter-scroll">
             {DUNGEON_CHAPTERS.map((chapter) => {
               const unlocked = currentLevel >= chapter.unlockLevel;
@@ -86,8 +167,14 @@ export function DungeonScene() {
                 >
                   <div className="dungeon-scene__chapter-name">{chapter.name}</div>
                   <div className="dungeon-scene__chapter-flavor">{chapter.flavor}</div>
+                  {chapter.powerCase ? (
+                    <div className="dungeon-scene__case-tags">
+                      <span>{formatFaction(chapter.powerCase.issuerFaction)}发案</span>
+                      <span>目标 {formatFactionList(chapter.powerCase.targetFactions)}</span>
+                    </div>
+                  ) : null}
                   <div className="dungeon-scene__chapter-meta">
-                    <span>解锁 Lv.{chapter.unlockLevel}</span>
+                  <span>资历 Lv.{chapter.unlockLevel}</span>
                     <span>进度 {progress}</span>
                   </div>
                 </button>
@@ -102,17 +189,40 @@ export function DungeonScene() {
               <div className="dungeon-scene__detail-title">{selectedChapter.name}</div>
               <div className="dungeon-scene__detail-flavor">{selectedChapter.flavor}</div>
               <div className="dungeon-scene__detail-panel">
+                {selectedChapter.powerCase ? (
+                  <>
+                    <div className="dungeon-scene__detail-row">
+                      <span>发起方</span>
+                      <strong>{formatFaction(selectedChapter.powerCase.issuerFaction)}</strong>
+                    </div>
+                    <div className="dungeon-scene__detail-row">
+                      <span>目标方</span>
+                      <strong>{formatFactionList(selectedChapter.powerCase.targetFactions)}</strong>
+                    </div>
+                    <div className="dungeon-scene__detail-row">
+                      <span>牵连代价</span>
+                      <strong>{formatPowerDelta(selectedChapter.powerCase.suspicionDeltaOnWin)}</strong>
+                    </div>
+                    <div className="dungeon-scene__detail-row">
+                      <span>牵连目标</span>
+                      <strong>{formatTargetWorldPresence(worldOverview, selectedChapter.powerCase.targetFactions)}</strong>
+                    </div>
+                    <div className="dungeon-scene__case-hook">
+                      {selectedChapter.powerCase.historicalHook}
+                    </div>
+                  </>
+                ) : null}
                 <div className="dungeon-scene__detail-row">
-                  <span>当前等级</span>
+                  <span>当前资历</span>
                   <strong>Lv.{currentLevel}</strong>
                 </div>
                 <div className="dungeon-scene__detail-row">
-                  <span>解锁要求</span>
+                  <span>接办要求</span>
                   <strong>Lv.{selectedChapter.unlockLevel}</strong>
                 </div>
                 <div className="dungeon-scene__detail-row">
-                  <span>本地记录</span>
-                  <strong>已通 {progressByChapter[selectedChapter.id] ?? 0} 关</strong>
+                  <span>案卷记录</span>
+                  <strong>已办 {progressByChapter[selectedChapter.id] ?? 0} 段</strong>
                 </div>
               </div>
               <button
@@ -121,7 +231,7 @@ export function DungeonScene() {
                 disabled={currentLevel < selectedChapter.unlockLevel || pendingAction === 'DUNGEON_FIGHT'}
                 onClick={() => void handleFight()}
               >
-                {pendingAction === 'DUNGEON_FIGHT' ? '闯关中...' : currentLevel < selectedChapter.unlockLevel ? '尚未解锁' : '进入战斗'}
+                {pendingAction === 'DUNGEON_FIGHT' ? '办差中...' : currentLevel < selectedChapter.unlockLevel ? '资历不足' : '接办差事'}
               </button>
             </>
           ) : null}
@@ -131,20 +241,38 @@ export function DungeonScene() {
       {playback ? (
         <BattleReplay
           battleResult={playback.battleResult}
-          heading="江湖历练"
+          heading="案卷差事"
           subheading={`${playback.chapterName} · ${playback.bossId}`}
           contextLabel="DUNGEON"
           resultBody={(
             <div className="battle-summary">
-              <div className="battle-summary__line"><span>结果</span><strong>{playback.result === 'WIN' ? '闯关成功' : '挑战失败'}</strong></div>
-              <div className="battle-summary__line"><span>章节进度</span><strong>{playback.progressAfter}</strong></div>
+              <div className="battle-summary__line"><span>结果</span><strong>{playback.result === 'WIN' ? '办差得手' : '差事失手'}</strong></div>
+              <div className="battle-summary__line"><span>案卷进度</span><strong>{playback.progressAfter}</strong></div>
               <div className="battle-summary__line"><span>奖励</span><strong>经验 {playback.reward.xp} / 铜钱 {playback.reward.copper}</strong></div>
+              {playback.powerCase ? (
+                <div className="battle-summary__line">
+                  <span>权力案件</span>
+                  <strong>{formatFaction(playback.powerCase.issuerFaction)}清查{formatFactionList(playback.powerCase.targetFactions)}</strong>
+                </div>
+              ) : null}
+              {playback.powerResult ? (
+                <>
+                  <div className="battle-summary__line">
+                    <span>牵连变化</span>
+                    <strong>{formatPowerDelta(playback.powerResult.suspicionDelta)}</strong>
+                  </div>
+                  <div className="battle-summary__line">
+                    <span>当前牵连</span>
+                    <strong>{formatPowerDelta(playback.powerResult.suspicionAfter)}</strong>
+                  </div>
+                </>
+              ) : null}
             </div>
           )}
           actions={[
             {
               key: 'close',
-              label: '返回江湖',
+              label: '返回案牍房',
               onClick: () => setPlayback(null),
             },
           ]}

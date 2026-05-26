@@ -11,13 +11,13 @@ type RightRailNavProps = {
 };
 
 const menuItems: Array<{ id: string; sceneId: SceneId; label: string; subtitle: string }> = [
-  { id: 'tavern', sceneId: 'tavern', label: '客栈', subtitle: '接任务' },
-  { id: 'weaponshop', sceneId: 'weaponshop', label: '兵器铺', subtitle: '刀枪甲胄' },
-  { id: 'magicshop', sceneId: 'magicshop', label: '奇珍阁', subtitle: '符器饰物' },
-  { id: 'inventory', sceneId: 'inventory', label: '行囊', subtitle: '属性装备' },
-  { id: 'dungeon', sceneId: 'dungeon', label: '江湖', subtitle: '地界历练' },
-  { id: 'arena', sceneId: 'arena', label: '校场', subtitle: '挑战排名' },
-  { id: 'mail', sceneId: 'mail', label: '邮件', subtitle: '战报回看' },
+  { id: 'tavern', sceneId: 'tavern', label: '差房', subtitle: '领办差事' },
+  { id: 'weaponshop', sceneId: 'weaponshop', label: '神机营', subtitle: '军械甲胄' },
+  { id: 'magicshop', sceneId: 'magicshop', label: '内务府', subtitle: '宫中旧物' },
+  { id: 'inventory', sceneId: 'inventory', label: '行囊', subtitle: '整备资装' },
+  { id: 'dungeon', sceneId: 'dungeon', label: '案牍', subtitle: '办差清剿' },
+  { id: 'arena', sceneId: 'arena', label: '校场', subtitle: '考绩争名' },
+  { id: 'mail', sceneId: 'mail', label: '战报匣', subtitle: '回看案卷' },
 ];
 
 export function RightRailNav({ activeSceneId, onSceneChange }: RightRailNavProps) {

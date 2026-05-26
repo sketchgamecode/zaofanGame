@@ -13,9 +13,9 @@ import type {
 } from '../types/combat';
 
 const CONTEXT_LABELS: Record<BattleReplayRecord['context'], string> = {
-  MISSION: '客栈任务',
+  MISSION: '差房办差',
   ARENA: '校场挑战',
-  DUNGEON: '江湖历练',
+  DUNGEON: '案卷差事',
   FORTRESS_ATTACK: '攻城战报',
   FORTRESS_DEFENSE: '守城战报',
 };
@@ -120,7 +120,7 @@ export function MailScene() {
   if (loading && !replays.length) {
     return (
       <div className="scene scene--mail scene-status">
-        <div className="scene-status__panel">正在归拢江湖战报...</div>
+        <div className="scene-status__panel">正在归拢衙门战报...</div>
       </div>
     );
   }
@@ -132,7 +132,7 @@ export function MailScene() {
       <div className="mail-scene">
         <section className="mail-scene__list">
           <div className="mail-scene__heading">战报匣</div>
-          <div className="mail-scene__subheading">竞技场、江湖与客栈战斗都收纳在这里。</div>
+          <div className="mail-scene__subheading">校场、案牍与差房办差的回报都收纳在这里。</div>
           <div className="mail-scene__scroll">
             {replays.map((replay) => (
               <button
@@ -161,7 +161,7 @@ export function MailScene() {
               <div className="mail-scene__detail-card">
                 <div className="mail-scene__detail-line"><span>对手</span><strong>{selectedListItem.opponentName}</strong></div>
                 <div className="mail-scene__detail-line"><span>结果</span><strong>{selectedListItem.preview.result === 'WIN' ? '取胜' : '失利'}</strong></div>
-                <div className="mail-scene__detail-line"><span>类型</span><strong>{selectedListItem.preview.type}</strong></div>
+                <div className="mail-scene__detail-line"><span>案类</span><strong>{selectedListItem.preview.type}</strong></div>
               </div>
               <div className="mail-scene__detail-actions">
                 <button

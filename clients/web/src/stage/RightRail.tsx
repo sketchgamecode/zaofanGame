@@ -1,5 +1,5 @@
 import { layout } from '../config/layout';
-import { CLASS_META, getAvatarUrl } from '../config/characterCatalog';
+import { CLASS_META, getAvatarUrl, POWER_FACTION_BADGES } from '../config/characterCatalog';
 import { getNextLevelXp } from '../config/xpTable';
 import { CharacterPortraitCard } from '../components/character/CharacterPortraitCard';
 import { PlayerResourcePanel } from '../components/ui/PlayerResourcePanel';
@@ -21,6 +21,7 @@ export function RightRail({ activeSceneId, onSceneChange, onInventoryOpen }: Rig
   }
 
   const classMeta = CLASS_META[character.player.classId];
+  const powerBadge = character.player.powerFaction ? POWER_FACTION_BADGES[character.player.powerFaction] : '未入权局';
   const nextLevelXp = getNextLevelXp(character.player.level);
   const xpProgress = Math.min(1, Math.max(0, character.player.exp / Math.max(1, nextLevelXp)));
 
@@ -39,7 +40,7 @@ export function RightRail({ activeSceneId, onSceneChange, onInventoryOpen }: Rig
           avatarUrl={getAvatarUrl(character.player.avatarId)}
           level={character.player.level}
           name={character.player.displayName || '无名好汉'}
-          rankText={`江湖排名 ${character.combatPreview.combatRating}`}
+          rankText={`${powerBadge} · 官声排名 ${character.combatPreview.combatRating}`}
           title={classMeta.name}
           xpProgress={xpProgress}
         />
@@ -50,7 +51,7 @@ export function RightRail({ activeSceneId, onSceneChange, onInventoryOpen }: Rig
       <RightRailNav activeSceneId={activeSceneId} onSceneChange={onSceneChange} />
 
       <button className="seal-button" type="button" onClick={onInventoryOpen}>
-        人物
+        资装
       </button>
     </aside>
   );

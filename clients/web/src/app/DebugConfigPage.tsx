@@ -94,7 +94,7 @@ export function DebugConfigPage() {
       setConfig(nextConfig);
       setXpMultiplierInput(String(nextConfig.debugTavernXpMultiplier));
       setCopperMultiplierInput(String(nextConfig.debugTavernCopperMultiplier));
-      setSuccessMessage('倍率修改成功，在游戏内等待酒馆任务刷新后（或主动触发刷新后）新任务才会生效对应倍率。');
+      setSuccessMessage('倍率修改成功，在游戏内等待差房案牌刷新后（或主动触发刷新后）新差事才会生效对应倍率。');
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '修改 Debug 配置失败。');
     } finally {
@@ -107,7 +107,7 @@ export function DebugConfigPage() {
       <section className="debug-panel" aria-labelledby="debug-config-title">
         <div className="debug-panel__eyebrow">Debug Config</div>
         <h1 id="debug-config-title" className="debug-panel__title">
-          酒馆任务倍率
+          差房差事倍率
         </h1>
 
         <div className="debug-panel__status-grid">
@@ -116,7 +116,7 @@ export function DebugConfigPage() {
             <strong>{loading ? '读取中...' : `${config?.debugTavernXpMultiplier ?? '-'}x`}</strong>
           </div>
           <div className="debug-panel__status">
-            <span>当前金币倍率</span>
+            <span>当前铜钱倍率</span>
             <strong>{loading ? '读取中...' : `${config?.debugTavernCopperMultiplier ?? '-'}x`}</strong>
           </div>
         </div>
@@ -148,8 +148,8 @@ export function DebugConfigPage() {
         </div>
 
         <div className="debug-panel__multiplier-group">
-          <div className="debug-panel__group-title">金币倍率</div>
-          <div className="debug-panel__presets" aria-label="金币倍率预设">
+          <div className="debug-panel__group-title">铜钱倍率</div>
+          <div className="debug-panel__presets" aria-label="铜钱倍率预设">
             {PRESET_MULTIPLIERS.map((multiplier) => (
               <button
                 key={`copper-${multiplier}`}
@@ -162,7 +162,7 @@ export function DebugConfigPage() {
             ))}
           </div>
           <label className="debug-panel__field">
-            <span>目标金币倍率</span>
+            <span>目标铜钱倍率</span>
             <input
               min="0.01"
               step="0.01"

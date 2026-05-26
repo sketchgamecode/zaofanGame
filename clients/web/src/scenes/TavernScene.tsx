@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { postGameAction } from '../api/gameApi';
 import { BattleReplay } from '../components/combat/BattleReplay';
+import { POWER_FACTION_LABELS } from '../config/characterCatalog';
 import { formatCountdown } from '../lib/formatters';
 import { toActionErrorMessage } from '../lib/manualErrors';
 import { useGameState } from '../state/GameStateContext';
 import type { MailSaveMissionReplayData } from '../types/combat';
+import type { PowerFactionId } from '../types/game';
 import type {
   ActiveMissionView,
   CompleteMissionData,
+  MissionCaseType,
   MissionOffer,
+  MissionPowerContext,
   RewardPreview,
   TavernInfoData,
   VisibleReward,
@@ -29,6 +33,7 @@ type MissionPresentation = {
   title: string;
   locationName?: string;
   enemyName: string;
+  powerContext: MissionPowerContext;
   rewardPreview: RewardPreview;
   visibleReward?: VisibleReward;
 };
@@ -51,12 +56,70 @@ const NPC_VISUALS: Record<string, NpcVisualConfig> = {
 const REWARD_X_POSITIONS = [440, 622, 804, 986, 1168];
 const REWARD_BASE_Y = 516;
 
+const CASE_TYPE_LABELS: Record<MissionCaseType, string> = {
+  raid: '清剿',
+  audit: '查账',
+  escort: '押送',
+  arrest: '缉拿',
+  purge: '清洗',
+  smuggle: '暗运',
+  petition: '奏报',
+};
+
+const FALLBACK_POWER_CONTEXTS: MissionPowerContext[] = [
+  {
+    issuerFaction: 'imperial',
+    targetFaction: 'noble',
+    caseType: 'arrest',
+    suspicionDeltaPreview: { noble: 2, border: 1 },
+  },
+  {
+    issuerFaction: 'border',
+    targetFaction: 'underworld',
+    caseType: 'raid',
+    suspicionDeltaPreview: { underworld: 1 },
+  },
+  {
+    issuerFaction: 'silver',
+    targetFaction: 'censorate',
+    caseType: 'audit',
+    suspicionDeltaPreview: { censorate: 2 },
+  },
+];
+const DEFAULT_POWER_CONTEXT = FALLBACK_POWER_CONTEXTS[0]!;
+
+function formatFaction(faction: PowerFactionId) {
+  return POWER_FACTION_LABELS[faction];
+}
+
+function getMissionPowerContext(offer: Pick<MissionOffer, 'slotIndex' | 'powerContext'>): MissionPowerContext {
+  return offer.powerContext ?? FALLBACK_POWER_CONTEXTS[offer.slotIndex] ?? DEFAULT_POWER_CONTEXT;
+}
+
+function formatPowerDelta(delta?: Partial<Record<PowerFactionId, number>>) {
+  const entries = Object.entries(delta ?? {})
+    .filter(([, value]) => typeof value === 'number' && value !== 0) as Array<[PowerFactionId, number]>;
+
+  if (entries.length === 0) {
+    return '牵连较轻';
+  }
+
+  return entries
+    .map(([faction, value]) => `${formatFaction(faction)} ${value > 0 ? '+' : ''}${value}`)
+    .join(' / ');
+}
+
+function formatSuspicionDelta(context: MissionPowerContext) {
+  return formatPowerDelta(context.suspicionDeltaPreview);
+}
+
 function createPresentationFromOffer(offer: MissionOffer): MissionPresentation {
   return {
     missionId: offer.missionId,
     title: offer.title,
     locationName: offer.locationName,
     enemyName: offer.enemyPreview.name,
+    powerContext: getMissionPowerContext(offer),
     rewardPreview: {
       xp: offer.visibleReward.xp,
       copper: offer.visibleReward.copper,
@@ -73,7 +136,8 @@ function createPresentationFromActiveMission(activeMission: ActiveMissionView): 
     missionId: activeMission.missionId,
     title: activeMission.title,
     locationName: activeMission.locationName,
-    enemyName: '任务目标',
+    enemyName: '差事目标',
+    powerContext: activeMission.powerContext ?? FALLBACK_POWER_CONTEXTS[activeMission.slotIndex] ?? DEFAULT_POWER_CONTEXT,
     rewardPreview: activeMission.rewardPreview,
   };
 }
@@ -192,7 +256,7 @@ export function TavernScene() {
       );
       applyTavernSnapshot(snapshot);
     } catch (error) {
-      setRequestError(toActionErrorMessage(error, '客栈情报读取失败。'));
+      setRequestError(toActionErrorMessage(error, '差房案牌读取失败。'));
     } finally {
       setLoading(false);
     }
@@ -294,7 +358,7 @@ export function TavernScene() {
 
     } catch (error) {
       autoResolveMissionIdRef.current = null;
-      setRequestError(toActionErrorMessage(error, '任务结算失败。'));
+      setRequestError(toActionErrorMessage(error, '差事结算失败。'));
     } finally {
       setLoadingAction(null);
     }
@@ -350,7 +414,7 @@ export function TavernScene() {
       applyTavernSnapshot(snapshot);
       setPanelOpen(false);
     } catch (error) {
-      setRequestError(toActionErrorMessage(error, '领取任务失败。'));
+      setRequestError(toActionErrorMessage(error, '领取差事失败。'));
     } finally {
       setLoadingAction(null);
     }
@@ -409,7 +473,7 @@ export function TavernScene() {
   if (loading && !tavern) {
     return (
       <div className="scene scene--tavern scene-status">
-        <div className="scene-status__panel">正在同步客栈情报...</div>
+        <div className="scene-status__panel">正在同步差房案牌...</div>
       </div>
     );
   }
@@ -418,7 +482,7 @@ export function TavernScene() {
     return (
       <div className="scene scene--tavern scene-status">
         <div className="scene-status__panel scene-status__panel--error">
-          {requestError ?? '客栈暂不可用，请稍后重试。'}
+          {requestError ?? '差房暂不可用，请稍后重试。'}
         </div>
       </div>
     );
@@ -430,25 +494,37 @@ export function TavernScene() {
         {requestError ? <div className="scene-error-banner">{requestError}</div> : null}
         <BattleReplay
           battleResult={settlementData.battleResult}
-          heading={settlementData.result === 'SUCCESS' ? '任务得手' : '任务失利'}
+          heading={settlementData.result === 'SUCCESS' ? '差事得手' : '差事失利'}
           subheading={`${currentPresentation.title} · ${currentPresentation.locationName ?? '未知地点'}`}
           contextLabel="MISSION"
           resultBody={(
             <div className="battle-summary">
               {settlementData.result === 'SUCCESS' ? (
-                <div className="battle-summary__reward-row">
-                  {settlementRewardSlots.map((reward) => (
-                    <div
-                      key={reward.key}
-                      className="battle-summary__reward"
-                      title={reward.label}
-                    >
-                      <img className="tavern-reward__slot" src="/assets/ui/token_slot_bg.png" alt="" />
-                      <img className="tavern-reward__icon" src={reward.iconSrc} alt={reward.label} />
-                      <div className="tavern-reward__value">{reward.amountText}</div>
+                <>
+                  <div className="battle-summary__reward-row">
+                    {settlementRewardSlots.map((reward) => (
+                      <div
+                        key={reward.key}
+                        className="battle-summary__reward"
+                        title={reward.label}
+                      >
+                        <img className="tavern-reward__slot" src="/assets/ui/token_slot_bg.png" alt="" />
+                        <img className="tavern-reward__icon" src={reward.iconSrc} alt={reward.label} />
+                        <div className="tavern-reward__value">{reward.amountText}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="battle-summary__power-note">
+                    {settlementData.powerResult
+                      ? `牵连变化：${formatPowerDelta(settlementData.powerResult.suspicionDelta)}`
+                      : `牵连预估：${formatSuspicionDelta(currentPresentation.powerContext)}`}
+                  </div>
+                  {settlementData.powerResult ? (
+                    <div className="battle-summary__power-after">
+                      当前牵连：{formatPowerDelta(settlementData.powerResult.suspicionAfter)}
                     </div>
-                  ))}
-                </div>
+                  ) : null}
+                </>
               ) : (
                 <div className="battle-summary__failure">此行空手而归，待整顿后再走一遭。</div>
               )}
@@ -484,6 +560,11 @@ export function TavernScene() {
           <div className="journey-screen__title">赶路中</div>
           <div className="journey-screen__location">前往 {currentPresentation.locationName ?? '未知地点'}</div>
           <div className="journey-screen__mission">{currentPresentation.title}</div>
+          <div className="journey-screen__power">
+            <span>{formatFaction(currentPresentation.powerContext.issuerFaction)}发差</span>
+            <span>{CASE_TYPE_LABELS[currentPresentation.powerContext.caseType]}</span>
+            <span>目标：{formatFaction(currentPresentation.powerContext.targetFaction)}</span>
+          </div>
           <div className="journey-screen__countdown">{formatCountdown(remainingSec * 1000)}</div>
           <div className="journey-screen__progress">
             <div className="journey-screen__progress-fill" style={{ width: `${countdownProgress * 100}%` }} />
@@ -530,7 +611,26 @@ export function TavernScene() {
             <div className="tavern-dialog__text">
               {npcGreeting.name}说：{npcGreeting.dialogue}
               <br />
-              去{previewPresentation.locationName ?? '任务地点'}干掉{previewPresentation.enemyName}。
+              去{previewPresentation.locationName ?? '办差地点'}拿下{previewPresentation.enemyName}。
+            </div>
+          </div>
+
+          <div className="tavern-power-brief">
+            <div>
+              <span>发布方</span>
+              <strong>{formatFaction(previewPresentation.powerContext.issuerFaction)}</strong>
+            </div>
+            <div>
+              <span>目标方</span>
+              <strong>{formatFaction(previewPresentation.powerContext.targetFaction)}</strong>
+            </div>
+            <div>
+              <span>案类</span>
+              <strong>{CASE_TYPE_LABELS[previewPresentation.powerContext.caseType]}</strong>
+            </div>
+            <div>
+              <span>牵连预估</span>
+              <strong>{formatSuspicionDelta(previewPresentation.powerContext)}</strong>
             </div>
           </div>
 
@@ -567,7 +667,7 @@ export function TavernScene() {
               disabled={loadingAction === 'START_MISSION'}
               onClick={() => void handleStartMission()}
             >
-              {loadingAction === 'START_MISSION' ? '领取中...' : '领取任务'}
+              {loadingAction === 'START_MISSION' ? '领牌中...' : '领取差事'}
             </button>
             <button className="tavern-panel__action tavern-panel__action--close" type="button" onClick={() => setPanelOpen(false)}>
               关闭

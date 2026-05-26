@@ -29,6 +29,7 @@ export type RaceId =
   | 'RACE_06'
   | 'RACE_07'
   | 'RACE_08';
+export type PowerFactionId = 'imperial' | 'noble' | 'censorate' | 'border' | 'silver' | 'underworld';
 export type AttributeKey = (typeof ATTRIBUTE_KEYS)[number];
 export type EquipmentSlot = (typeof EQUIPMENT_SLOTS)[number];
 export type ItemRarity = 0 | 1 | 2 | 3 | 4;
@@ -69,6 +70,8 @@ export type CharacterInfoView = {
     raceId: RaceId;
     displayName?: string;
     avatarId?: string;
+    powerFaction?: PowerFactionId;
+    suspicion?: Partial<Record<PowerFactionId, number>>;
     status: 'PENDING_CREATION' | 'ACTIVE';
   };
   resources: ResourceState;
@@ -106,6 +109,8 @@ export type GameSaveState = {
     raceId: RaceId;
     displayName?: string;
     avatarId?: string;
+    powerFaction?: PowerFactionId;
+    suspicion?: Partial<Record<PowerFactionId, number>>;
     status: 'PENDING_CREATION' | 'ACTIVE';
   };
   resources: ResourceState;
@@ -163,6 +168,27 @@ export type BuyAndEquipView = BuyItemView & {
 export type SellItemView = {
   soldItemId: string;
   copperGained: number;
+};
+
+export type WorldFactionOverview = {
+  faction: PowerFactionId;
+  actorCount: number;
+  powerShare: number;
+};
+
+export type WorldLocationOverview = {
+  locationId: string;
+  name: string;
+  ownerFaction: PowerFactionId;
+  actorCount: number;
+  powerShare: number;
+};
+
+export type WorldActorsOverview = {
+  totalActors: number;
+  totalPowerShare: number;
+  byFaction: WorldFactionOverview[];
+  byLocation: WorldLocationOverview[];
 };
 
 export const EQUIPMENT_SLOT_LABELS: Record<EquipmentSlot, string> = {

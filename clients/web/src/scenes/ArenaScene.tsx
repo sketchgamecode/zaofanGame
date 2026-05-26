@@ -122,7 +122,7 @@ export function ArenaScene() {
         result: data.result,
       });
     } catch (error) {
-      setRequestError(toActionErrorMessage(error, '挑战失败。'));
+      setRequestError(toActionErrorMessage(error, '校场交锋失败。'));
     } finally {
       setPendingAction(null);
     }
@@ -198,7 +198,7 @@ export function ArenaScene() {
       <div className="arena-scene">
         <header className="arena-scene__summary">
           <div className="arena-scene__summary-block">
-            <div className="arena-scene__summary-label">荣誉</div>
+            <div className="arena-scene__summary-label">官声</div>
             <div className="arena-scene__summary-value">{info.playerSummary.honor}</div>
           </div>
           <div className="arena-scene__summary-block">
@@ -206,7 +206,7 @@ export function ArenaScene() {
             <div className="arena-scene__summary-value">{info.playerSummary.rank ?? '未上榜'}</div>
           </div>
           <div className="arena-scene__summary-block">
-            <div className="arena-scene__summary-label">今日 XP 胜场</div>
+            <div className="arena-scene__summary-label">今日阅历胜场</div>
             <div className="arena-scene__summary-value">
               {info.playerSummary.dailyXpWins} / {info.playerSummary.maxDailyXpWins}
             </div>
@@ -228,7 +228,7 @@ export function ArenaScene() {
         <section className="arena-scene__board">
           <div className="arena-scene__heading">
             <div className="arena-scene__title">校场擂台</div>
-            <div className="arena-scene__subtitle">挑三名当日可战对手，胜则夺荣誉与阅历。</div>
+            <div className="arena-scene__subtitle">挑三名当日可战对手，胜则夺官声与阅历。</div>
           </div>
 
           <div className="arena-scene__candidates">
@@ -243,7 +243,7 @@ export function ArenaScene() {
                   </div>
                   <div className="arena-card__name">{candidate.displayName}</div>
                   <div className="arena-card__meta">Lv.{candidate.level} · {classMeta.name}</div>
-                  <div className="arena-card__stat-row"><span>荣誉</span><strong>{candidate.honor}</strong></div>
+                  <div className="arena-card__stat-row"><span>官声</span><strong>{candidate.honor}</strong></div>
                   <div className="arena-card__stat-row"><span>排名</span><strong>{candidate.rank}</strong></div>
                   <div className="arena-card__stat-row"><span>战力</span><strong>{candidate.combatPreview.hp} HP</strong></div>
                   <button className="arena-card__fight" type="button" disabled={!canFight || isBusy} onClick={() => void handleFight(candidate)}>
@@ -265,7 +265,7 @@ export function ArenaScene() {
           resultBody={(
             <div className="battle-summary">
               <div className="battle-summary__line"><span>结果</span><strong>{playback.result === 'WIN' ? '取胜' : '失利'}</strong></div>
-              <div className="battle-summary__line"><span>荣誉变化</span><strong>{formatSignedNumber(playback.honorDelta)}</strong></div>
+              <div className="battle-summary__line"><span>官声变化</span><strong>{formatSignedNumber(playback.honorDelta)}</strong></div>
               <div className="battle-summary__line"><span>排名变化</span><strong>{formatSignedNumber(playback.rankDelta)}</strong></div>
               <div className="battle-summary__line"><span>奖励</span><strong>经验 {playback.reward.xp} / 铜钱 {playback.reward.copper}</strong></div>
             </div>

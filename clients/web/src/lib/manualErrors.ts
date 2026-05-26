@@ -9,7 +9,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   BATTLE_REPLAY_NOT_FOUND: '该战报已不存在或已过期。',
   BATTLE_REPLAY_READ_FAILED: '战报读取失败，请稍后重试。',
   BATTLE_REPLAY_WRITE_FAILED: '战报保存失败，请稍后重试。',
-  MISSION_REPLAY_NOT_AVAILABLE: '当前没有可保存的客栈回放。',
+  MISSION_REPLAY_NOT_AVAILABLE: '当前没有可保存的办差回放。',
   ACTION_DISABLED: '当前目标尚未开放。',
 };
 

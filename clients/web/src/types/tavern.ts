@@ -1,4 +1,5 @@
 import type { BattleResultV2 } from './combat';
+import type { PowerFactionId } from './game';
 
 export type TavernStatus = 'IDLE' | 'IN_PROGRESS' | 'READY_TO_COMPLETE';
 
@@ -26,6 +27,16 @@ export type EnemyPreview = {
   archetype?: string;
 };
 
+export type MissionCaseType = 'raid' | 'audit' | 'escort' | 'arrest' | 'purge' | 'smuggle' | 'petition';
+
+export type MissionPowerContext = {
+  issuerFaction: PowerFactionId;
+  targetFaction: PowerFactionId;
+  caseType: MissionCaseType;
+  powerDeltaPreview?: Partial<Record<PowerFactionId, number>>;
+  suspicionDeltaPreview?: Partial<Record<PowerFactionId, number>>;
+};
+
 export type MissionOffer = {
   offerSetId: string;
   missionId: string;
@@ -39,6 +50,7 @@ export type MissionOffer = {
   thirstCostSec: number;
   visibleReward: VisibleReward;
   enemyPreview: EnemyPreview;
+  powerContext?: MissionPowerContext;
   generatedAt: number;
 };
 
@@ -65,6 +77,7 @@ export type ActiveMissionView = {
   actualDurationSec: number;
   thirstCostSec: number;
   rewardPreview: RewardPreview;
+  powerContext?: MissionPowerContext;
   mountSnapshot: {
     timeMultiplierBp: number;
     name?: string;
@@ -130,6 +143,11 @@ export type PlayerDelta = {
   prestigeAfter: number;
 };
 
+export type MissionPowerResult = {
+  suspicionDelta: Partial<Record<PowerFactionId, number>>;
+  suspicionAfter: Partial<Record<PowerFactionId, number>>;
+};
+
 export type CompleteMissionResult = 'SUCCESS' | 'FAILED' | 'ALREADY_SETTLED';
 
 export type CompleteMissionData = {
@@ -142,6 +160,7 @@ export type CompleteMissionData = {
   playerDelta: PlayerDelta;
   nextMissionOffers: MissionOffer[];
   tavern: TavernSummaryView;
+  powerResult?: MissionPowerResult;
   canSaveReplay?: boolean;
   replayId?: string | null;
 };
