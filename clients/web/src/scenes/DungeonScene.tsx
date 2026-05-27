@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { postGameAction } from '../api/gameApi';
 import { BattleReplay } from '../components/combat/BattleReplay';
-import { POWER_FACTION_LABELS } from '../config/characterCatalog';
+import { getClassPowerFaction, POWER_FACTION_LABELS } from '../config/characterCatalog';
 import { DUNGEON_CHAPTERS, getDungeonChapterMeta } from '../config/dungeonCatalog';
+import { getSceneRegistryEntryForFaction } from '../config/sceneRegistry';
 import { toActionErrorMessage } from '../lib/manualErrors';
 import { useGameState } from '../state/GameStateContext';
 import type { DungeonFightData } from '../types/combat';
-import type { PowerFactionId, WorldActorsOverview } from '../types/game';
+import type { PowerFactionId, PowerTransferResult, WorldActorsOverview } from '../types/game';
 
 type DungeonPlaybackState = {
   chapterName: string;
@@ -44,6 +45,33 @@ function formatPowerShare(value: number) {
   return `${(value / 100).toFixed(2)}%`;
 }
 
+function formatPowerTransferDelta(delta?: Partial<Record<PowerFactionId, number>>) {
+  const entries = Object.entries(delta ?? {})
+    .filter(([, value]) => typeof value === 'number' && value !== 0) as Array<[PowerFactionId, number]>;
+
+  if (entries.length === 0) {
+    return '无明显变化';
+  }
+
+  return entries
+    .map(([faction, value]) => `${formatFaction(faction)} ${value > 0 ? '+' : ''}${formatPowerShare(value)}`)
+    .join(' / ');
+}
+
+function formatPowerTransfer(transfer?: PowerTransferResult) {
+  if (!transfer) {
+    return null;
+  }
+
+  const issuerText = formatPowerTransferDelta(transfer.issuerFactionPowerDelta);
+  const targetText = formatPowerTransferDelta(transfer.targetFactionPowerDelta);
+  const actorText = transfer.actorPowerDelta ? `本人 ${transfer.actorPowerDelta > 0 ? '+' : ''}${formatPowerShare(transfer.actorPowerDelta)}` : '';
+
+  return [issuerText, targetText, actorText]
+    .filter((text) => text && text !== '无明显变化')
+    .join(' / ') || '权柄无明显变化';
+}
+
 function formatTargetWorldPresence(overview: WorldActorsOverview | null, factions: PowerFactionId[]) {
   if (!overview) {
     return '世界角色池同步中';
@@ -62,6 +90,7 @@ function formatTargetWorldPresence(overview: WorldActorsOverview | null, faction
 
 export function DungeonScene() {
   const { character, refreshCharacterInfo, runServerAction } = useGameState();
+  const dungeonEntry = getSceneRegistryEntryForFaction('dungeon', getClassPowerFaction(character?.player.classId));
   const [selectedChapterId, setSelectedChapterId] = useState(DUNGEON_CHAPTERS[0]?.id ?? 'chapter_1');
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
@@ -147,8 +176,8 @@ export function DungeonScene() {
 
       <div className="dungeon-scene">
         <section className="dungeon-scene__chapter-list">
-          <div className="dungeon-scene__heading">案牍房</div>
-          <div className="dungeon-scene__subheading">按你的资历和官声，逐件接办凶险差事。</div>
+          <div className="dungeon-scene__heading">{dungeonEntry?.channelName ?? '案牍房'}</div>
+          <div className="dungeon-scene__subheading">{dungeonEntry?.fallbackDetail ?? '按你的资历和官声，逐件接办凶险差事。'}</div>
           <div className="dungeon-scene__world-overview">
             <span>大明权力名册</span>
             <strong>{worldOverview ? `${worldOverview.totalActors}人 / 权柄${formatPowerShare(worldOverview.totalPowerShare)}` : '同步中'}</strong>
@@ -265,6 +294,12 @@ export function DungeonScene() {
                     <span>当前牵连</span>
                     <strong>{formatPowerDelta(playback.powerResult.suspicionAfter)}</strong>
                   </div>
+                  {playback.powerResult.powerTransfer ? (
+                    <div className="battle-summary__line">
+                      <span>权柄变化</span>
+                      <strong>{formatPowerTransfer(playback.powerResult.powerTransfer)}</strong>
+                    </div>
+                  ) : null}
                 </>
               ) : null}
             </div>

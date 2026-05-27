@@ -1,5 +1,5 @@
 import type { BattleResultV2 } from './combat';
-import type { PowerFactionId } from './game';
+import type { PowerFactionId, PowerTransferResult } from './game';
 
 export type TavernStatus = 'IDLE' | 'IN_PROGRESS' | 'READY_TO_COMPLETE';
 
@@ -146,6 +146,7 @@ export type PlayerDelta = {
 export type MissionPowerResult = {
   suspicionDelta: Partial<Record<PowerFactionId, number>>;
   suspicionAfter: Partial<Record<PowerFactionId, number>>;
+  powerTransfer?: PowerTransferResult;
 };
 
 export type CompleteMissionResult = 'SUCCESS' | 'FAILED' | 'ALREADY_SETTLED';

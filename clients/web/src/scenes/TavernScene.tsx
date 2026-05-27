@@ -6,7 +6,7 @@ import { formatCountdown } from '../lib/formatters';
 import { toActionErrorMessage } from '../lib/manualErrors';
 import { useGameState } from '../state/GameStateContext';
 import type { MailSaveMissionReplayData } from '../types/combat';
-import type { PowerFactionId } from '../types/game';
+import type { PowerFactionId, PowerTransferResult } from '../types/game';
 import type {
   ActiveMissionView,
   CompleteMissionData,
@@ -111,6 +111,37 @@ function formatPowerDelta(delta?: Partial<Record<PowerFactionId, number>>) {
 
 function formatSuspicionDelta(context: MissionPowerContext) {
   return formatPowerDelta(context.suspicionDeltaPreview);
+}
+
+function formatPowerTransferDelta(delta?: Partial<Record<PowerFactionId, number>>) {
+  const entries = Object.entries(delta ?? {})
+    .filter(([, value]) => typeof value === 'number' && value !== 0) as Array<[PowerFactionId, number]>;
+
+  if (entries.length === 0) {
+    return '无明显变化';
+  }
+
+  return entries
+    .map(([faction, value]) => `${formatFaction(faction)} ${value > 0 ? '+' : ''}${formatPowerShare(value)}`)
+    .join(' / ');
+}
+
+function formatPowerShare(value: number) {
+  return `${(value / 100).toFixed(2)}%`;
+}
+
+function formatPowerTransfer(transfer?: PowerTransferResult) {
+  if (!transfer) {
+    return null;
+  }
+
+  const issuerText = formatPowerTransferDelta(transfer.issuerFactionPowerDelta);
+  const targetText = formatPowerTransferDelta(transfer.targetFactionPowerDelta);
+  const actorText = transfer.actorPowerDelta ? `本人 ${transfer.actorPowerDelta > 0 ? '+' : ''}${formatPowerShare(transfer.actorPowerDelta)}` : '';
+
+  return [issuerText, targetText, actorText]
+    .filter((text) => text && text !== '无明显变化')
+    .join(' / ') || '权柄无明显变化';
 }
 
 function createPresentationFromOffer(offer: MissionOffer): MissionPresentation {
@@ -522,6 +553,11 @@ export function TavernScene() {
                   {settlementData.powerResult ? (
                     <div className="battle-summary__power-after">
                       当前牵连：{formatPowerDelta(settlementData.powerResult.suspicionAfter)}
+                    </div>
+                  ) : null}
+                  {settlementData.powerResult?.powerTransfer ? (
+                    <div className="battle-summary__power-after">
+                      权柄变化：{formatPowerTransfer(settlementData.powerResult.powerTransfer)}
                     </div>
                   ) : null}
                 </>

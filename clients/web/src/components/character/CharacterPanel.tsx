@@ -5,6 +5,7 @@
  * 使用 DroppableSlot + ItemSlot，不再自持 tooltip 状态。
  */
 
+import { useState } from 'react';
 import {
   CLASS_META,
   getAvatarUrl,
@@ -27,11 +28,24 @@ import {
   type PowerFactionId,
 } from '../../types/game';
 
+export type CharacterPanelPosition = {
+  positionId: string;
+  locationName: string;
+  title: string;
+  serviceLabel: string;
+  ownerLabel: string;
+  incomeHint: string;
+  replaceHint: string;
+  statusLabel?: string;
+};
+
 type CharacterPanelProps = {
   character: CharacterInfoView;
   highlightedEquipmentSlot?: EquipmentSlot | null;
   pendingAction: string | null;
-  onUpgradeAttribute: (attribute: AttributeKey) => void;
+  onUpgradeAttribute?: (attribute: AttributeKey) => void;
+  positions?: CharacterPanelPosition[];
+  readOnly?: boolean;
 };
 
 const ATTRIBUTE_LABELS: Record<AttributeKey, string> = {
@@ -142,17 +156,19 @@ function StatRow({
   attribute,
   pendingAction,
   onUpgradeAttribute,
+  readOnly,
 }: {
   character: CharacterInfoView;
   attribute: AttributeKey;
   pendingAction: string | null;
   onUpgradeAttribute: CharacterPanelProps['onUpgradeAttribute'];
+  readOnly: boolean;
 }) {
   const base = character.attributes.base[attribute];
   const total = character.attributes.total[attribute];
   const equipment = total - base;
   const upgradeCost = character.attributes.upgradeCosts[attribute];
-  const canUpgrade = character.resources.copper >= upgradeCost && pendingAction === null;
+  const canUpgrade = !readOnly && Boolean(onUpgradeAttribute) && character.resources.copper >= upgradeCost && pendingAction === null;
 
   return (
     <div className="character-panel__stat-row" tabIndex={0}>
@@ -167,7 +183,7 @@ function StatRow({
         disabled={!canUpgrade}
         title={`升级消耗 ${upgradeCost} 铜钱`}
         type="button"
-        onClick={() => onUpgradeAttribute(attribute)}
+        onClick={() => onUpgradeAttribute?.(attribute)}
       >
         +
       </button>
@@ -194,15 +210,50 @@ function DerivedStatRow({ hint, label, value }: DerivedStat) {
 }
 
 // ── CharacterPanel ────────────────────────────────────────────────
+function CharacterPanelPositions({ positions }: { positions: CharacterPanelPosition[] }) {
+  if (positions.length === 0) {
+    return (
+      <div className="character-panel__positions-empty">
+        <strong>暂无任职</strong>
+        <span>此角色尚未占据可展示的场所职务。后续可在这里查看其任职地点、职务收益与可替代条件。</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="character-panel__positions-list">
+      {positions.map((position) => (
+        <article key={position.positionId} className="character-panel__position-card">
+          <div className="character-panel__position-head">
+            <span>{position.locationName}</span>
+            <strong>{position.title}</strong>
+          </div>
+          <div className="character-panel__position-meta">
+            <span>{position.ownerLabel}</span>
+            <span>{position.serviceLabel}</span>
+            {position.statusLabel ? <span>{position.statusLabel}</span> : null}
+          </div>
+          <p>{position.incomeHint}</p>
+          <p>{position.replaceHint}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 export function CharacterPanel({
   character,
   highlightedEquipmentSlot = null,
   pendingAction,
   onUpgradeAttribute,
+  positions = [],
+  readOnly = false,
 }: CharacterPanelProps) {
+  const [activeTab, setActiveTab] = useState<'attributes' | 'positions'>('attributes');
   const { tooltip } = useItemTooltip();
   const classMeta = CLASS_META[character.player.classId];
-  const powerFaction = character.player.powerFaction;
+  const powerFaction = classMeta.powerFaction;
+  const originFaction = character.player.powerFaction;
   const powerBadge = powerFaction ? POWER_FACTION_BADGES[powerFaction] : '未入权局';
   const powerLabel = powerFaction ? POWER_FACTION_LABELS[powerFaction] : '未定';
   const powerHint = powerFaction
@@ -243,6 +294,8 @@ export function CharacterPanel({
           <span className="character-panel__power-affiliation-hint" role="tooltip">
             {powerHint}
             <br />
+            {originFaction ? `出身牵连：${POWER_FACTION_LABELS[originFaction]}。` : '出身牵连尚未写入。'}
+            <br />
             {suspicionHint}
           </span>
         </div>
@@ -258,23 +311,51 @@ export function CharacterPanel({
         ))}
 
         {/* 属性区 */}
-        <div className="character-panel__stats-grid">
-          <div className="character-panel__primary-stats">
-            {ATTRIBUTE_KEYS.map((attribute) => (
-              <StatRow
-                key={attribute}
-                attribute={attribute}
-                character={character}
-                pendingAction={pendingAction}
-                onUpgradeAttribute={onUpgradeAttribute}
-              />
-            ))}
-          </div>
-          <div className="character-panel__derived-stats">
-            {derivedStats.map((stat) => (
-              <DerivedStatRow key={stat.label} hint={stat.hint} label={stat.label} value={stat.value} />
-            ))}
-          </div>
+        <div className="character-panel__tabs" role="tablist" aria-label="角色详情分页">
+          <button
+            className={`character-panel__tab${activeTab === 'attributes' ? ' character-panel__tab--active' : ''}`}
+            role="tab"
+            type="button"
+            aria-selected={activeTab === 'attributes'}
+            onClick={() => setActiveTab('attributes')}
+          >
+            属性
+          </button>
+          <button
+            className={`character-panel__tab${activeTab === 'positions' ? ' character-panel__tab--active' : ''}`}
+            role="tab"
+            type="button"
+            aria-selected={activeTab === 'positions'}
+            onClick={() => setActiveTab('positions')}
+          >
+            任职
+          </button>
+        </div>
+
+        <div className="character-panel__tab-body">
+          {activeTab === 'attributes' ? (
+            <div className="character-panel__stats-grid">
+              <div className="character-panel__primary-stats">
+                {ATTRIBUTE_KEYS.map((attribute) => (
+                  <StatRow
+                    key={attribute}
+                    attribute={attribute}
+                    character={character}
+                    pendingAction={pendingAction}
+                    readOnly={readOnly}
+                    onUpgradeAttribute={onUpgradeAttribute}
+                  />
+                ))}
+              </div>
+              <div className="character-panel__derived-stats">
+                {derivedStats.map((stat) => (
+                  <DerivedStatRow key={stat.label} hint={stat.hint} label={stat.label} value={stat.value} />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <CharacterPanelPositions positions={positions} />
+          )}
         </div>
 
       </div>

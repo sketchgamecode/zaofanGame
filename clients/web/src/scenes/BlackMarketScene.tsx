@@ -1,7 +1,7 @@
 /**
  * BlackMarketScene.tsx
  *
- * 商店场景（神机营 / 内务府）。
+ * 商店场景（军需库 / 盐引暗柜）。
  * 使用 DroppableSlot / DroppableDraggableSlot，无 onItemTooltipChange 传递链。
  * Tooltip 由全局 tooltipStore 驱动。
  */
@@ -22,6 +22,8 @@ import { postGameAction } from '../api/gameApi';
 import { CharacterPanel } from '../components/character/CharacterPanel';
 import { DroppableDraggableSlot } from '../components/ui/DroppableSlot';
 import { DraggableItemSlot, ItemDragPreview, ItemSlot } from '../components/ui/ItemSlot';
+import { getClassPowerFaction } from '../config/characterCatalog';
+import { getSceneRegistryEntryForFaction } from '../config/sceneRegistry';
 import { formatCountdown } from '../lib/formatters';
 import { toActionErrorMessage } from '../lib/manualErrors';
 import { useItemTooltip } from '../state/tooltipStore';
@@ -32,6 +34,7 @@ import type {
   BuyItemView,
   EquipmentItem,
   EquipmentSlot,
+  PowerFactionId,
   SellItemView,
 } from '../types/game';
 
@@ -43,18 +46,24 @@ function getShopTypeForItem(item: EquipmentItem): ShopType {
   return WEAPON_SHOP_SLOTS.includes(item.slot) ? 'weapon' : 'magic';
 }
 
-function getShopTitle(shopType: ShopType) {
-  return shopType === 'weapon' ? '神机营' : '内务府';
+function getShopTitle(shopType: ShopType, powerFaction?: PowerFactionId) {
+  const entry = getSceneRegistryEntryForFaction(shopType === 'weapon' ? 'weaponshop' : 'magicshop', powerFaction);
+  return entry?.channelName ?? (shopType === 'weapon' ? '军需库' : '盐引暗柜');
 }
 
-function getShopFlavor(shopType: ShopType) {
+function getShopFlavor(shopType: ShopType, powerFaction?: PowerFactionId) {
+  const entry = getSceneRegistryEntryForFaction(shopType === 'weapon' ? 'weaponshop' : 'magicshop', powerFaction);
+  if (entry) {
+    return `${entry.fallbackName} · ${entry.fallbackDetail}`;
+  }
+
   return shopType === 'weapon'
     ? '军械案牍齐备，刀枪甲胄明码交易。'
-    : '宫中旧物流转宫外，真假成色各凭眼力。';
+    : '盐引、贡品和旧物流转暗柜，真假成色各凭眼力。';
 }
 
 function getShopNpc(shopType: ShopType) {
-  return shopType === 'weapon' ? '神机营军需官' : '内务府采办';
+  return shopType === 'weapon' ? '神机营军需官' : '盐商会馆账房';
 }
 
 function getShopIntroLines(shopType: ShopType) {
@@ -65,9 +74,9 @@ function getShopIntroLines(shopType: ShopType) {
         '凡在此处买走的军械，皆有营中火漆为凭。拿去办差用，别说是偷来的便成。',
       ]
     : [
-        '这批物件是宫里娘娘身边人托出来的，簪环佩饰都有讲究，不过真假还得凭客官眼力。',
-        '内务府只管牵线，不管故事。说是宫里流出的，也有几件像是外头人硬往宫里攀的。',
-        '娘娘们换下来的旧物最讲缘分，灵不灵另说，体面总是有几分的。',
+        '盐引暗柜只认银水和门路。说是贡品旧物，也有几件像是账房硬替人圆的故事。',
+        '会馆里不问来处，只问出价。宫中旧物、织造贡品、私贩小器，真假都在客官眼里。',
+        '这批货从盐路和织造账上绕了几道手，体面是体面，干净不干净便别细问了。',
       ];
 }
 
@@ -128,6 +137,7 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
     upgradeAttribute,
   } = useGameState();
   const { setTooltip } = useItemTooltip();
+  const powerFaction = getClassPowerFaction(character?.player.classId);
 
   const [market, setMarket] = useState<BlackMarketView | null>(null);
   const [activeItem, setActiveItem] = useState<EquipmentItem | null>(null);
@@ -303,7 +313,7 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
           <SceneNpcIntro
             line={introLine}
             npcName={getShopNpc(shopType)}
-            placeName={getShopTitle(shopType)}
+            placeName={getShopTitle(shopType, powerFaction)}
             onContinue={() => setIntroDismissed(true)}
           />
         </div>
@@ -325,8 +335,8 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
           <section className={`blackmarket-scene__shop blackmarket-scene__shop--${shopType}`}>
             <header className="blackmarket-scene__shop-header">
               <div>
-                <div className="blackmarket-scene__title">{getShopTitle(shopType)}</div>
-                <div className="blackmarket-scene__flavor">{getShopFlavor(shopType)}</div>
+                <div className="blackmarket-scene__title">{getShopTitle(shopType, powerFaction)}</div>
+                <div className="blackmarket-scene__flavor">{getShopFlavor(shopType, powerFaction)}</div>
               </div>
               <button className="blackmarket-scene__info" type="button" aria-label="店铺信息">i</button>
               <button

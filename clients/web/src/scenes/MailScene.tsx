@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { postGameAction } from '../api/gameApi';
 import { BattleReplay } from '../components/combat/BattleReplay';
+import { getClassPowerFaction } from '../config/characterCatalog';
+import { getSceneRegistryEntryForFaction } from '../config/sceneRegistry';
 import { formatTimestamp } from '../lib/formatters';
 import { toActionErrorMessage } from '../lib/manualErrors';
 import { useGameState } from '../state/GameStateContext';
@@ -21,7 +23,8 @@ const CONTEXT_LABELS: Record<BattleReplayRecord['context'], string> = {
 };
 
 export function MailScene() {
-  const { runServerAction } = useGameState();
+  const { character, runServerAction } = useGameState();
+  const mailEntry = getSceneRegistryEntryForFaction('mail', getClassPowerFaction(character?.player.classId));
   const [replays, setReplays] = useState<BattleReplayListItem[]>([]);
   const [selectedReplayId, setSelectedReplayId] = useState<string | null>(null);
   const [selectedReplay, setSelectedReplay] = useState<BattleReplayRecord | null>(null);
@@ -131,8 +134,8 @@ export function MailScene() {
 
       <div className="mail-scene">
         <section className="mail-scene__list">
-          <div className="mail-scene__heading">战报匣</div>
-          <div className="mail-scene__subheading">校场、案牍与差房办差的回报都收纳在这里。</div>
+          <div className="mail-scene__heading">{mailEntry?.channelName ?? '暗线回报'}</div>
+          <div className="mail-scene__subheading">{mailEntry?.fallbackDetail ?? '校场、案牍与差房办差的回报都收纳在这里。'}</div>
           <div className="mail-scene__scroll">
             {replays.map((replay) => (
               <button

@@ -19,12 +19,15 @@ import { useState } from 'react';
 import { CharacterPanel } from '../components/character/CharacterPanel';
 import { DroppableDraggableSlot } from '../components/ui/DroppableSlot';
 import { ItemDragPreview } from '../components/ui/ItemSlot';
+import { getClassPowerFaction } from '../config/characterCatalog';
+import { getSceneRegistryEntryForFaction } from '../config/sceneRegistry';
 import { useItemTooltip } from '../state/tooltipStore';
 import { useGameState } from '../state/GameStateContext';
 import type { EquipmentItem } from '../types/game';
 
 export function InventoryScene() {
   const { character, pendingAction, upgradeAttribute, equipItem, unequipItem } = useGameState();
+  const inventoryEntry = getSceneRegistryEntryForFaction('inventory', getClassPowerFaction(character?.player.classId));
   const { setTooltip } = useItemTooltip();
   const [activeItem, setActiveItem] = useState<EquipmentItem | null>(null);
 
@@ -90,7 +93,7 @@ export function InventoryScene() {
           {/* 右侧背包 */}
           <div className="inventory-scene__bag">
             <div className="inventory-scene__bag-head">
-              <div className="inventory-scene__bag-title">随身行囊</div>
+              <div className="inventory-scene__bag-title">{inventoryEntry?.channelName ?? '随身行囊'}</div>
               <div className="inventory-scene__bag-meta">{character.inventory.count} / {inventoryCapacity}</div>
             </div>
 

@@ -191,6 +191,121 @@ export type WorldActorsOverview = {
   byLocation: WorldLocationOverview[];
 };
 
+export type PowerLocationService =
+  | 'missions'
+  | 'shop'
+  | 'dungeon'
+  | 'arena'
+  | 'promotion'
+  | 'intel'
+  | 'estate'
+  | 'stamina';
+export type PowerLocationStatus = 'locked' | 'open' | 'hostile' | 'favored';
+
+export type PowerLocationServiceActor = {
+  actorId: string;
+  displayName: string;
+  avatarId: string;
+  faction: PowerFactionId;
+  title: string;
+  level: number;
+  powerShare: number;
+  services: PowerLocationService[];
+};
+
+export type ServicePositionStatus = 'bot_held' | 'player_held' | 'vacant' | 'locked';
+
+export type ServicePositionView = {
+  positionId: string;
+  locationId: string;
+  title: string;
+  service: PowerLocationService;
+  ownerFaction: PowerFactionId;
+  minLevel: number;
+  incomeHint: string;
+  replaceHint: string;
+  status: ServicePositionStatus;
+  occupant: {
+    actorId: string;
+    kind: 'bot' | 'player';
+    displayName: string;
+    avatarId: string;
+    faction: PowerFactionId;
+    level: number;
+    powerShare: number;
+  };
+};
+
+export type PowerLocationView = {
+  locationId: string;
+  name: string;
+  ownerFaction: PowerFactionId;
+  x: number;
+  y: number;
+  unlockLevel: number;
+  services: PowerLocationService[];
+  connectedLocationIds: string[];
+  travelCostSecBase?: number;
+  actorCount: number;
+  powerShare: number;
+  status: PowerLocationStatus;
+  playerRelationHint: string;
+  servicePositions?: ServicePositionView[];
+  serviceActors?: PowerLocationServiceActor[];
+};
+
+export type WorldLocationsStatusView = {
+  locations: PowerLocationView[];
+};
+
+export type ActorPositionSummary = {
+  positionId: string;
+  locationId: string;
+  locationName: string;
+  title: string;
+  service: PowerLocationService;
+  serviceLabel: string;
+  ownerFaction: PowerFactionId;
+  ownerLabel: string;
+  incomeHint: string;
+  replaceHint: string;
+  status: ServicePositionStatus;
+};
+
+export type WorldActorDetailView = {
+  actorId: string;
+  kind: 'player' | 'bot';
+  character: CharacterInfoView;
+  positions: ActorPositionSummary[];
+};
+
+export type WorldServicePositionListItem = ActorPositionSummary & {
+  occupant: {
+    actorId: string;
+    kind: 'player' | 'bot';
+    displayName: string;
+    avatarId: string;
+    faction: PowerFactionId;
+    level: number;
+    powerShare: number;
+  };
+};
+
+export type WorldServicePositionsListView = {
+  positions: WorldServicePositionListItem[];
+};
+
+export type PowerTransferResult = {
+  worldPowerTotal: number;
+  actorPowerDelta?: number;
+  issuerFactionPowerDelta?: Partial<Record<PowerFactionId, number>>;
+  targetFactionPowerDelta?: Partial<Record<PowerFactionId, number>>;
+  targetActorIds?: string[];
+  worldPowerAfter?: {
+    byFaction: WorldFactionOverview[];
+  };
+};
+
 export const EQUIPMENT_SLOT_LABELS: Record<EquipmentSlot, string> = {
   head: '头',
   body: '衣',

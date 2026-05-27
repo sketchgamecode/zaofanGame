@@ -21,7 +21,7 @@ export function RightRail({ activeSceneId, onSceneChange, onInventoryOpen }: Rig
   }
 
   const classMeta = CLASS_META[character.player.classId];
-  const powerBadge = character.player.powerFaction ? POWER_FACTION_BADGES[character.player.powerFaction] : '未入权局';
+  const powerBadge = POWER_FACTION_BADGES[classMeta.powerFaction];
   const nextLevelXp = getNextLevelXp(character.player.level);
   const xpProgress = Math.min(1, Math.max(0, character.player.exp / Math.max(1, nextLevelXp)));
 
@@ -49,10 +49,6 @@ export function RightRail({ activeSceneId, onSceneChange, onInventoryOpen }: Rig
       <PlayerResourcePanel resources={character.resources} />
 
       <RightRailNav activeSceneId={activeSceneId} onSceneChange={onSceneChange} />
-
-      <button className="seal-button" type="button" onClick={onInventoryOpen}>
-        资装
-      </button>
     </aside>
   );
 }

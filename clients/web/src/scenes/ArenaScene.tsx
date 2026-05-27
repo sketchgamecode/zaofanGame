@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { postGameAction } from '../api/gameApi';
 import { BattleReplay } from '../components/combat/BattleReplay';
-import { CLASS_META, getAvatarUrl } from '../config/characterCatalog';
+import { CLASS_META, getAvatarUrl, getClassPowerFaction } from '../config/characterCatalog';
+import { getSceneRegistryEntryForFaction } from '../config/sceneRegistry';
 import { formatCountdown, formatSignedNumber } from '../lib/formatters';
 import { toActionErrorMessage } from '../lib/manualErrors';
 import { useGameState } from '../state/GameStateContext';
@@ -23,7 +24,8 @@ type ArenaPlaybackState = {
 };
 
 export function ArenaScene() {
-  const { refreshCharacterInfo, runServerAction } = useGameState();
+  const { character, refreshCharacterInfo, runServerAction } = useGameState();
+  const arenaEntry = getSceneRegistryEntryForFaction('arena', getClassPowerFaction(character?.player.classId));
   const [info, setInfo] = useState<ArenaGetInfoData | null>(null);
   const [loading, setLoading] = useState(true);
   const [requestError, setRequestError] = useState<string | null>(null);
@@ -227,8 +229,8 @@ export function ArenaScene() {
 
         <section className="arena-scene__board">
           <div className="arena-scene__heading">
-            <div className="arena-scene__title">校场擂台</div>
-            <div className="arena-scene__subtitle">挑三名当日可战对手，胜则夺官声与阅历。</div>
+            <div className="arena-scene__title">{arenaEntry?.channelName ?? '校场考绩'}</div>
+            <div className="arena-scene__subtitle">{arenaEntry?.fallbackDetail ?? '挑三名当日可战对手，胜则夺官声与阅历。'}</div>
           </div>
 
           <div className="arena-scene__candidates">

@@ -231,6 +231,10 @@ export function formatModifiers(modifiers: AttributeValues) {
     .join(' / ');
 }
 
+export function getClassPowerFaction(classId?: PlayerClassId): PowerFactionId | undefined {
+  return classId ? CLASS_META[classId]?.powerFaction : undefined;
+}
+
 export function getAvatarUrl(avatarId?: string) {
   if (!avatarId) {
     return '/assets/ui/potrait_00.png';
