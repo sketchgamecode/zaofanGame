@@ -1,5 +1,5 @@
 import type { BattleResultV2 } from './combat';
-import type { PowerFactionId, PowerTransferResult } from './game';
+import type { PlayerClassId, PowerFactionId, PowerTransferResult, RaceId } from './game';
 
 export type TavernStatus = 'IDLE' | 'IN_PROGRESS' | 'READY_TO_COMPLETE';
 
@@ -37,6 +37,23 @@ export type MissionPowerContext = {
   suspicionDeltaPreview?: Partial<Record<PowerFactionId, number>>;
 };
 
+export type MissionTargetActorPreview = {
+  actorId: string;
+  kind: 'bot' | 'player';
+  displayName: string;
+  avatarId: string;
+  level: number;
+  classId: PlayerClassId;
+  raceId?: RaceId;
+  faction: PowerFactionId;
+  locationId: string;
+  locationName?: string;
+  powerShare: number;
+  title?: string;
+  positionId?: string;
+  reason: string;
+};
+
 export type MissionOffer = {
   offerSetId: string;
   missionId: string;
@@ -51,6 +68,14 @@ export type MissionOffer = {
   visibleReward: VisibleReward;
   enemyPreview: EnemyPreview;
   powerContext?: MissionPowerContext;
+  targetActor?: MissionTargetActorPreview;
+  sourceLocationId?: string;
+  sourceLocationName?: string;
+  sourcePositionId?: string;
+  issuerActorId?: string;
+  issuerDisplayName?: string;
+  issuerTitle?: string;
+  issuerFaction?: PowerFactionId;
   generatedAt: number;
 };
 
@@ -78,6 +103,14 @@ export type ActiveMissionView = {
   thirstCostSec: number;
   rewardPreview: RewardPreview;
   powerContext?: MissionPowerContext;
+  targetActor?: MissionTargetActorPreview;
+  sourceLocationId?: string;
+  sourceLocationName?: string;
+  sourcePositionId?: string;
+  issuerActorId?: string;
+  issuerDisplayName?: string;
+  issuerTitle?: string;
+  issuerFaction?: PowerFactionId;
   mountSnapshot: {
     timeMultiplierBp: number;
     name?: string;
@@ -162,6 +195,20 @@ export type CompleteMissionData = {
   nextMissionOffers: MissionOffer[];
   tavern: TavernSummaryView;
   powerResult?: MissionPowerResult;
+  targetActor?: MissionTargetActorPreview;
+  sourceLocationId?: string;
+  sourceLocationName?: string;
+  sourcePositionId?: string;
+  issuerActorId?: string;
+  issuerDisplayName?: string;
+  issuerTitle?: string;
+  issuerFaction?: PowerFactionId;
   canSaveReplay?: boolean;
   replayId?: string | null;
+};
+
+export type MissionSourcePayload = {
+  locationId?: string;
+  servicePositionId?: string;
+  issuerActorId?: string;
 };

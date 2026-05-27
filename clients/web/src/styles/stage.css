@@ -398,6 +398,82 @@ body {
   text-overflow: ellipsis;
 }
 
+.tavern-target-card {
+  position: absolute;
+  left: 142px;
+  top: 500px;
+  width: 230px;
+  display: grid;
+  gap: 8px;
+  color: rgba(249, 228, 190, 0.9);
+}
+
+.tavern-target-card .character-portrait-card {
+  width: 100%;
+}
+
+.tavern-target-card__copy {
+  border: 1px solid rgba(69, 43, 24, 0.78);
+  background: rgba(35, 22, 13, 0.88);
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.tavern-target-card__copy span {
+  color: rgba(218, 177, 103, 0.86);
+  font-size: 13px;
+}
+
+.tavern-target-card__copy strong {
+  color: #fff0cf;
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.tavern-target-card__copy em {
+  color: rgba(249, 228, 190, 0.72);
+  font-size: 14px;
+  font-style: normal;
+}
+
+.tavern-source-back {
+  position: absolute;
+  left: 38px;
+  top: 32px;
+  z-index: 30;
+  min-width: 136px;
+  border: 1px solid rgba(77, 47, 25, 0.86);
+  background: rgba(35, 22, 13, 0.86);
+  color: #ffe6b2;
+  padding: 10px 16px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tavern-source-back:hover {
+  filter: brightness(1.12);
+}
+
+.tavern-source-label,
+.journey-screen__issuer {
+  border: 1px solid rgba(172, 124, 59, 0.56);
+  background: rgba(24, 14, 8, 0.76);
+  color: #ffe9bd;
+  padding: 8px 12px;
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.tavern-source-label {
+  position: absolute;
+  left: 440px;
+  top: 458px;
+  width: 520px;
+  text-align: center;
+}
+
 .tavern-reward__slot {
   position: absolute;
   left: 0;
@@ -423,6 +499,46 @@ body {
   font-size: 30px;
   color: #f5e2bd;
   text-shadow: 0 2px 2px rgba(0, 0, 0, 0.36);
+}
+
+.journey-screen__target,
+.battle-summary__target {
+  border: 1px solid rgba(214, 168, 90, 0.56);
+  background: rgba(16, 11, 8, 0.66);
+  color: rgba(255, 240, 207, 0.9);
+  padding: 10px 14px;
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.battle-summary__consequence-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.battle-summary__consequence-grid > div {
+  min-height: 74px;
+  border: 1px solid rgba(172, 124, 59, 0.48);
+  background: rgba(33, 22, 13, 0.74);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+}
+
+.battle-summary__consequence-grid span {
+  color: rgba(214, 180, 122, 0.88);
+  font-size: 15px;
+}
+
+.battle-summary__consequence-grid strong {
+  color: #fff0cf;
+  font-size: 18px;
+  line-height: 1.25;
+  font-weight: 700;
 }
 
 .tavern-panel__actions {

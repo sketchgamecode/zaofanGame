@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { postGameAction } from '../api/gameApi';
 import { BattleReplay } from '../components/combat/BattleReplay';
-import { POWER_FACTION_LABELS } from '../config/characterCatalog';
+import { CharacterPortraitCard } from '../components/character/CharacterPortraitCard';
+import { getAvatarUrl, POWER_FACTION_LABELS } from '../config/characterCatalog';
 import { formatCountdown } from '../lib/formatters';
 import { toActionErrorMessage } from '../lib/manualErrors';
 import { useGameState } from '../state/GameStateContext';
@@ -13,6 +14,8 @@ import type {
   MissionCaseType,
   MissionOffer,
   MissionPowerContext,
+  MissionSourcePayload,
+  MissionTargetActorPreview,
   RewardPreview,
   TavernInfoData,
   VisibleReward,
@@ -33,9 +36,23 @@ type MissionPresentation = {
   title: string;
   locationName?: string;
   enemyName: string;
+  sourceLabel?: string;
   powerContext: MissionPowerContext;
   rewardPreview: RewardPreview;
   visibleReward?: VisibleReward;
+  targetActor?: MissionTargetActorPreview;
+};
+
+export type TavernMissionSource = {
+  locationId: string;
+  servicePositionId?: string;
+  issuerActorId?: string;
+  sourceLabel?: string;
+};
+
+type TavernSceneProps = {
+  missionSource?: TavernMissionSource;
+  onBack?: () => void;
 };
 
 type RewardSlot = {
@@ -144,13 +161,35 @@ function formatPowerTransfer(transfer?: PowerTransferResult) {
     .join(' / ') || '权柄无明显变化';
 }
 
+function formatActorPowerDelta(transfer?: PowerTransferResult) {
+  const delta = transfer?.actorPowerDelta ?? 0;
+
+  if (delta === 0) {
+    return '未夺得个人权柄';
+  }
+
+  return `本人权柄 ${delta > 0 ? '+' : ''}${formatPowerShare(delta)}`;
+}
+
+function wasTargetActorDebited(transfer: PowerTransferResult | undefined, targetActor: MissionTargetActorPreview | undefined) {
+  if (!transfer?.targetActorIds?.length || !targetActor) {
+    return false;
+  }
+
+  return transfer.targetActorIds.includes(targetActor.actorId);
+}
+
 function createPresentationFromOffer(offer: MissionOffer): MissionPresentation {
   return {
     missionId: offer.missionId,
     title: offer.title,
-    locationName: offer.locationName,
-    enemyName: offer.enemyPreview.name,
+    locationName: offer.sourceLocationName ?? offer.locationName,
+    enemyName: offer.targetActor?.displayName ?? offer.enemyPreview.name,
+    sourceLabel: offer.issuerDisplayName
+      ? `${offer.sourceLocationName ?? offer.locationName ?? '差事场所'} · ${offer.issuerTitle ?? '任职者'} ${offer.issuerDisplayName}`
+      : undefined,
     powerContext: getMissionPowerContext(offer),
+    targetActor: offer.targetActor,
     rewardPreview: {
       xp: offer.visibleReward.xp,
       copper: offer.visibleReward.copper,
@@ -166,10 +205,14 @@ function createPresentationFromActiveMission(activeMission: ActiveMissionView): 
   return {
     missionId: activeMission.missionId,
     title: activeMission.title,
-    locationName: activeMission.locationName,
+    locationName: activeMission.sourceLocationName ?? activeMission.locationName,
     enemyName: '差事目标',
+    sourceLabel: activeMission.issuerDisplayName
+      ? `${activeMission.sourceLocationName ?? activeMission.locationName ?? '差事场所'} · ${activeMission.issuerTitle ?? '任职者'} ${activeMission.issuerDisplayName}`
+      : undefined,
     powerContext: activeMission.powerContext ?? FALLBACK_POWER_CONTEXTS[activeMission.slotIndex] ?? DEFAULT_POWER_CONTEXT,
     rewardPreview: activeMission.rewardPreview,
+    targetActor: activeMission.targetActor,
   };
 }
 
@@ -243,7 +286,7 @@ function buildSettlementRewardSlots(data: CompleteMissionData): RewardSlot[] {
   return rewardSlots.slice(0, REWARD_X_POSITIONS.length);
 }
 
-export function TavernScene() {
+export function TavernScene({ missionSource, onBack }: TavernSceneProps = {}) {
   const { refreshCharacterInfo, runServerAction } = useGameState();
   const [tavernData, setTavernData] = useState<TavernInfoData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -268,6 +311,11 @@ export function TavernScene() {
   const previewRewardSlots = previewPresentation ? buildRewardSlots(previewPresentation.rewardPreview, previewPresentation.visibleReward) : [];
   const settlementRewardSlots = settlementData ? buildSettlementRewardSlots(settlementData) : [];
   const taskBackgroundPath = currentPresentation ? resolveTaskBackgroundPath(currentPresentation.locationName) : null;
+  const missionSourcePayload: MissionSourcePayload = useMemo(() => ({
+    locationId: missionSource?.locationId,
+    servicePositionId: missionSource?.servicePositionId,
+    issuerActorId: missionSource?.issuerActorId,
+  }), [missionSource]);
 
   const applyTavernSnapshot = useCallback((snapshot: TavernInfoData) => {
     setTavernData(snapshot);
@@ -283,7 +331,7 @@ export function TavernScene() {
     try {
       const snapshot = await runServerAction(
         'TAVERN_GET_INFO',
-        () => postGameAction<TavernInfoData>('TAVERN_GET_INFO'),
+        () => postGameAction<TavernInfoData>('TAVERN_GET_INFO', missionSourcePayload),
       );
       applyTavernSnapshot(snapshot);
     } catch (error) {
@@ -291,11 +339,18 @@ export function TavernScene() {
     } finally {
       setLoading(false);
     }
-  }, [applyTavernSnapshot, runServerAction]);
+  }, [applyTavernSnapshot, missionSourcePayload, runServerAction]);
 
   useEffect(() => {
     void loadTavern();
   }, [loadTavern]);
+
+  useEffect(() => {
+    if (missionSource && tavern?.status === 'IDLE' && tavern.missionOffers.length > 0) {
+      setSelectedOfferIndex(0);
+      setPanelOpen(true);
+    }
+  }, [missionSource, tavern?.missionOffers.length, tavern?.status]);
 
   useEffect(() => {
     if (!tavern?.missionOffers.length) {
@@ -500,10 +555,16 @@ export function TavernScene() {
         backgroundImage: `linear-gradient(180deg, rgba(18, 12, 8, 0.2), rgba(10, 9, 8, 0.12)), url(${taskBackgroundPath})`,
       }
     : undefined;
+  const sourceBackButton = onBack ? (
+    <button className="tavern-source-back" type="button" onClick={onBack}>
+      返回场所
+    </button>
+  ) : null;
 
   if (loading && !tavern) {
     return (
       <div className="scene scene--tavern scene-status">
+        {sourceBackButton}
         <div className="scene-status__panel">正在同步差房案牌...</div>
       </div>
     );
@@ -512,6 +573,7 @@ export function TavernScene() {
   if (!tavern) {
     return (
       <div className="scene scene--tavern scene-status">
+        {sourceBackButton}
         <div className="scene-status__panel scene-status__panel--error">
           {requestError ?? '差房暂不可用，请稍后重试。'}
         </div>
@@ -522,6 +584,7 @@ export function TavernScene() {
   if (settlementData && currentPresentation) {
     return (
       <div className="scene scene--taskbackdrop" style={taskSceneStyle}>
+        {sourceBackButton}
         {requestError ? <div className="scene-error-banner">{requestError}</div> : null}
         <BattleReplay
           battleResult={settlementData.battleResult}
@@ -532,6 +595,38 @@ export function TavernScene() {
             <div className="battle-summary">
               {settlementData.result === 'SUCCESS' ? (
                 <>
+                  {(settlementData.targetActor ?? currentPresentation.targetActor) ? (
+                    <div className="battle-summary__target">
+                      已办目标：{(settlementData.targetActor ?? currentPresentation.targetActor)!.displayName} · {(settlementData.targetActor ?? currentPresentation.targetActor)!.reason}
+                    </div>
+                  ) : null}
+                  {settlementData.powerResult?.powerTransfer ? (
+                    <div className="battle-summary__consequence-grid">
+                      <div>
+                        <span>个人权柄</span>
+                        <strong>{formatActorPowerDelta(settlementData.powerResult.powerTransfer)}</strong>
+                      </div>
+                      <div>
+                        <span>目标扣减</span>
+                        <strong>
+                          {wasTargetActorDebited(
+                            settlementData.powerResult.powerTransfer,
+                            settlementData.targetActor ?? currentPresentation.targetActor,
+                          )
+                            ? '优先从该目标名下扣除'
+                            : '从目标派系名册扣除'}
+                        </strong>
+                      </div>
+                      <div>
+                        <span>派系疑心</span>
+                        <strong>{formatPowerDelta(settlementData.powerResult.suspicionDelta)}</strong>
+                      </div>
+                      <div>
+                        <span>目标状态</span>
+                        <strong>未死亡 · 未夺职</strong>
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="battle-summary__reward-row">
                     {settlementRewardSlots.map((reward) => (
                       <div
@@ -591,16 +686,25 @@ export function TavernScene() {
   if (activeMission && currentPresentation) {
     return (
       <div className="scene scene--taskbackdrop" style={taskSceneStyle}>
+        {sourceBackButton}
         {requestError ? <div className="scene-error-banner">{requestError}</div> : null}
         <div className="journey-screen journey-screen--countdown">
           <div className="journey-screen__title">赶路中</div>
           <div className="journey-screen__location">前往 {currentPresentation.locationName ?? '未知地点'}</div>
+          {currentPresentation.sourceLabel ? (
+            <div className="journey-screen__issuer">{currentPresentation.sourceLabel}</div>
+          ) : null}
           <div className="journey-screen__mission">{currentPresentation.title}</div>
           <div className="journey-screen__power">
             <span>{formatFaction(currentPresentation.powerContext.issuerFaction)}发差</span>
             <span>{CASE_TYPE_LABELS[currentPresentation.powerContext.caseType]}</span>
             <span>目标：{formatFaction(currentPresentation.powerContext.targetFaction)}</span>
           </div>
+          {currentPresentation.targetActor ? (
+            <div className="journey-screen__target">
+              目标：{currentPresentation.targetActor.displayName} · {formatFaction(currentPresentation.targetActor.faction)} · {currentPresentation.targetActor.reason}
+            </div>
+          ) : null}
           <div className="journey-screen__countdown">{formatCountdown(remainingSec * 1000)}</div>
           <div className="journey-screen__progress">
             <div className="journey-screen__progress-fill" style={{ width: `${countdownProgress * 100}%` }} />
@@ -621,6 +725,7 @@ export function TavernScene() {
 
   return (
     <div className="scene scene--tavern">
+      {sourceBackButton}
       {requestError ? <div className="scene-error-banner">{requestError}</div> : null}
 
       {npcVisual && npcGreeting ? (
@@ -651,6 +756,10 @@ export function TavernScene() {
             </div>
           </div>
 
+          {previewPresentation.sourceLabel ? (
+            <div className="tavern-source-label">发布：{previewPresentation.sourceLabel}</div>
+          ) : null}
+
           <div className="tavern-power-brief">
             <div>
               <span>发布方</span>
@@ -669,6 +778,24 @@ export function TavernScene() {
               <strong>{formatSuspicionDelta(previewPresentation.powerContext)}</strong>
             </div>
           </div>
+
+          {previewPresentation.targetActor ? (
+            <div className="tavern-target-card">
+              <CharacterPortraitCard
+                avatarUrl={getAvatarUrl(previewPresentation.targetActor.avatarId)}
+                level={previewPresentation.targetActor.level}
+                name={previewPresentation.targetActor.displayName}
+                rankText={`${formatFaction(previewPresentation.targetActor.faction)} · 权柄${formatPowerShare(previewPresentation.targetActor.powerShare)}`}
+                title={previewPresentation.targetActor.title ?? CASE_TYPE_LABELS[previewPresentation.powerContext.caseType]}
+                xpProgress={0.35}
+              />
+              <div className="tavern-target-card__copy">
+                <span>本案目标</span>
+                <strong>{previewPresentation.targetActor.reason}</strong>
+                <em>{previewPresentation.targetActor.locationName ?? previewPresentation.locationName ?? '京城名册'}</em>
+              </div>
+            </div>
+          ) : null}
 
           {previewRewardSlots.map((reward, index) => (
             <div

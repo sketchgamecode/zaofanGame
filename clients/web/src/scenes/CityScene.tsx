@@ -24,6 +24,7 @@ import type {
   WorldServicePositionsListView,
 } from '../types/game';
 import type { TavernInfoData } from '../types/tavern';
+import { TavernScene, type TavernMissionSource } from './TavernScene';
 
 type CitySceneProps = {
   onSceneChange: (sceneId: SceneId) => void;
@@ -195,12 +196,19 @@ function getServiceScene(node: SceneRegistryEntry, service: PowerLocationService
   return SERVICE_SCENE_BY_LOCATION[node.locationId]?.[service] ?? node.sceneId ?? null;
 }
 
-function buildServiceEntry(node: SceneRegistryEntry, service: PowerLocationService): LocationSceneServiceEntry {
+function buildServiceEntry(
+  node: SceneRegistryEntry,
+  service: PowerLocationService,
+  source?: Pick<LocationSceneServiceEntry, 'sourceLocationId' | 'sourcePositionId' | 'issuerActorId'>,
+): LocationSceneServiceEntry {
   return {
     service,
     sceneId: getServiceScene(node, service),
     label: SERVICE_ACTION_LABELS[service] ?? SERVICE_LABELS[service] ?? service,
     summary: node.channelSummary,
+    sourceLocationId: source?.sourceLocationId,
+    sourcePositionId: source?.sourcePositionId,
+    issuerActorId: source?.issuerActorId,
   };
 }
 
@@ -250,6 +258,7 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
   const [actorDetailError, setActorDetailError] = useState<string | null>(null);
   const [servicePositions, setServicePositions] = useState<WorldServicePositionsListView | null>(null);
   const [huangceOpen, setHuangceOpen] = useState(false);
+  const [missionSource, setMissionSource] = useState<TavernMissionSource | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -291,10 +300,20 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
 
   async function handleLocationService(
     node: SceneRegistryEntry,
-    service: PowerLocationService,
-    sceneId: SceneId | null,
+    entry: LocationSceneServiceEntry,
   ) {
+    const { service, sceneId } = entry;
     setServiceMessage(null);
+
+    if (service === 'missions') {
+      setMissionSource({
+        locationId: entry.sourceLocationId ?? node.locationId,
+        servicePositionId: entry.sourcePositionId,
+        issuerActorId: entry.issuerActorId,
+        sourceLabel: `${getNodeName(node, getLocation(locations, node.locationId))} · ${entry.label}`,
+      });
+      return;
+    }
 
     if (service === 'stamina') {
       if (node.locationId === 'wine_house') {
@@ -420,6 +439,18 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
     </div>
   ) : null;
 
+  if (missionSource) {
+    return (
+      <TavernScene
+        missionSource={missionSource}
+        onBack={() => {
+          setMissionSource(null);
+          setServiceMessage(null);
+        }}
+      />
+    );
+  }
+
   if (enteredLocationId) {
     const activeBaseNode =
       CITY_MAP_SCENE_ENTRIES.find((node) => node.locationId === enteredLocationId) ?? CITY_MAP_SCENE_ENTRIES[0]!;
@@ -440,7 +471,11 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
         level: position.occupant.level,
         rankText: `${POWER_FACTION_LABELS[position.occupant.faction]} · 权柄${formatPowerShare(position.occupant.powerShare)}`,
         xpProgress: 0.26 + (index % 4) * 0.12,
-        services: [buildServiceEntry(activeNode, position.service)],
+        services: [buildServiceEntry(activeNode, position.service, {
+          sourceLocationId: position.locationId,
+          sourcePositionId: position.positionId,
+          issuerActorId: position.occupant.actorId,
+        })],
         incomeHint: position.incomeHint,
         replaceHint: position.replaceHint,
         positionStatus: position.status,
@@ -457,7 +492,10 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
         level: actor.level,
         rankText: `${POWER_FACTION_LABELS[actor.faction]} · 权柄${formatPowerShare(actor.powerShare)}`,
         xpProgress: 0.26 + (index % 4) * 0.12,
-        services: actor.services.map((service) => buildServiceEntry(activeNode, service)),
+        services: actor.services.map((service) => buildServiceEntry(activeNode, service, {
+          sourceLocationId: activeNode.locationId,
+          issuerActorId: actor.actorId,
+        })),
       }))
       : serviceEntries.map((entry, index) => ({
         id: `${activeNode.locationId}:${entry.service}:${index}`,
@@ -467,7 +505,10 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
         level: Math.max(1, character?.player.level ?? 1),
         rankText: `${POWER_FACTION_LABELS[ownerFaction]}门路`,
         xpProgress: 0.26 + (index % 4) * 0.12,
-        services: [entry],
+        services: [{
+          ...entry,
+          sourceLocationId: activeNode.locationId,
+        }],
       }));
 
     return (
@@ -490,7 +531,7 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
           setServiceMessage(null);
           setEnteredLocationId(null);
         }}
-        onService={(entry) => void handleLocationService(activeNode, entry.service, entry.sceneId)}
+        onService={(entry) => void handleLocationService(activeNode, entry)}
         onNpcClick={(npc) => {
           if (npc.actorId) {
             void handleActorDetail(npc.actorId);
