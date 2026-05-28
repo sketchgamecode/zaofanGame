@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { postGameAction } from '../api/gameApi';
+import { CharacterPortraitCard } from '../components/character/CharacterPortraitCard';
 import { BattleReplay } from '../components/combat/BattleReplay';
 import { CLASS_META, getAvatarUrl, getClassPowerFaction } from '../config/characterCatalog';
 import { getSceneRegistryEntryForFaction } from '../config/sceneRegistry';
@@ -23,7 +24,25 @@ type ArenaPlaybackState = {
   result: 'WIN' | 'LOSE';
 };
 
-export function ArenaScene() {
+export type ArenaSource = {
+  locationId: string;
+  servicePositionId?: string;
+  issuerActorId?: string;
+  issuerDisplayName?: string;
+  issuerAvatarId?: string;
+  issuerTitle?: string;
+  issuerLevel?: number;
+  issuerRankText?: string;
+  sourceLabel?: string;
+};
+
+export function ArenaScene({
+  arenaSource,
+  onBack,
+}: {
+  arenaSource?: ArenaSource;
+  onBack?: () => void;
+} = {}) {
   const { character, refreshCharacterInfo, runServerAction } = useGameState();
   const arenaEntry = getSceneRegistryEntryForFaction('arena', getClassPowerFaction(character?.player.classId));
   const [info, setInfo] = useState<ArenaGetInfoData | null>(null);
@@ -178,6 +197,11 @@ export function ArenaScene() {
   if (loading && !info) {
     return (
       <div className="scene scene--arena scene-status">
+        {onBack ? (
+          <button className="service-source-back" type="button" onClick={onBack}>
+            返回场所
+          </button>
+        ) : null}
         <div className="scene-status__panel">正在整理校场挑战名册...</div>
       </div>
     );
@@ -186,6 +210,11 @@ export function ArenaScene() {
   if (!info) {
     return (
       <div className="scene scene--arena scene-status">
+        {onBack ? (
+          <button className="service-source-back" type="button" onClick={onBack}>
+            返回场所
+          </button>
+        ) : null}
         <div className="scene-status__panel scene-status__panel--error">
           {requestError ?? '校场情报暂不可用。'}
         </div>
@@ -195,6 +224,11 @@ export function ArenaScene() {
 
   return (
     <div className="scene scene--arena">
+      {onBack ? (
+        <button className="service-source-back" type="button" onClick={onBack}>
+          返回场所
+        </button>
+      ) : null}
       {requestError ? <div className="scene-error-banner">{requestError}</div> : null}
 
       <div className="arena-scene">
@@ -231,6 +265,23 @@ export function ArenaScene() {
           <div className="arena-scene__heading">
             <div className="arena-scene__title">{arenaEntry?.channelName ?? '校场考绩'}</div>
             <div className="arena-scene__subtitle">{arenaEntry?.fallbackDetail ?? '挑三名当日可战对手，胜则夺官声与阅历。'}</div>
+            {arenaSource?.issuerDisplayName && arenaSource.issuerAvatarId ? (
+              <div className="service-source-card service-source-card--inline">
+                <CharacterPortraitCard
+                  avatarUrl={getAvatarUrl(arenaSource.issuerAvatarId)}
+                  level={arenaSource.issuerLevel}
+                  name={arenaSource.issuerDisplayName}
+                  rankText={arenaSource.issuerRankText}
+                  title={arenaSource.issuerTitle}
+                  xpProgress={0.36}
+                />
+                <div className="service-source-card__copy">
+                  <span>{arenaSource.sourceLabel ?? '考绩主持'}</span>
+                  <strong>{arenaSource.issuerDisplayName}</strong>
+                  {arenaSource.issuerTitle ? <em>{arenaSource.issuerTitle}</em> : null}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="arena-scene__candidates">

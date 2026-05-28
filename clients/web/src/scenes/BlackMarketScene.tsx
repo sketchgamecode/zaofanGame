@@ -20,9 +20,10 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { postGameAction } from '../api/gameApi';
 import { CharacterPanel } from '../components/character/CharacterPanel';
+import { CharacterPortraitCard } from '../components/character/CharacterPortraitCard';
 import { DroppableDraggableSlot } from '../components/ui/DroppableSlot';
 import { DraggableItemSlot, ItemDragPreview, ItemSlot } from '../components/ui/ItemSlot';
-import { getClassPowerFaction } from '../config/characterCatalog';
+import { getAvatarUrl, getClassPowerFaction } from '../config/characterCatalog';
 import { getSceneRegistryEntryForFaction } from '../config/sceneRegistry';
 import { formatCountdown } from '../lib/formatters';
 import { toActionErrorMessage } from '../lib/manualErrors';
@@ -39,6 +40,18 @@ import type {
 } from '../types/game';
 
 type ShopType = 'weapon' | 'magic';
+
+export type ShopSource = {
+  locationId: string;
+  servicePositionId?: string;
+  issuerActorId?: string;
+  issuerDisplayName?: string;
+  issuerAvatarId?: string;
+  issuerTitle?: string;
+  issuerLevel?: number;
+  issuerRankText?: string;
+  sourceLabel?: string;
+};
 
 const WEAPON_SHOP_SLOTS: EquipmentSlot[] = ['weapon', 'offHand', 'head', 'body', 'hands', 'feet'];
 
@@ -85,6 +98,26 @@ function pickIntroLine(shopType: ShopType) {
   return lines[Math.floor(Math.random() * lines.length)];
 }
 
+function getShopClerkName(shopType: ShopType, shopSource?: ShopSource) {
+  return shopSource?.issuerDisplayName ?? getShopNpc(shopType);
+}
+
+function buildTradeMessage(action: 'buy' | 'equip' | 'sell' | 'refresh', itemName: string | null, clerkName: string) {
+  if (action === 'refresh') {
+    return `${clerkName}重新翻过账架，换上一批刚入手的货色。`;
+  }
+
+  if (action === 'sell') {
+    return `${clerkName}收下${itemName ?? '旧物'}，在账上给你记了一笔现钱。`;
+  }
+
+  if (action === 'equip') {
+    return `${clerkName}验过腰牌，把${itemName ?? '新货'}递到你手里，催你当场试上。`;
+  }
+
+  return `${clerkName}验过银钱，把${itemName ?? '新货'}推到你面前。`;
+}
+
 function SceneNpcIntro({
   line,
   npcName,
@@ -126,7 +159,15 @@ function ShopSellZone({ children }: { children: React.ReactNode }) {
 }
 
 // ── 商店主体 ──────────────────────────────────────────────────────
-function ShopScene({ shopType }: { shopType: ShopType }) {
+function ShopScene({
+  shopType,
+  shopSource,
+  onBack,
+}: {
+  shopType: ShopType;
+  shopSource?: ShopSource;
+  onBack?: () => void;
+}) {
   const {
     character,
     equipItem,
@@ -144,6 +185,7 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
   const [loading, setLoading] = useState(true);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
+  const [transactionMessage, setTransactionMessage] = useState<string | null>(null);
   const [introLine, setIntroLine] = useState(() => pickIntroLine(shopType));
   const [introDismissed, setIntroDismissed] = useState(false);
 
@@ -161,13 +203,16 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
         () => postGameAction<BlackMarketView>('REFRESH_BLACKMARKET', { force }),
       );
       setMarket(data);
+      if (force) {
+        setTransactionMessage(buildTradeMessage('refresh', null, getShopClerkName(shopType, shopSource)));
+      }
     } catch (error) {
       setRequestError(toActionErrorMessage(error, '黑市货单读取失败。'));
     } finally {
       setLoading(false);
       setPendingAction(null);
     }
-  }, [runServerAction]);
+  }, [runServerAction, shopSource, shopType]);
 
   useEffect(() => { void loadMarket(false); }, [loadMarket]);
 
@@ -198,6 +243,7 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
     : [];
 
   const refreshCountdown = market ? formatCountdown(market.nextAutoRefreshMs) : '--:--';
+  const clerkName = getShopClerkName(shopType, shopSource);
 
   const applyRemainingMarketItems = (remainingItems: EquipmentItem[], nextAutoRefreshMs: number) => {
     setMarket((prev) =>
@@ -215,6 +261,7 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
         return result;
       });
       applyRemainingMarketItems(data.remainingItems, data.nextAutoRefreshMs);
+      setTransactionMessage(buildTradeMessage('buy', item.name, clerkName));
     } catch (error) {
       setRequestError(toActionErrorMessage(error, '买入失败。'));
     } finally {
@@ -232,6 +279,7 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
         return result;
       });
       applyRemainingMarketItems(data.remainingItems, data.nextAutoRefreshMs);
+      setTransactionMessage(buildTradeMessage('equip', item.name, clerkName));
     } catch (error) {
       setRequestError(toActionErrorMessage(error, '购买并穿戴失败。'));
     } finally {
@@ -247,6 +295,7 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
         await postGameAction<SellItemView>('SELL_ITEM', { itemId: item.id });
         await refreshCharacterInfo();
       });
+      setTransactionMessage(buildTradeMessage('sell', item.name, clerkName));
     } catch (error) {
       setRequestError(toActionErrorMessage(error, '出售失败。'));
     } finally {
@@ -299,6 +348,11 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
   if (!character) {
     return (
       <div className="scene scene--blackmarket scene-status">
+        {onBack ? (
+          <button className="shop-source-back" type="button" onClick={onBack}>
+            返回场所
+          </button>
+        ) : null}
         <div className="scene-status__panel">角色数据载入中...</div>
       </div>
     );
@@ -306,6 +360,11 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
 
   return (
     <div className="scene scene--blackmarket">
+      {onBack ? (
+        <button className="shop-source-back" type="button" onClick={onBack}>
+          返回场所
+        </button>
+      ) : null}
       {requestError ? <div className="scene-error-banner">{requestError}</div> : null}
 
       {!introDismissed ? (
@@ -336,6 +395,9 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
             <header className="blackmarket-scene__shop-header">
               <div>
                 <div className="blackmarket-scene__title">{getShopTitle(shopType, powerFaction)}</div>
+                {shopSource?.sourceLabel ? (
+                  <div className="blackmarket-scene__source">{shopSource.sourceLabel}</div>
+                ) : null}
                 <div className="blackmarket-scene__flavor">{getShopFlavor(shopType, powerFaction)}</div>
               </div>
               <button className="blackmarket-scene__info" type="button" aria-label="店铺信息">i</button>
@@ -352,6 +414,24 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
             <div className="blackmarket-scene__npc" aria-hidden="true">
               <span>{getShopNpc(shopType)}</span>
             </div>
+
+            {shopSource?.issuerDisplayName && shopSource.issuerAvatarId ? (
+              <aside className="blackmarket-scene__issuer-card" aria-label="店铺经手人">
+                <CharacterPortraitCard
+                  avatarUrl={getAvatarUrl(shopSource.issuerAvatarId)}
+                  level={shopSource.issuerLevel}
+                  name={shopSource.issuerDisplayName}
+                  rankText={shopSource.issuerRankText}
+                  title={shopSource.issuerTitle}
+                  xpProgress={0.34}
+                />
+                <div className="blackmarket-scene__issuer-copy">
+                  <span>经手人</span>
+                  <strong>{shopSource.issuerDisplayName}</strong>
+                  {shopSource.issuerTitle ? <em>{shopSource.issuerTitle}</em> : null}
+                </div>
+              </aside>
+            ) : null}
 
             <div className="blackmarket-scene__body">
               <ShopSellZone>
@@ -385,6 +465,9 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
                 )}
 
                 <div className="blackmarket-scene__sell-copy">把行囊或身上的装备拖到这里出售。</div>
+                {transactionMessage ? (
+                  <div className="blackmarket-scene__trade-message">{transactionMessage}</div>
+                ) : null}
               </ShopSellZone>
             </div>
           </section>
@@ -425,12 +508,12 @@ function ShopScene({ shopType }: { shopType: ShopType }) {
   );
 }
 
-export function WeaponShopScene() {
-  return <ShopScene shopType="weapon" />;
+export function WeaponShopScene(props: { shopSource?: ShopSource; onBack?: () => void } = {}) {
+  return <ShopScene shopType="weapon" {...props} />;
 }
 
-export function MagicShopScene() {
-  return <ShopScene shopType="magic" />;
+export function MagicShopScene(props: { shopSource?: ShopSource; onBack?: () => void } = {}) {
+  return <ShopScene shopType="magic" {...props} />;
 }
 
 export function BlackMarketScene() {

@@ -54,6 +54,20 @@ export type MissionTargetActorPreview = {
   reason: string;
 };
 
+export type MissionIssuerActorPreview = {
+  actorId: string;
+  kind: 'bot' | 'player';
+  displayName: string;
+  avatarId: string;
+  level: number;
+  faction: PowerFactionId;
+  powerShare: number;
+  title?: string;
+  positionId?: string;
+  locationId?: string;
+  locationName?: string;
+};
+
 export type MissionOffer = {
   offerSetId: string;
   missionId: string;
@@ -76,6 +90,7 @@ export type MissionOffer = {
   issuerDisplayName?: string;
   issuerTitle?: string;
   issuerFaction?: PowerFactionId;
+  issuerActor?: MissionIssuerActorPreview;
   generatedAt: number;
 };
 
@@ -111,6 +126,7 @@ export type ActiveMissionView = {
   issuerDisplayName?: string;
   issuerTitle?: string;
   issuerFaction?: PowerFactionId;
+  issuerActor?: MissionIssuerActorPreview;
   mountSnapshot: {
     timeMultiplierBp: number;
     name?: string;
@@ -203,6 +219,7 @@ export type CompleteMissionData = {
   issuerDisplayName?: string;
   issuerTitle?: string;
   issuerFaction?: PowerFactionId;
+  issuerActor?: MissionIssuerActorPreview;
   canSaveReplay?: boolean;
   replayId?: string | null;
 };

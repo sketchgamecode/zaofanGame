@@ -15,6 +15,11 @@ export type LocationSceneServiceEntry = {
   sourceLocationId?: string;
   sourcePositionId?: string;
   issuerActorId?: string;
+  issuerDisplayName?: string;
+  issuerAvatarId?: string;
+  issuerTitle?: string;
+  issuerLevel?: number;
+  issuerRankText?: string;
 };
 
 export type LocationSceneNpcCard = {

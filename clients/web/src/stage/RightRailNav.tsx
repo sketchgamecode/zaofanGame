@@ -1,6 +1,4 @@
-import { RIGHT_RAIL_SCENE_ENTRIES, resolveSceneEntryForFaction } from '../config/sceneRegistry';
-import { getClassPowerFaction } from '../config/characterCatalog';
-import { useGameState } from '../state/GameStateContext';
+import { RIGHT_RAIL_SCENE_ENTRIES } from '../config/sceneRegistry';
 import type { SceneId } from '../types/game';
 
 /**
@@ -14,13 +12,9 @@ type RightRailNavProps = {
 };
 
 export function RightRailNav({ activeSceneId, onSceneChange }: RightRailNavProps) {
-  const { character } = useGameState();
-  const powerFaction = getClassPowerFaction(character?.player.classId);
-
   return (
     <nav className="right-nav">
-      {RIGHT_RAIL_SCENE_ENTRIES.map((baseItem) => {
-        const item = resolveSceneEntryForFaction(baseItem, powerFaction);
+      {RIGHT_RAIL_SCENE_ENTRIES.map((item) => {
         const sceneId = item.sceneId!;
         const isActive = sceneId === activeSceneId;
         return (

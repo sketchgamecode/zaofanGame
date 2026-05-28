@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { postGameAction } from '../api/gameApi';
+import { CharacterPortraitCard } from '../components/character/CharacterPortraitCard';
 import { BattleReplay } from '../components/combat/BattleReplay';
-import { getClassPowerFaction, POWER_FACTION_LABELS } from '../config/characterCatalog';
+import { getAvatarUrl, getClassPowerFaction, POWER_FACTION_LABELS } from '../config/characterCatalog';
 import { DUNGEON_CHAPTERS, getDungeonChapterMeta } from '../config/dungeonCatalog';
 import { getSceneRegistryEntryForFaction } from '../config/sceneRegistry';
 import { toActionErrorMessage } from '../lib/manualErrors';
@@ -18,6 +19,18 @@ type DungeonPlaybackState = {
   battleResult: DungeonFightData['battleResult'];
   powerCase?: DungeonFightData['powerCase'];
   powerResult?: DungeonFightData['powerResult'];
+};
+
+export type DungeonSource = {
+  locationId: string;
+  servicePositionId?: string;
+  issuerActorId?: string;
+  issuerDisplayName?: string;
+  issuerAvatarId?: string;
+  issuerTitle?: string;
+  issuerLevel?: number;
+  issuerRankText?: string;
+  sourceLabel?: string;
 };
 
 function formatFaction(faction: PowerFactionId) {
@@ -88,7 +101,13 @@ function formatTargetWorldPresence(overview: WorldActorsOverview | null, faction
     .join('；');
 }
 
-export function DungeonScene() {
+export function DungeonScene({
+  dungeonSource,
+  onBack,
+}: {
+  dungeonSource?: DungeonSource;
+  onBack?: () => void;
+} = {}) {
   const { character, refreshCharacterInfo, runServerAction } = useGameState();
   const dungeonEntry = getSceneRegistryEntryForFaction('dungeon', getClassPowerFaction(character?.player.classId));
   const [selectedChapterId, setSelectedChapterId] = useState(DUNGEON_CHAPTERS[0]?.id ?? 'chapter_1');
@@ -172,12 +191,34 @@ export function DungeonScene() {
 
   return (
     <div className="scene scene--dungeon">
+      {onBack ? (
+        <button className="service-source-back" type="button" onClick={onBack}>
+          返回场所
+        </button>
+      ) : null}
       {requestError ? <div className="scene-error-banner">{requestError}</div> : null}
 
       <div className="dungeon-scene">
         <section className="dungeon-scene__chapter-list">
           <div className="dungeon-scene__heading">{dungeonEntry?.channelName ?? '案牍房'}</div>
           <div className="dungeon-scene__subheading">{dungeonEntry?.fallbackDetail ?? '按你的资历和官声，逐件接办凶险差事。'}</div>
+          {dungeonSource?.issuerDisplayName && dungeonSource.issuerAvatarId ? (
+            <div className="service-source-card">
+              <CharacterPortraitCard
+                avatarUrl={getAvatarUrl(dungeonSource.issuerAvatarId)}
+                level={dungeonSource.issuerLevel}
+                name={dungeonSource.issuerDisplayName}
+                rankText={dungeonSource.issuerRankText}
+                title={dungeonSource.issuerTitle}
+                xpProgress={0.36}
+              />
+              <div className="service-source-card__copy">
+                <span>{dungeonSource.sourceLabel ?? '案卷来源'}</span>
+                <strong>{dungeonSource.issuerDisplayName}</strong>
+                {dungeonSource.issuerTitle ? <em>{dungeonSource.issuerTitle}</em> : null}
+              </div>
+            </div>
+          ) : null}
           <div className="dungeon-scene__world-overview">
             <span>大明权力名册</span>
             <strong>{worldOverview ? `${worldOverview.totalActors}人 / 权柄${formatPowerShare(worldOverview.totalPowerShare)}` : '同步中'}</strong>

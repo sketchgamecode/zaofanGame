@@ -80,7 +80,14 @@ body {
 }
 
 .scene--blackmarket {
+  position: relative;
+  z-index: 10;
   background: black;
+}
+
+.scene--arena {
+  position: relative;
+  z-index: 10;
 }
 
 .scene--arena,
@@ -91,6 +98,8 @@ body {
 }
 
 .scene--dungeon {
+  position: relative;
+  z-index: 10;
   background:
     radial-gradient(circle at 50% 16%, rgba(181, 128, 45, 0.18), transparent 24%),
     linear-gradient(180deg, #2e241d 0%, #181310 60%, #12100f 100%);
@@ -243,7 +252,41 @@ body {
 }
 
 .journey-screen--countdown {
-  padding-bottom: 42px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 48px;
+  top: 110px;
+  width: 1320px;
+  left: 107px;
+  padding: 40px 60px;
+  padding-bottom: 40px;
+}
+
+.journey-screen__center-panel {
+  flex: 1;
+  max-width: 580px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.journey-screen__side-panel {
+  width: 230px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.journey-screen__side-title {
+  font-size: 22px;
+  color: rgba(218, 177, 103, 0.86);
+  margin-bottom: 16px;
+  text-align: center;
+  letter-spacing: 0.1em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .journey-screen__title {
@@ -253,7 +296,7 @@ body {
 }
 
 .journey-screen__location {
-  margin-top: 22px;
+  margin-top: 16px;
   font-size: 34px;
   color: #e6cfa6;
 }
@@ -265,7 +308,7 @@ body {
 }
 
 .journey-screen__power {
-  margin-top: 18px;
+  margin-top: 14px;
   display: flex;
   justify-content: center;
   gap: 12px;
@@ -281,14 +324,14 @@ body {
 }
 
 .journey-screen__countdown {
-  margin-top: 36px;
+  margin-top: 22px;
   font-size: 88px;
   line-height: 1;
   color: #e1a453;
 }
 
 .journey-screen__hint {
-  margin-top: 28px;
+  margin-top: 20px;
   font-size: 24px;
   line-height: 1.6;
   color: rgba(250, 233, 202, 0.78);
@@ -298,7 +341,7 @@ body {
   position: relative;
   width: 100%;
   height: 28px;
-  margin-top: 30px;
+  margin-top: 20px;
   border: 1px solid rgba(120, 81, 41, 0.72);
   background: rgba(20, 14, 11, 0.84);
   overflow: hidden;
@@ -311,7 +354,7 @@ body {
 }
 
 .journey-screen__skip {
-  margin-top: 26px;
+  margin-top: 22px;
   min-width: 284px;
   min-height: 76px;
   border: 1px solid rgba(72, 39, 19, 0.82);
@@ -399,13 +442,24 @@ body {
 }
 
 .tavern-target-card {
-  position: absolute;
-  left: 142px;
-  top: 500px;
   width: 230px;
   display: grid;
   gap: 8px;
   color: rgba(249, 228, 190, 0.9);
+}
+
+.tavern-panel .tavern-target-card {
+  position: absolute;
+  left: 142px;
+  top: 500px;
+}
+
+.tavern-character-card-clickable {
+  cursor: pointer;
+}
+
+.tavern-character-card-clickable:hover .character-portrait-card {
+  filter: brightness(1.08);
 }
 
 .tavern-target-card .character-portrait-card {
@@ -437,6 +491,53 @@ body {
   font-style: normal;
 }
 
+.tavern-issuer-card {
+  display: grid;
+  gap: 8px;
+  width: 230px;
+  color: rgba(249, 228, 190, 0.9);
+}
+
+.tavern-panel .tavern-issuer-card {
+  position: absolute;
+  left: 142px;
+  top: 214px;
+}
+
+.journey-screen .tavern-issuer-card,
+.battle-summary > .tavern-issuer-card {
+  margin: 0 auto 12px;
+}
+
+.tavern-issuer-card .character-portrait-card {
+  width: 100%;
+}
+
+.tavern-issuer-card__copy {
+  border: 1px solid rgba(69, 43, 24, 0.78);
+  background: rgba(35, 22, 13, 0.88);
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.tavern-issuer-card__copy span {
+  color: rgba(218, 177, 103, 0.86);
+  font-size: 13px;
+}
+
+.tavern-issuer-card__copy strong {
+  color: #fff0cf;
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.tavern-issuer-card__copy em {
+  color: rgba(249, 228, 190, 0.72);
+  font-size: 14px;
+  font-style: normal;
+}
+
 .tavern-source-back {
   position: absolute;
   left: 38px;
@@ -453,6 +554,44 @@ body {
 }
 
 .tavern-source-back:hover {
+  filter: brightness(1.12);
+}
+
+.shop-source-back {
+  position: absolute;
+  left: 38px;
+  top: 32px;
+  z-index: 40;
+  min-width: 136px;
+  border: 1px solid rgba(77, 47, 25, 0.86);
+  background: rgba(35, 22, 13, 0.86);
+  color: #ffe6b2;
+  padding: 10px 16px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.shop-source-back:hover {
+  filter: brightness(1.12);
+}
+
+.service-source-back {
+  position: absolute;
+  left: 38px;
+  top: 24px;
+  z-index: 40;
+  min-width: 136px;
+  border: 1px solid rgba(77, 47, 25, 0.86);
+  background: rgba(35, 22, 13, 0.86);
+  color: #ffe6b2;
+  padding: 10px 16px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.service-source-back:hover {
   filter: brightness(1.12);
 }
 
@@ -501,14 +640,32 @@ body {
   text-shadow: 0 2px 2px rgba(0, 0, 0, 0.36);
 }
 
-.journey-screen__target,
 .battle-summary__target {
-  border: 1px solid rgba(214, 168, 90, 0.56);
-  background: rgba(16, 11, 8, 0.66);
-  color: rgba(255, 240, 207, 0.9);
-  padding: 10px 14px;
-  font-size: 20px;
-  line-height: 1.35;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid rgba(69, 43, 24, 0.78);
+  background: rgba(35, 22, 13, 0.88);
+  padding: 8px 10px;
+  color: rgba(249, 228, 190, 0.9);
+  text-align: left;
+}
+
+.battle-summary__target-label {
+  color: rgba(218, 177, 103, 0.86);
+  font-size: 13px;
+}
+
+.battle-summary__target-name {
+  color: #fff0cf;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.battle-summary__target-reason {
+  color: rgba(249, 228, 190, 0.72);
+  font-size: 14px;
 }
 
 .battle-summary__consequence-grid {
@@ -526,6 +683,8 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
+  text-align: center;
   gap: 5px;
 }
 
@@ -539,6 +698,11 @@ body {
   font-size: 18px;
   line-height: 1.25;
   font-weight: 700;
+}
+
+.battle-summary__consequence-grid--failure > div {
+  border-color: rgba(145, 116, 76, 0.52);
+  background: rgba(22, 18, 14, 0.78);
 }
 
 .tavern-panel__actions {
@@ -943,6 +1107,18 @@ body {
   text-shadow: 0 2px 2px rgba(0, 0, 0, 0.55);
 }
 
+.blackmarket-scene__source {
+  position: absolute;
+  left: 300px;
+  top: 48px;
+  width: 300px;
+  color: rgba(218, 177, 103, 0.95);
+  font-size: 17px;
+  line-height: 1.2;
+  text-align: center;
+  text-shadow: 0 2px 2px rgba(0, 0, 0, 0.55);
+}
+
 .blackmarket-scene__flavor {
   position: absolute;
   left: 22px;
@@ -1001,6 +1177,46 @@ body {
 
 .blackmarket-scene__shop--magic .blackmarket-scene__npc {
   /* background-image: url("/assets/figure/npc/npc_magicshop_keeper.png"); */
+}
+
+.blackmarket-scene__issuer-card {
+  position: absolute;
+  left: 24px;
+  top: 80px;
+  z-index: 4;
+  width: 166px;
+  display: grid;
+  gap: 8px;
+  color: rgba(249, 228, 190, 0.9);
+}
+
+.blackmarket-scene__issuer-card .character-portrait-card {
+  width: 100%;
+}
+
+.blackmarket-scene__issuer-copy {
+  border: 1px solid rgba(69, 43, 24, 0.78);
+  background: rgba(35, 22, 13, 0.88);
+  padding: 8px 10px;
+  display: grid;
+  gap: 3px;
+}
+
+.blackmarket-scene__issuer-copy span {
+  color: rgba(218, 177, 103, 0.86);
+  font-size: 12px;
+}
+
+.blackmarket-scene__issuer-copy strong {
+  color: #fff0cf;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.blackmarket-scene__issuer-copy em {
+  color: rgba(249, 228, 190, 0.72);
+  font-size: 13px;
+  font-style: normal;
 }
 
 .blackmarket-scene__body {
@@ -1078,6 +1294,23 @@ body {
   border: 1px dashed rgba(173, 128, 68, 0.55);
   color: rgba(245, 225, 196, 0.62);
   font-size: 16px;
+}
+
+.blackmarket-scene__trade-message {
+  position: absolute;
+  left: -174px;
+  top: 458px;
+  width: 744px;
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(172, 124, 59, 0.56);
+  background: rgba(24, 14, 8, 0.76);
+  color: #ffe9bd;
+  padding: 8px 12px;
+  font-size: 17px;
+  line-height: 1.3;
+  text-align: center;
 }
 
 .blackmarket-scene__ledger {
@@ -2040,11 +2273,11 @@ body {
 
 .city-scene__node {
   position: absolute;
-  width: 252px;
-  min-height: 154px;
+  width: 152px;
+  min-height: 64px;
   padding: 14px 16px;
-  border: 2px solid rgba(104, 73, 43, 0.82);
-  background: linear-gradient(180deg, rgba(170, 140, 94, 0.96), rgba(120, 89, 50, 0.96));
+  border: 2px solid rgba(104, 73, 43, 1);
+  background: linear-gradient(180deg, rgba(170, 140, 94, 1), rgba(120, 89, 50, 1));
   color: #2f1f11;
   text-align: left;
   cursor: pointer;
@@ -2056,13 +2289,13 @@ body {
 }
 
 .city-scene__node--locked {
-  opacity: 0.78;
+  opacity: 1;
   filter: saturate(0.75);
 }
 
 .city-scene__node--status-favored {
   border-color: rgba(204, 164, 82, 0.95);
-  box-shadow: 0 0 0 2px rgba(236, 198, 104, 0.2), var(--shadow-soft);
+  box-shadow: 0 0 0 2px rgba(236, 198, 104, 1), var(--shadow-soft);
 }
 
 .city-scene__node--status-hostile {
@@ -2106,7 +2339,7 @@ body {
 }
 
 .city-scene__node--border {
-  left: 64px;
+  left: 1px;
   top: 372px;
 }
 
@@ -2117,7 +2350,7 @@ body {
 
 .city-scene__node--wine-house {
   left: 64px;
-  top: 530px;
+  top: 630px;
 }
 
 .city-scene__node--bun-shop {
@@ -3925,6 +4158,49 @@ body {
   gap: 5px;
 }
 
+.service-source-card {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: 14px;
+  align-items: stretch;
+  padding: 12px;
+  border: 1px solid rgba(112, 81, 45, 0.62);
+  background: rgba(27, 18, 12, 0.7);
+}
+
+.service-source-card--inline {
+  max-width: 560px;
+}
+
+.service-source-card .character-portrait-card {
+  width: 132px;
+}
+
+.service-source-card__copy {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+}
+
+.service-source-card__copy span {
+  color: rgba(218, 177, 103, 0.88);
+  font-size: 14px;
+}
+
+.service-source-card__copy strong {
+  color: #f6e1be;
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.service-source-card__copy em {
+  color: rgba(240, 225, 201, 0.68);
+  font-size: 16px;
+  font-style: normal;
+}
+
 .dungeon-scene__world-overview span {
   color: rgba(218, 177, 103, 0.88);
   font-size: 14px;
@@ -4227,13 +4503,13 @@ body {
 
 .battle-replay__result-panel {
   position: absolute;
-  left: 500px;
-  right: 500px;
-  top: 196px;
-  min-height: 540px;
+  left: 360px;
+  right: 360px;
+  top: 150px;
+  min-height: 600px;
   padding: 42px 44px 34px;
   border: 2px solid rgba(118, 84, 47, 0.86);
-  background: rgba(19, 14, 11, 0.94);
+  background: rgba(19, 14, 11, 0.96);
   box-shadow: var(--shadow-heavy);
 }
 
@@ -4295,6 +4571,26 @@ body {
 .battle-summary {
   position: relative;
   min-height: 220px;
+  display: flex;
+  flex-direction: row;
+  gap: 32px;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.battle-summary__left-col {
+  width: 230px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.battle-summary__right-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .battle-summary__line {
@@ -4306,30 +4602,37 @@ body {
   justify-content: center;
   gap: 14px;
   flex-wrap: wrap;
-  min-height: 230px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.battle-summary__power-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .battle-summary__power-note {
-  margin-top: -12px;
   text-align: center;
   color: rgba(250, 226, 188, 0.86);
   font-size: 20px;
 }
 
 .battle-summary__power-after {
-  margin-top: 8px;
   text-align: center;
   color: rgba(218, 177, 103, 0.9);
   font-size: 17px;
 }
 
 .battle-summary__reward {
+  position: relative;
   width: 209px;
   height: 210px;
 }
 
 .battle-summary__failure {
-  padding-top: 42px;
+  padding-top: 24px;
   text-align: center;
   font-size: 28px;
   color: #f4e1bd;

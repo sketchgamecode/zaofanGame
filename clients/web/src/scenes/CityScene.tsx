@@ -24,6 +24,9 @@ import type {
   WorldServicePositionsListView,
 } from '../types/game';
 import type { TavernInfoData } from '../types/tavern';
+import { ArenaScene, type ArenaSource } from './ArenaScene';
+import { MagicShopScene, WeaponShopScene, type ShopSource } from './BlackMarketScene';
+import { DungeonScene, type DungeonSource } from './DungeonScene';
 import { TavernScene, type TavernMissionSource } from './TavernScene';
 
 type CitySceneProps = {
@@ -34,6 +37,10 @@ type FactionLocationRow = {
   faction: PowerFactionId;
   actorCount: number;
   powerShare: number;
+};
+
+type ActiveShopSource = ShopSource & {
+  shopType: 'weapon' | 'magic';
 };
 
 const STATUS_LABELS: Record<PowerLocationStatus, string> = {
@@ -199,7 +206,17 @@ function getServiceScene(node: SceneRegistryEntry, service: PowerLocationService
 function buildServiceEntry(
   node: SceneRegistryEntry,
   service: PowerLocationService,
-  source?: Pick<LocationSceneServiceEntry, 'sourceLocationId' | 'sourcePositionId' | 'issuerActorId'>,
+  source?: Pick<
+    LocationSceneServiceEntry,
+    | 'sourceLocationId'
+    | 'sourcePositionId'
+    | 'issuerActorId'
+    | 'issuerDisplayName'
+    | 'issuerAvatarId'
+    | 'issuerTitle'
+    | 'issuerLevel'
+    | 'issuerRankText'
+  >,
 ): LocationSceneServiceEntry {
   return {
     service,
@@ -209,6 +226,37 @@ function buildServiceEntry(
     sourceLocationId: source?.sourceLocationId,
     sourcePositionId: source?.sourcePositionId,
     issuerActorId: source?.issuerActorId,
+    issuerDisplayName: source?.issuerDisplayName,
+    issuerAvatarId: source?.issuerAvatarId,
+    issuerTitle: source?.issuerTitle,
+    issuerLevel: source?.issuerLevel,
+    issuerRankText: source?.issuerRankText,
+  };
+}
+
+function resolveShopType(node: SceneRegistryEntry, sceneId: SceneId | null | undefined): ActiveShopSource['shopType'] {
+  if (sceneId === 'weaponshop' || node.locationId === 'divine_engine_camp') {
+    return 'weapon';
+  }
+
+  return 'magic';
+}
+
+function buildRoleplaySource(
+  node: SceneRegistryEntry,
+  entry: LocationSceneServiceEntry,
+  locations: PowerLocationView[] | null,
+) {
+  return {
+    locationId: entry.sourceLocationId ?? node.locationId,
+    servicePositionId: entry.sourcePositionId,
+    issuerActorId: entry.issuerActorId,
+    issuerDisplayName: entry.issuerDisplayName,
+    issuerAvatarId: entry.issuerAvatarId,
+    issuerTitle: entry.issuerTitle,
+    issuerLevel: entry.issuerLevel,
+    issuerRankText: entry.issuerRankText,
+    sourceLabel: `${getNodeName(node, getLocation(locations, node.locationId))} - ${entry.label}`,
   };
 }
 
@@ -259,6 +307,9 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
   const [servicePositions, setServicePositions] = useState<WorldServicePositionsListView | null>(null);
   const [huangceOpen, setHuangceOpen] = useState(false);
   const [missionSource, setMissionSource] = useState<TavernMissionSource | null>(null);
+  const [shopSource, setShopSource] = useState<ActiveShopSource | null>(null);
+  const [dungeonSource, setDungeonSource] = useState<DungeonSource | null>(null);
+  const [arenaSource, setArenaSource] = useState<ArenaSource | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -306,11 +357,32 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
     setServiceMessage(null);
 
     if (service === 'missions') {
+      const source = buildRoleplaySource(node, entry, locations);
       setMissionSource({
-        locationId: entry.sourceLocationId ?? node.locationId,
-        servicePositionId: entry.sourcePositionId,
-        issuerActorId: entry.issuerActorId,
-        sourceLabel: `${getNodeName(node, getLocation(locations, node.locationId))} · ${entry.label}`,
+        locationId: source.locationId,
+        servicePositionId: source.servicePositionId,
+        issuerActorId: source.issuerActorId,
+        sourceLabel: source.sourceLabel,
+      });
+      return;
+    }
+
+    if (service === 'dungeon') {
+      setDungeonSource(buildRoleplaySource(node, entry, locations));
+      return;
+    }
+
+    if (service === 'arena') {
+      setArenaSource(buildRoleplaySource(node, entry, locations));
+      return;
+    }
+
+    if (service === 'shop') {
+      const shopType = resolveShopType(node, sceneId);
+      const source = buildRoleplaySource(node, entry, locations);
+      setShopSource({
+        shopType,
+        ...source,
       });
       return;
     }
@@ -451,6 +523,43 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
     );
   }
 
+  if (shopSource) {
+    const onBack = () => {
+      setShopSource(null);
+      setServiceMessage(null);
+    };
+
+    return shopSource.shopType === 'weapon' ? (
+      <WeaponShopScene shopSource={shopSource} onBack={onBack} />
+    ) : (
+      <MagicShopScene shopSource={shopSource} onBack={onBack} />
+    );
+  }
+
+  if (dungeonSource) {
+    return (
+      <DungeonScene
+        dungeonSource={dungeonSource}
+        onBack={() => {
+          setDungeonSource(null);
+          setServiceMessage(null);
+        }}
+      />
+    );
+  }
+
+  if (arenaSource) {
+    return (
+      <ArenaScene
+        arenaSource={arenaSource}
+        onBack={() => {
+          setArenaSource(null);
+          setServiceMessage(null);
+        }}
+      />
+    );
+  }
+
   if (enteredLocationId) {
     const activeBaseNode =
       CITY_MAP_SCENE_ENTRIES.find((node) => node.locationId === enteredLocationId) ?? CITY_MAP_SCENE_ENTRIES[0]!;
@@ -475,6 +584,11 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
           sourceLocationId: position.locationId,
           sourcePositionId: position.positionId,
           issuerActorId: position.occupant.actorId,
+          issuerDisplayName: position.occupant.displayName,
+          issuerAvatarId: position.occupant.avatarId,
+          issuerTitle: position.title,
+          issuerLevel: position.occupant.level,
+          issuerRankText: `${POWER_FACTION_LABELS[position.occupant.faction]} - 权柄${formatPowerShare(position.occupant.powerShare)}`,
         })],
         incomeHint: position.incomeHint,
         replaceHint: position.replaceHint,
@@ -495,6 +609,11 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
         services: actor.services.map((service) => buildServiceEntry(activeNode, service, {
           sourceLocationId: activeNode.locationId,
           issuerActorId: actor.actorId,
+          issuerDisplayName: actor.displayName,
+          issuerAvatarId: actor.avatarId,
+          issuerTitle: actor.title,
+          issuerLevel: actor.level,
+          issuerRankText: `${POWER_FACTION_LABELS[actor.faction]} - 权柄${formatPowerShare(actor.powerShare)}`,
         })),
       }))
       : serviceEntries.map((entry, index) => ({
