@@ -199,16 +199,19 @@ V2 可以增加“大明版图外派层”，但它的定位不是替代京城�
 
 | 地点 ID | 地点名 | 所属集团 | 当前可承载系统 |
 | :--- | :--- | :--- | :--- |
-| `imperial_palace` | 紫禁城 / 内廷 | 皇权 | 高级密旨、内府货源、晋升节点 |
-| `northern_guard` | 北镇抚司 | 皇权 | 缉拿、诏狱、暗查、战报 |
-| `shenji_camp` | 神机营 | 皇权 / 边镇 | 军械、校场、火器任务 |
-| `censorate_office` | 都察院 | 清流 | 案牍、弹劾、查账 |
-| `ducal_mansion` | 国公府 | 勋贵 | 军功旧案、家将、夺位 |
+| `imperial_palace` | 皇宫 | 皇权 | 黄册、晋升、密旨、后续内府资源 |
+| `northern_bureau` | 北镇抚司 | 皇权 | 差事、情报 |
+| `divine_engine_camp` | 神机营 | 边镇 / 军权 | 军械商店 |
+| `censorate` | 都察院 | 清流 | 案卷副本、差事 |
+| `noble_mansion` | 国公府 | 勋贵 | 校场竞技 |
 | `border_command` | 九边总兵府 | 边镇 | 军粮、清剿、边镇对抗 |
-| `salt_guild` | 盐商会馆 | 白银 | 白银任务、黑货、折扣 |
+| `salt_merchant_guild` | 盐商会馆 | 白银 | 奇珍商店 |
 | `weaving_bureau` | 织造局 | 皇权 / 白银 | 贡品、宫中流出物 |
-| `refugee_camp` | 流民营 / 香会暗线 | 失序民间 | 暗杀、救人、暴动、藏匿 |
-| `personal_inventory` | 随身行囊 | 个人 | 装备、属性、角色面板 |
+| `refugee_camp` | 流民营 / 香会暗线 | 暗流 | 情报、战报包装节点 |
+| `wine_house` | 京城酒楼 | 白银 | 令牌补体力 |
+| `bun_shop` | 城门包子铺 | 暗流 | 铜钱补给占位 |
+| `pleasure_quarter` | 教司坊 | 白银 | 道具补给、情报占位 |
+| `player_inventory` | 随身行囊 | 个人 | 装备、属性、角色面板；不属于京城场所 |
 
 ### 5.3 地点网络而非坐标网格
 
@@ -245,7 +248,8 @@ type LocationService =
   | 'arena'
   | 'promotion'
   | 'intel'
-  | 'estate';
+  | 'estate'
+  | 'stamina';
 ```
 
 示例：
@@ -258,7 +262,64 @@ type LocationService =
 6. 流民营：暗线任务 / 藏匿 / 低门槛脏活。
 7. 紫禁城：`promotion` / 密旨 / 高级内府货源。
 
-### 5.5 玩家府邸
+### 5.5 地点、服务与身份门路
+
+地点不是平等菜单。地点代表权力空间，服务代表底层功能，门路代表玩家以当前身份能接触到的具体渠道。
+
+三者关系：
+
+```text
+PowerLocation -> LocationService -> AccessChannel
+
+地点：都察院
+服务：missions / dungeon / intel
+门路：正式案牍、门房递状、御史门生引荐、书吏私活
+```
+
+同一个 `LocationService` 可以由多个 `AccessChannel` 包装。前端可复用同一个组件，服务端可复用同一个 action，但展示给玩家的名称、NPC、开放条件、奖励倾向和风险提示必须由门路决定。
+
+建议数据结构：
+
+```ts
+type AccessChannel = {
+  channelId: string;
+  locationId: MingLocationId;
+  service: LocationService;
+  ownerFaction: PowerFaction;
+  displayName: string;
+  npcTitle?: string;
+  description: string;
+  minLevel?: number;
+  requiredFaction?: PowerFaction;
+  requiredStanding?: Partial<Record<PowerFaction, number>>;
+  maxSuspicion?: Partial<Record<PowerFaction, number>>;
+  allowedOrigins?: RaceId[];
+  deniedOrigins?: RaceId[];
+  status: 'locked' | 'peripheral' | 'open' | 'favored' | 'hostile';
+};
+```
+
+状态含义：
+
+1. `locked`：身份、等级、站位或牵连不满足，不能使用。
+2. `peripheral`：只能接外围差事，例如跑腿、递状、带路、告密、搬货。
+3. `open`：可以正常使用该服务。
+4. `favored`：同阵营、被引荐或 standing 足够，获得更好文案和可能的奖励倾向。
+5. `hostile`：牵连过高或敌对集团，不一定完全锁死，但应有盘查、加价、低信任或更高风险。
+
+示例：
+
+| 玩家身份 | 地点 | 服务 | 玩家看到的渠道 |
+| :--- | :--- | :--- | :--- |
+| 流民秘社 | 都察院 | `missions` | 门外递状、替人告密、偷听案声 |
+| 清流世家 | 都察院 | `missions` | 御史案牍、弹劾草稿、查账差事 |
+| 军户边镇 | 神机营 | `shop` | 军需库、旧铳修配、火药账房 |
+| 市井商贾 | 盐商会馆 | `shop` | 盐引暗柜、贡品折卖、账房私货 |
+| 厂卫职司 | 北镇抚司 | `intel` | 密档、诏狱口供、暗查名册 |
+
+当前入口规则：右侧导航不展示差事、商店、副本、竞技、补给、情报等门路快捷入口。它不是独立于京城地图的第二套入口系统，只保留随身行囊、战报/邮件、资源与角色简报等个人功能。
+
+### 5.6 玩家府邸
 
 玩家府邸应作为实体地点处理，但挂靠在某个京城或地方权力区域之下。
 
@@ -274,6 +335,103 @@ type PlayerEstate = {
 ```
 
 府邸挂靠位置可随出身、站队和晋升变化。例如清流玩家靠近都察院，商税玩家靠近盐商会馆，边镇玩家靠近九边都司。流民出身前期可以没有正式府邸，只有临时落脚点。
+
+### 5.7 场所职务系统
+
+场所不应只是背景图和固定 NPC。每个场所都应由若干“职务”组成，职务由世界角色池中的具体角色占据。玩家看到的 NPC，本质上是占据某个场所职务的 bot 或真实玩家离线角色。
+
+正式关系为：
+
+```text
+PowerLocation -> ServicePosition -> WorldActor -> LocationService
+
+地点：北镇抚司
+职务：经历司吏
+任职角色：某个 bot 或玩家离线角色
+服务：missions
+```
+
+这样可以让玩家自然理解：
+
+1. 场所里的 NPC 不是装饰，而是占着位置的人。
+2. 一个职务只负责一个主要服务，避免一个 NPC 承担多个入口造成现代菜单感。
+3. 玩家后续可以争夺、替代或任职这些位置。
+4. 职务可以产生抽成、声望、情报、保护、牵连等长期收益和风险。
+5. 冷启动阶段由 bot 占位，真实玩家成长后逐步替代 bot。
+
+建议数据结构：
+
+```ts
+type ServicePosition = {
+  positionId: string;
+  locationId: MingLocationId;
+  title: string;
+  service: LocationService;
+  ownerFaction: PowerFaction;
+  minLevel: number;
+  occupantActorId: string;
+  incomeHint: string;
+  replaceHint: string;
+  status: 'bot_held' | 'player_held' | 'vacant' | 'locked';
+};
+```
+
+前端展示时，每个 `ServicePosition` 应渲染为一张角色卡：
+
+1. 角色卡使用统一的 `CharacterPortraitCard`。
+2. 角色卡显示任职者姓名、头像、等级、派系、权柄和职务名。
+3. 角色卡下方只显示该职务负责的一个服务按钮。
+4. 点击角色卡打开任职者详情，而不是直接触发服务。
+5. 点击服务按钮才进入 shop / missions / dungeon / arena / stamina / intel 等具体功能。
+
+短期 API 可以从当前 `serviceActors` 过渡到更准确的 `servicePositions`：
+
+```ts
+servicePositions: Array<{
+  positionId: string;
+  title: string;
+  service: LocationService;
+  ownerFaction: PowerFaction;
+  minLevel: number;
+  incomeHint: string;
+  replaceHint: string;
+  occupant: {
+    actorId: string;
+    kind: 'bot' | 'player';
+    displayName: string;
+    avatarId: string;
+    faction: PowerFaction;
+    level: number;
+    powerShare: number;
+  };
+}>
+```
+
+V1 不需要立刻实现职位争夺，只需要先让所有地点服务都由职务承载。职位详情面板可以先展示“任职中 / 后续可替代 / 收益规则待开放”等提示。
+
+### 5.8 场所职务收益与替代方向
+
+职务系统的长期价值在于“权力寻租”。不同服务职务可以有不同收益：
+
+| 服务类型 | 职务收益方向 | 替代方式方向 |
+| :--- | :--- | :--- |
+| `shop` | 从交易额中抽取少量铜钱、声望或商税权柄 | 交易贡献、商税 standing、挑战原任职者 |
+| `missions` | 从玩家完成差事中获得官声、派系 standing 或少量权柄 | 完成该地点差事、获得上级举荐 |
+| `dungeon` | 从案件推进中获得案牍功劳和清洗收益 | 参与历史案件、提高相关派系信任 |
+| `arena` | 从挑战和排名中获得威名与赌注抽成 | 战力挑战、排名超过任职者 |
+| `stamina` | 从补给消费中抽成，获得市井声望或银路关系 | 生活场所投资、特殊道具、人情 |
+| `intel` | 获得情报流和他人行动痕迹 | 站队、密探任务、低牵连维持 |
+
+职位替代不应只看战力。不同位置可以看不同条件：
+
+1. 等级和战力。
+2. 所属派系和 standing。
+3. 对该地点的贡献。
+4. 当前牵连是否过高。
+5. 是否完成投名状。
+6. 是否击败或清洗原任职者。
+
+这能把商店、任务、副本、PVP 和权柄系统统一到同一个长期目标：玩家不是只在菜单里消费，而是在京城权力机器里争夺具体职位。
 
 ---
 
@@ -499,4 +657,103 @@ pledges: PowerFaction[];
 
 ---
 
-*Last Updated: 2026-05-26*
+## Mission Target Actor V1
+
+Mission targets should become concrete world actors, not temporary anonymous enemies. The first implementation must stay intentionally small: it makes the target visible and uses an actor combat snapshot, but does not introduce death, permanent injury, position seizure, revenge mail, or online PvP consequences.
+
+### Goal
+
+For every mission offer, the player should understand:
+
+1. Who issued the mission.
+2. Which faction benefits.
+3. Which faction is targeted.
+4. Which concrete actor is being handled.
+5. What risk and power consequence may follow.
+
+The player-facing feeling is: "I am not fighting a random monster. I am carrying out one faction's business against a named person in the world power pool."
+
+### Target Selection
+
+When generating a mission offer, the server selects a `targetActor` from `world.actors`.
+
+Recommended first-pass filtering:
+
+1. `actor.faction === mission.powerContext.targetFaction`.
+2. Actor level is near the player's level.
+3. Prefer actors located in locations owned by, or related to, the target faction.
+4. Prefer actors with `powerShare > 0`.
+5. Prefer actors occupying a `servicePosition` when available.
+6. Fallback to any actor in the target faction if the stricter pool is empty.
+
+The target selection should be stable for a generated offer set: once the offer is generated, its target actor snapshot must remain stable through start and settlement.
+
+### Mission Offer Data
+
+Add an optional target preview to mission offers and active missions:
+
+```ts
+type MissionTargetActorPreview = {
+  actorId: string;
+  kind: 'bot' | 'player';
+  displayName: string;
+  avatarId: string;
+  level: number;
+  classId: PlayerClassId;
+  raceId?: RaceId;
+  faction: PowerFactionId;
+  locationId: string;
+  locationName?: string;
+  powerShare: number;
+  title?: string;
+  positionId?: string;
+  reason: string;
+};
+```
+
+`reason` is player-facing case text, for example "salt ledger suspect", "old military retainer", "censorate petition runner", or the localized Chinese equivalent.
+
+### Combat Snapshot Rule
+
+Mission combat should use the selected target actor's `combatSnapshot`, copied into the mission offer or active mission when the mission is generated or started.
+
+First version rules:
+
+1. Do not recompute the target from current world state during settlement.
+2. Do not mutate the target's combat stats after losing.
+3. Do not remove the actor from the world.
+4. Do not remove or transfer service positions.
+5. The target can be used again by future offers unless later balancing decides otherwise.
+
+### Settlement Impact
+
+Player victory:
+
+1. Normal XP/copper rewards.
+2. Existing suspicion logic applies to the target faction.
+3. Existing power transfer logic transfers a small amount from the target faction or target actor pool to the player actor.
+4. Settlement response includes `targetActor` and power result for display.
+
+Player defeat:
+
+1. No power transfer.
+2. No permanent target mutation.
+3. No position change.
+4. Optional first-pass stats such as `targetDefendedCount` should be deferred.
+
+### Explicit Non-Goals
+
+Do not implement these in V1:
+
+1. Killing or deleting target actors.
+2. Directly seizing the target's service position.
+3. Permanent injuries or stat degradation.
+4. Revenge messages or personal enemy lists.
+5. Online player notifications.
+6. Complex faction AI retaliation.
+
+These are later systems and should not block the first roleplay clarity pass.
+
+---
+
+*Last Updated: 2026-05-27*

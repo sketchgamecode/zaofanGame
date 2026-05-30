@@ -1,9 +1,11 @@
-# 大宋造反模拟器：史诗装备文案库 (Equipment Flavor Text Library)
-Status: Implementation Allowed
+# 史诗装备文案库 (Equipment Flavor Text Library)
+Status: Legacy Flavor Library / Needs Ming Rewrite
 Version: 1.0
 Designer: Antigravity (Design Authority)
 
 ---
+
+> 2026-05-28 纠偏说明：本文是旧“大宋 / 水浒”装备风味库，不再代表当前题材。当前项目应改用“大明体制内升迁”包装，围绕神机营军械、厂卫查抄、都察院案牍、勋贵赏赐、盐商贡品、织造局旧物、流民暗线赃物等来源生成装备文案。本文只保留为旧文案风格参考，不应直接进入新装备表。
 
 ## 1. 编写准则 (Writing Guidelines)
 *   **时代背景**：北宋末年（徽宗时期）。

@@ -28,6 +28,59 @@ V1 的体验重点：
 4. 明白收益和牵连不是孤立数值，而是站队后的后果。
 5. 明白权柄总量有限，自己的上升意味着别人被挤下去。
 
+### 2.1 京城地图不是平等菜单
+
+京城地图是权力空间，不是所有玩家都能平等使用的主菜单。
+
+不同出身、职司、等级、站位和牵连，应该决定玩家在同一地点受到怎样的接待。玩家可以看见紫禁城、都察院、北镇抚司、国公府、盐商会馆和流民营，但看见不等于能正常办事。
+
+同一个地点对不同玩家可以呈现不同状态：
+
+1. **闭门不纳**：身份、等级或名分不足，门房不让进。
+2. **盘查严苛**：玩家对该集团牵连过高，进入前先被审视。
+3. **只接外围差**：可以做跑腿、递状、带路、放风、告密等低门槛事务。
+4. **需投名状**：必须先完成指定差事，才会开放更深服务。
+5. **有人引荐**：因站位、standing 或特殊剧情，获得越级门路。
+6. **内部门路**：玩家属于该集团或已经被该集团接纳，服务更完整、文案更亲近。
+
+因此，流民出身玩家不应像高级官僚一样自由进入都察院领核心案卷。更合理的体验是：他能看见都察院，也可能在门外接到递状、告密、带路、偷听等外围差事；只有获得引荐、投名状或身份提升后，才逐步进入正式案牍系统。
+
+### 2.2 服务是功能类型，渠道是身份包装
+
+底层功能可以复用，但玩家看到的入口必须符合身份门路。
+
+例如同样是 `shop` 功能，不同集团和身份看到的渠道可以不同：
+
+| 功能类型 | 皇权 / 厂卫 | 都察院 / 清流 | 边镇 / 军户 | 白银商帮 | 流民暗线 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 接任务 | 北镇抚司密差 | 都察院案牍 | 边镇军令 | 会馆账差 | 香会暗活 |
+| 武器装备 | 神机营军械 | 查抄物库 | 边镇旧军备 | 私贩火器 | 赃物拼装 |
+| 特殊物品 | 内府流出 | 御史人情 | 军功赏物 | 盐引贡品 | 秘社符物 |
+| 副本案件 | 诏狱清查 | 弹劾案卷 | 边镇剿乱 | 查税追赃 | 逃户械斗 |
+| 情报 | 厂卫密档 | 言官奏报 | 塘报军情 | 账房消息 | 民间传闻 |
+
+V1 可以先让这些渠道复用同一套 React 组件和服务端动作，但玩家可见名称、NPC、说明文案、开放条件和风险提示必须按地点与身份切换。
+
+### 2.3 右侧导航是随身腰牌，不是第二张地图
+
+右侧导航不是另一套世界结构，也不再承载角色扮演玩法入口。它只表示玩家随身能处理的个人事务。
+
+右侧导航允许保留：
+
+1. 角色头像卡与个人角色详情入口。
+2. 铜钱、令牌、沙漏、声望等资源显示。
+3. 随身行囊、战报回放、邮件、设置等个人功能。
+
+右侧导航不得新增：
+
+1. 差事入口。
+2. 商店入口。
+3. 副本/案卷入口。
+4. 竞技/考绩入口。
+5. 需要 NPC 交流、场所拜访或权力机构解释的入口。
+
+这些玩法必须从京城地图的场所、场所内任职 NPC 或对应服务职务进入。若一个入口无法对应地点、身份渠道或随身能力，它就应被审计为旧入口，暂时隐藏、合并或移除。
+
 ---
 
 ## 3. 新玩家前十分钟
@@ -204,6 +257,18 @@ V1 的基础日常循环：
 
 作为玩家，我想权柄不能通过普通商店直接购买，这样它不会退化成另一种货币。
 
+### 7.7 场所职务
+
+作为玩家，我想看到每个场所里的 NPC 是具体任职角色，而不是固定背景板，这样我能理解他们也在权力结构里占着位置。
+
+作为玩家，我想看到一个 NPC 只负责一个明确服务，例如一个人管商店、一个人发差事、一个人管情报，这样我不会把场所误解成普通功能菜单。
+
+作为玩家，我想点击 NPC 角色卡查看他的职务、权柄、派系和替代条件，这样我能知道自己以后是否有机会坐上这个位置。
+
+作为玩家，我想知道某些职务会从交易、差事、补给或情报中获得收益，这样我能理解“升迁”不只是数值变强，也是在争夺现实利益。
+
+作为玩家，我想看到冷启动阶段的职务先由 bot 占据，后续逐步被真实玩家替代，这样我能相信这个世界会从半模拟过渡到玩家驱动。
+
 ---
 
 ## 8. 体验验收标准
@@ -215,8 +280,19 @@ V1 的基础日常循环：
 3. 玩家能看出自己可能得罪谁。
 4. 玩家能看出短期奖励和长期风险。
 5. 玩家能在角色面板或地图上看到某种持续后果。
+6. 玩家能理解自己是通过什么身份门路接触到这个系统，而不是像现代菜单一样平等点击所有入口。
 
 不满足这些标准的功能，应先补包装或补反馈，再进入正式实现。
+
+### 8.1 前端入口验收
+
+前端新增或保留任何入口前，应回答：
+
+1. 这个入口对应哪个京城地点，或是否属于随身功能。
+2. 这个入口属于哪个服务类型，例如 `missions`、`shop`、`dungeon`、`arena`、`intel`。
+3. 玩家当前身份通过什么渠道接触它，例如军需库、案牍房、账房私货、香会暗活。
+4. 这个入口在右侧导航中出现时，是否只是对应门路的快捷腰牌。
+5. 如果这个入口没有地点、服务和门路解释，它应被标记为旧入口并进入删除或合并审计。
 
 ---
 
@@ -243,4 +319,22 @@ V1 的基础日常循环：
 4. 怪物据点
 5. 世界地图旅游
 6. 无限产出的声望货币
+## 9. UI Entry Correction: Origin vs Office
 
+This section records the corrected player-facing rule after the first map/navigation playtest.
+
+1. Origin is old background. It explains where the character came from, what prejudice follows them, and what hidden contacts or penalties may exist.
+2. Office is the current pass. It decides which bureau, gatekeeper, NPC tone, and visible channel the player should see first.
+3. A refugee-born character who becomes a Jinyiwei runner should be treated primarily as an imperial runner in the active UI. The refugee origin can still appear as extra suspicion, gossip, or special dialogue, but it must not make the main navigation look like a refugee-only path.
+4. The Beijing map is the role-playing entry surface. Missions, shops, case files, arenas, promotion, and NPC service interactions should be reached by clicking buildings on the map.
+5. The right rail is not a second map. It should keep only system utilities such as character/equipment, resources, battle reports, letters, and other non-NPC personal operations.
+
+## 10. Mission Target Actor Story
+
+This section records the next player-facing clarity requirement after the location and service-position playtests.
+
+1. As a player, I want every mission target to be a concrete world actor, so I understand that I am acting against a person in the same power ecosystem instead of fighting a random generated monster.
+2. As a player, I want to see the target actor's portrait card before accepting a mission, so I can recognize their faction, level, status, and location.
+3. As a player, I want combat playback to show my portrait card against the target actor's portrait card, so the battle feels like a conflict between two roles in the world.
+4. As a player, I want mission settlement to show what changed after beating that actor, so XP, copper, suspicion, and power transfer feel connected to the world.
+5. As a player, I do not expect the first version to kill the target, remove their office, or trigger personal revenge. I only need to understand who I handled and which faction relationship changed.

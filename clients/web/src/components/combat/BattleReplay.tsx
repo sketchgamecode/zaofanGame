@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, useCallback, type ReactNode } from 'react';
 import { CLASS_META, getAvatarUrl } from '../../config/characterCatalog';
 import type { BattleHitEvent, BattleResultV2 } from '../../types/combat';
 
@@ -26,7 +26,7 @@ type PlaybackHit = {
   hit: BattleHitEvent;
 };
 
-const HIT_STEP_MS = 440;
+const HIT_STEP_MS = 900;
 
 function flattenHits(battleResult: BattleResultV2): PlaybackHit[] {
   return battleResult.actions.flatMap((action) => action.hits.map((hit) => ({
@@ -83,14 +83,41 @@ export function BattleReplay({
 }: BattleReplayProps) {
   const hits = useMemo(() => flattenHits(battleResult), [battleResult]);
   const [shownHitCount, setShownHitCount] = useState(0);
-  const playbackComplete = shownHitCount >= hits.length;
+  const playbackComplete = shownHitCount > hits.length;
+
+  const [displayedHp, setDisplayedHp] = useState<{ player: number; enemy: number }>({
+    player: battleResult.player.hpMax,
+    enemy: battleResult.enemy.hpMax,
+  });
+
+  const [flyingWeapon, setFlyingWeapon] = useState<{ id: number; attacker: 'player' | 'enemy'; weaponUrl: string } | null>(null);
+  const [shakeTarget, setShakeTarget] = useState<'player' | 'enemy' | null>(null);
+  const [floatingTexts, setFloatingTexts] = useState<
+    Array<{ id: number; target: 'player' | 'enemy'; text: string; type: 'crit' | 'dodge' | 'block' | 'normal' }>
+  >([]);
+
+  const getWeaponIconUrl = useCallback((attacker: 'player' | 'enemy') => {
+    const snapshot = battleResult[attacker].snapshot;
+    const weaponId = snapshot.equipmentSummary?.weaponId;
+    if (!weaponId) {
+      return '/assets/items/icons/item_weapon_placeholder.png';
+    }
+    return `/assets/items/icons/${weaponId}.png`;
+  }, [battleResult]);
 
   useEffect(() => {
     setShownHitCount(0);
+    setDisplayedHp({
+      player: battleResult.player.hpMax,
+      enemy: battleResult.enemy.hpMax,
+    });
   }, [battleResult]);
 
   useEffect(() => {
     if (playbackComplete) {
+      setFlyingWeapon(null);
+      setShakeTarget(null);
+      setFloatingTexts([]);
       return;
     }
 
@@ -101,14 +128,101 @@ export function BattleReplay({
     return () => window.clearTimeout(timerId);
   }, [playbackComplete, shownHitCount]);
 
-  const hpState = useMemo(() => (
-    playbackComplete
-      ? {
-          playerHp: battleResult.player.hpEnd,
-          enemyHp: battleResult.enemy.hpEnd,
-        }
-      : getDisplayedHp(battleResult, hits, shownHitCount)
-  ), [battleResult, hits, playbackComplete, shownHitCount]);
+  useEffect(() => {
+    if (playbackComplete) {
+      return;
+    }
+
+    if (shownHitCount === 0) {
+      return;
+    }
+
+    const currentHitEntry = hits[shownHitCount - 1];
+    if (!currentHitEntry) {
+      return;
+    }
+
+    const { attacker, hit } = currentHitEntry;
+    const defender = hit.defender;
+    const weaponUrl = getWeaponIconUrl(attacker);
+    const hitId = shownHitCount;
+
+    // 1. Trigger Flying Weapon
+    setFlyingWeapon({
+      id: hitId,
+      attacker,
+      weaponUrl,
+    });
+
+    // 2. Set timeout for impact (400ms)
+    const impactTimer = window.setTimeout(() => {
+      // Clear flying weapon
+      setFlyingWeapon((prev) => (prev?.id === hitId ? null : prev));
+
+      // Trigger Shake
+      setShakeTarget(defender);
+
+      // Update displayed HP on impact
+      const currentHpState = getDisplayedHp(battleResult, hits, shownHitCount);
+      setDisplayedHp({
+        player: currentHpState.playerHp,
+        enemy: currentHpState.enemyHp,
+      });
+
+      // Trigger Floating Combat Text
+      let text = `-${hit.damage}`;
+      let type: 'crit' | 'dodge' | 'block' | 'normal' = 'normal';
+
+      if (hit.wasDodged) {
+        text = '闪避';
+        type = 'dodge';
+      } else if (hit.wasBlocked) {
+        text = '格挡';
+        type = 'block';
+      } else if (hit.wasCrit) {
+        text = `-${hit.damage}!`;
+        type = 'crit';
+      }
+
+      setFloatingTexts((prev) => [
+        ...prev,
+        {
+          id: hitId,
+          target: defender,
+          text,
+          type,
+        },
+      ]);
+
+      // Remove shake after 250ms
+      window.setTimeout(() => {
+        setShakeTarget((prev) => (prev === defender ? null : prev));
+      }, 250);
+
+      // Remove floating text after 1000ms
+      window.setTimeout(() => {
+        setFloatingTexts((prev) => prev.filter((item) => item.id !== hitId));
+      }, 1000);
+
+    }, 400);
+
+    return () => {
+      window.clearTimeout(impactTimer);
+    };
+  }, [shownHitCount, playbackComplete, hits, getWeaponIconUrl]);
+
+  const hpState = useMemo(() => {
+    if (playbackComplete) {
+      return {
+        playerHp: battleResult.player.hpEnd,
+        enemyHp: battleResult.enemy.hpEnd,
+      };
+    }
+    return {
+      playerHp: displayedHp.player,
+      enemyHp: displayedHp.enemy,
+    };
+  }, [battleResult, playbackComplete, displayedHp]);
 
   const latestHit = shownHitCount > 0 ? hits[Math.min(shownHitCount - 1, hits.length - 1)] : null;
   const playerHpPercent = battleResult.player.hpMax > 0
@@ -128,7 +242,7 @@ export function BattleReplay({
         </header>
 
         <section className="battle-replay__side battle-replay__side--player">
-          <div className="battle-replay__portrait-frame">
+          <div className={`battle-replay__portrait-frame${shakeTarget === 'player' ? ' battle-replay__portrait-frame--shake' : ''}`}>
             <img
               alt={battleResult.player.name}
               className="battle-replay__portrait"
@@ -146,7 +260,7 @@ export function BattleReplay({
         </section>
 
         <section className="battle-replay__side battle-replay__side--enemy">
-          <div className="battle-replay__portrait-frame">
+          <div className={`battle-replay__portrait-frame${shakeTarget === 'enemy' ? ' battle-replay__portrait-frame--shake' : ''}`}>
             <img
               alt={battleResult.enemy.name}
               className="battle-replay__portrait"
@@ -185,7 +299,7 @@ export function BattleReplay({
         </section>
 
         {!playbackComplete ? (
-          <button className="battle-replay__skip" type="button" onClick={() => setShownHitCount(hits.length)}>
+          <button className="battle-replay__skip" type="button" onClick={() => setShownHitCount(hits.length + 1)}>
             跳过演示
           </button>
         ) : null}
@@ -217,6 +331,21 @@ export function BattleReplay({
             ) : null}
           </div>
         ) : null}
+
+        {flyingWeapon && (
+          <div className={`battle-replay__flying-weapon battle-replay__flying-weapon--${flyingWeapon.attacker}`}>
+            <img src={flyingWeapon.weaponUrl} alt="" />
+          </div>
+        )}
+
+        {floatingTexts.map((f) => (
+          <div
+            key={f.id}
+            className={`battle-replay__floating-text battle-replay__floating-text--${f.target} battle-replay__floating-text--${f.type}`}
+          >
+            {f.text}
+          </div>
+        ))}
       </div>
     </div>
   );

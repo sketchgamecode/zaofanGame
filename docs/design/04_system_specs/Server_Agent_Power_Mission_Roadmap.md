@@ -185,7 +185,101 @@ const WORLD_POWER_TOTAL = 10000;
 
 每个 `WorldActor.powerShare` 占其中一部分。玩家通过任务、副本、竞技、事件夺取或丢失权柄。
 
-这阶段不要太早做，必须等任务/副本/世界角色池都稳定后再接。
+阶段 1-4 已经具备第一版前置条件：任务有 `powerContext`，副本有 `powerCase`，世界角色池有 260 个 actor，京城地图能按地点聚合权柄。
+
+阶段 5 第一版不做复杂政治模拟，只做最小可验证闭环：
+
+1. 世界总权柄仍恒定为 `10000`。
+2. 任务或副本胜利时，允许发生极小额权柄转移。
+3. 权柄必须从目标集团或目标 actor 扣除，不能凭空产生。
+4. 转移结果要返回给前端，让玩家在结算里看到“我替谁夺了多少权柄”。
+5. 失败时第一版先不转移权柄，避免惩罚过重。
+6. 旧存档必须兼容；如缺少 world，沿用现有 `ensureWorldInitialized`。
+
+### 阶段 5 最小数据模型
+
+建议复用现有 `powerResult` 字段并扩展，不要新增一套完全平行的结算结构。
+
+```ts
+type PowerTransferResult = {
+  worldPowerTotal: number; // 恒定 10000
+  actorPowerDelta?: number; // 玩家个人或玩家影子 actor 的权柄变化
+  issuerFactionPowerDelta?: Partial<Record<PowerFactionId, number>>;
+  targetFactionPowerDelta?: Partial<Record<PowerFactionId, number>>;
+  targetActorIds?: string[];
+  worldPowerAfter?: {
+    byFaction: Array<{
+      faction: PowerFactionId;
+      actorCount: number;
+      powerShare: number;
+    }>;
+  };
+};
+```
+
+`MissionSettlement.powerResult` 和 `DungeonFightData.powerResult` 可以扩展为：
+
+```ts
+powerResult?: {
+  suspicionDelta?: Partial<Record<PowerFactionId, number>>;
+  suspicionAfter?: Partial<Record<PowerFactionId, number>>;
+  powerTransfer?: PowerTransferResult;
+};
+```
+
+如果为了兼容前端已有逻辑，也可以先保留 `suspicionDelta` 和 `suspicionAfter` 为必填或原样结构，只额外增加 `powerTransfer?`。
+
+### 阶段 5 权柄转移规则第一版
+
+第一版建议把转移数值压得很小：
+
+1. 普通集团差事成功：转移 `1` 点权柄。
+2. 高风险跨阵营差事成功：转移 `2` 点权柄。
+3. 历史案件副本胜利：转移 `3` 点权柄。
+4. 非权力包装内容不触发权柄转移。
+
+转移来源：
+
+1. 优先从 `targetFaction` 下的 bot actor 中扣。
+2. 若有多个目标集团，按目标集团顺序或平均扣除。
+3. 不允许把某 actor 扣到负数。
+4. 如果目标集团可扣权柄不足，则扣到可用上限，本次转移可以小于预期。
+
+转移去向：
+
+1. 第一版先转给 `issuerFaction` 下一个代表性 actor，或转给玩家所属阵营的“玩家影子 actor”。
+2. 如果当前还没有真实玩家进入 world actor 池，可以先创建/同步一个 `kind: 'player'` 的 actor，代表当前玩家在世界池里的席位。
+3. 玩家 actor 的 `actorId` 建议稳定，例如 `player:${playerId}` 或存档内可推导的稳定 ID。
+
+必须保证：
+
+1. 所有 `WorldActor.powerShare` 之和始终等于 `WORLD_POWER_TOTAL`。
+2. 任意转移后 `WORLD_ACTORS_GET_OVERVIEW` 和 `WORLD_LOCATIONS_GET_STATUS` 聚合结果一致。
+3. 转移失败或无可扣权柄时，不应破坏任务/副本原有奖励和结算。
+
+### 阶段 5 测试重点
+
+请至少覆盖：
+
+1. 初始世界权柄总和为 `10000`。
+2. 普通任务成功后，总和仍为 `10000`。
+3. 历史案件副本胜利后，总和仍为 `10000`。
+4. 目标集团权柄减少，发起集团或玩家 actor 权柄增加。
+5. 失败任务/失败副本不发生权柄转移。
+6. 旧存档无 world 时仍可初始化并完成权柄转移。
+7. actor 不会被扣成负数。
+8. `WORLD_ACTORS_GET_OVERVIEW` 与 `WORLD_LOCATIONS_GET_STATUS` 的聚合口径一致。
+9. `powerResult.powerTransfer` 能返回给前端。
+
+### 阶段 5 前端展示预期
+
+前端后续会在任务/副本结算里显示：
+
+1. `权柄变化：皇权 +0.03%，勋贵 -0.03%`
+2. `本次目标：蓝党旧部 / 边镇旧将`
+3. `世界总权柄：100.00%`
+
+因此服务端返回值请保持整数点数，前端负责格式化为百分比。
 
 ## 当前推荐执行顺序
 
@@ -197,12 +291,14 @@ const WORLD_POWER_TOTAL = 10000;
 
 ## 本次 server agent 可先完成的最小任务
 
-阶段 1-3 已完成第一版。下一轮请实现阶段 4：京城权力地图服务端状态。
+阶段 1-4 已完成第一版。下一轮请实现阶段 5：权柄总量系统第一版。
 
-1. 新增 `PowerLocation` / `PowerLocationView` 类型。
-2. 维护 V1 京城权力地点静态配置，不做大明版图多城池。
-3. 新增只读 action：`WORLD_LOCATIONS_GET_STATUS`。
-4. 返回每个地点的所属集团、解锁等级、服务列表、连线、基础通行耗时、聚集角色数量、权柄占比、玩家关系状态和关系说明。
-5. 地点状态按玩家等级、`powerFaction`、`suspicion` 和后续 standing 预留字段计算。
-6. 复用现有 world actor overview 统计地点人数和权柄，避免前后端维护两份地点聚合逻辑。
-7. 更新测试，覆盖地点数量、服务配置、连线配置、旧存档兼容、状态计算、overview 聚合一致性。
+1. 保持 `WORLD_POWER_TOTAL = 10000`，并抽出统一校验/聚合方法。
+2. 新增权柄转移 helper，例如 `applyWorldPowerTransfer`。
+3. 任务成功时，根据 `MissionPowerContext` 从目标集团扣 `1-2` 点权柄，转给发起集团或玩家 actor。
+4. 蓝玉案等权力副本胜利时，根据 `powerCase` 从目标集团扣 `3` 点权柄，转给发起集团或玩家 actor。
+5. 失败任务/失败副本不转移权柄。
+6. 扩展 `powerResult`，返回 `powerTransfer`。
+7. 保证旧存档兼容，缺 world 时自动初始化。
+8. 更新 TDD 文档：`player_save_schema.md`、`api_master_list.md`、必要时更新 `global_config_and_limits.md`。
+9. 补测试，确保任意操作后 world actors 权柄总和仍为 `10000`。

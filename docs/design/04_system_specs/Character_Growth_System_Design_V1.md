@@ -1,13 +1,15 @@
 # 角色创建与成长系统设计规格书 (Character Growth System Design)
-Status: Draft (待审批)
+Status: Partially Active / Needs Full Rewrite
 Designer: Antigravity (Design Authority)
 Implementation Allowed: Yes
 
 ---
 
-## 1. 题材包装 (Great Song Reskin)
+> 2026-05-28 纠偏说明：本文早期以“大宋种族/职业”包装撰写，现已过时。当前玩家创建应先选“出身”，再选“职司”，包装核心是“大明体制内升迁”。现行题材、出身/职司术语与权力集团关系，以 `02_Theme_and_Writing_Guidelines.md`、`03_Player_Journey_and_User_Stories.md` 和服务端 `raceConfig.ts` / `classConfig` 实现为准。本文后续公式、HP 倍率、战斗特性仍可作为机制参考，但不可直接复制旧名称。
 
-为了符合《大宋造反模拟器》的黑色幽默武侠题材，我们将 S&F 的种族与职业进行如下重新包装。所有数值属性（初始加成、HP倍率、护甲上限）**必须 100% 对应 S&F 2011 版**。
+## 1. 旧题材包装参考 (Legacy Great Song Reskin)
+
+以下内容是旧“大宋 / 水浒”阶段留下的包装参考，不代表当前实现目标。当前实现不得继续使用“种族/职业/大宋”作为玩家可见核心术语。数值属性、HP 倍率和战斗特性可作为历史机制参考，但命名应按“大明出身/职司”重写。
 
 ### 1.1 种族对照表 (Races)
 

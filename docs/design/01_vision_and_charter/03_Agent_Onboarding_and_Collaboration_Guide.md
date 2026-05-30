@@ -1,13 +1,16 @@
 # ZaoFan 项目 AI Agent 入职与协作通用指南
 
-欢迎加入《大宋造反模拟器》开发组。为了确保不同职责的 AI Agent 能够像一个团队一样高效协作，所有成员必须遵守本指南。
+欢迎加入项目。为了确保不同职责的 AI Agent 能够像一个团队一样高效协作，所有成员必须遵守本指南。
+
+> 当前文档状态：已按 2026-05-28 的方向纠偏。新成员还应先阅读 `docs/README.md`，确认哪些文档是现行权威，哪些只是旧稿或外部参考。
 
 ---
 
 ## 1. 项目核心北极星 (North Star)
 
-*   **机制核心**：100% 精确复刻 Shakes & Fidget (2011 经典版) 的数值与系统逻辑。**禁止擅自“微创新”。**
-*   **题材包装**：中国古代历史、武侠、神魔文学大杂烩，带有讽刺与黑色幽默色彩。
+*   **机制核心**：参考 Shakes & Fidget 的轻量挂机 RPG 循环、装备更替、自动战斗、体力/冷却与付费节奏，但不再以“100% 精确复刻”为唯一目标。任何偏离必须服务当前题材与玩家理解。
+*   **题材包装**：大明体制内升迁。玩家在京城权力机器中以出身和职司入局，走访不同场所、拜访任职角色、办差、置装、争权柄并承担牵连。
+*   **入口结构**：`CityScene` 是角色扮演玩法入口。差事、商店、副本、竞技、补给、情报等必须由京城场所与场所职务承载；右侧导航栏只保留个人随身功能。
 *   **技术架构**：服务端唯一权威 (Server Authority)，客户端仅负责渲染与交互。
 
 ---
@@ -52,6 +55,13 @@
 | **原始机制参考** | `docs/design/03_external_reports/` |
 | **具体系统设计规格** | `docs/design/04_system_specs/` |
 | **技术实现/API/存档结构** | `server/tdd/` |
+
+入口和地图结构优先读：
+
+1. `docs/README.md`
+2. `docs/design/01_vision_and_charter/03_Player_Journey_and_User_Stories.md`
+3. `docs/design/04_system_specs/Power_Structure_and_World_Actor_System_V1.md`
+4. `docs/design/04_system_specs/Frontend_Layout_Spec_V1.md`
 
 ---
 

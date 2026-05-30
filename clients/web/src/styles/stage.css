@@ -4658,3 +4658,174 @@ body {
     transform: translateX(0);
   }
 }
+
+/* ── 战斗重播视觉特效 ── */
+
+/* 1. 头像框受击震动 */
+.battle-replay__portrait-frame--shake {
+  animation: hit-shake 250ms ease-in-out;
+}
+
+@keyframes hit-shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-10px, 8px); }
+  40% { transform: translate(10px, -8px); }
+  60% { transform: translate(-8px, -6px); }
+  80% { transform: translate(8px, 6px); }
+}
+
+/* 2. 飞行武器 */
+.battle-replay__flying-weapon {
+  position: absolute;
+  width: 96px;
+  height: 96px;
+  z-index: 100;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.battle-replay__flying-weapon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6));
+}
+
+.battle-replay__flying-weapon--player {
+  animation: fly-player-to-enemy 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.battle-replay__flying-weapon--enemy {
+  animation: fly-enemy-to-player 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes fly-player-to-enemy {
+  0% {
+    left: 265px;
+    top: 304px;
+    transform: translate(-50%, -50%) rotate(0deg) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    left: 1269px;
+    top: 304px;
+    transform: translate(-50%, -50%) rotate(720deg) scale(1.1);
+    opacity: 0.9;
+  }
+}
+
+@keyframes fly-enemy-to-player {
+  0% {
+    left: 1269px;
+    top: 304px;
+    transform: translate(-50%, -50%) rotate(0deg) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    left: 265px;
+    top: 304px;
+    transform: translate(-50%, -50%) rotate(-720deg) scale(1.1);
+    opacity: 0.9;
+  }
+}
+
+/* 3. 漂浮战斗文字 (Floating Combat Text) */
+.battle-replay__floating-text {
+  position: absolute;
+  z-index: 150;
+  font-family: var(--font-ui);
+  font-weight: 900;
+  font-size: 48px;
+  pointer-events: none;
+  text-shadow:
+    -2px -2px 0 #000,
+     2px -2px 0 #000,
+    -2px  2px 0 #000,
+     2px  2px 0 #000,
+     0px  3px 6px rgba(0, 0, 0, 0.85);
+  animation: float-combat-text-normal 1000ms ease-out forwards;
+}
+
+.battle-replay__floating-text--player {
+  left: 265px;
+  transform: translateX(-50%);
+}
+
+.battle-replay__floating-text--enemy {
+  left: 1269px;
+  transform: translateX(-50%);
+}
+
+/* 文字色彩类型 */
+.battle-replay__floating-text--normal {
+  color: #ff4d4d; /* 鲜红色伤害 */
+}
+
+.battle-replay__floating-text--crit {
+  color: #ffaa00; /* 金黄色暴击 */
+  font-size: 64px;
+  animation: float-combat-text-crit 1000ms cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.battle-replay__floating-text--block {
+  color: #33b5e5; /* 蓝色格挡 */
+  font-size: 38px;
+}
+
+.battle-replay__floating-text--dodge {
+  color: #2bbbad; /* 青绿色闪避 */
+  font-size: 38px;
+}
+
+@keyframes float-combat-text-normal {
+  0% {
+    top: 220px;
+    opacity: 0;
+    transform: translateX(-50%) scale(0.6);
+  }
+  15% {
+    top: 160px;
+    opacity: 1;
+    transform: translateX(-50%) scale(1.1);
+  }
+  30% {
+    transform: translateX(-50%) scale(1);
+  }
+  100% {
+    top: 60px;
+    opacity: 0;
+    transform: translateX(-50%) scale(0.8);
+  }
+}
+
+@keyframes float-combat-text-crit {
+  0% {
+    top: 220px;
+    opacity: 0;
+    transform: translateX(-50%) scale(0.3);
+  }
+  20% {
+    top: 140px;
+    opacity: 1;
+    transform: translateX(-50%) scale(1.4);
+  }
+  40% {
+    transform: translateX(-50%) scale(1.1) rotate(-5deg);
+  }
+  60% {
+    transform: translateX(-50%) scale(1.1) rotate(5deg);
+  }
+  100% {
+    top: 40px;
+    opacity: 0;
+    transform: translateX(-50%) scale(0.9);
+  }
+}
