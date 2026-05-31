@@ -107,6 +107,17 @@ const FALLBACK_POWER_CONTEXTS: MissionPowerContext[] = [
   },
 ];
 const DEFAULT_POWER_CONTEXT = FALLBACK_POWER_CONTEXTS[0]!;
+const MISSION_RECEIPT_COPY = {
+  sourceLocation: '\u6765\u6e90\u573a\u6240',
+  issuer: '\u4ea4\u5dee\u5bf9\u8c61',
+  target: '\u672c\u6848\u76ee\u6807',
+  powerFlow: '\u6743\u529b\u6d41\u5411',
+  officeFlow: '\u804c\u4f4d\u5206\u8d26',
+  fallbackLocation: '\u4eac\u57ce\u5dee\u623f',
+  fallbackIssuer: '\u573a\u6240\u4efb\u804c\u8005',
+  rewardBooked: '\u5956\u8d4f\u5df2\u5165\u8d26',
+  noTransfer: '\u672a\u5f62\u6210\u8f6c\u79fb',
+};
 
 function formatFaction(faction: PowerFactionId) {
   return POWER_FACTION_LABELS[faction];
@@ -172,6 +183,22 @@ function formatActorPowerDelta(transfer?: PowerTransferResult) {
   }
 
   return `本人权柄 ${delta > 0 ? '+' : ''}${formatPowerShare(delta)}`;
+}
+
+function formatOfficeSettlement(data: CompleteMissionData) {
+  const settlement = data.officeSettlement;
+
+  if (!settlement) {
+    return MISSION_RECEIPT_COPY.noTransfer;
+  }
+
+  const parts = [
+    settlement.beneficiaryDisplayName ? `\u5f52\u5165 ${settlement.beneficiaryDisplayName}` : null,
+    settlement.taxValueDelta ? `\u7a0e\u94b1 +${settlement.taxValueDelta}` : null,
+    settlement.powerValueDelta ? `\u6743\u67c4 +${formatPowerShare(settlement.powerValueDelta)}` : null,
+  ].filter(Boolean);
+
+  return parts.length > 0 ? parts.join(' / ') : settlement.routingReason;
 }
 
 function wasTargetActorDebited(transfer: PowerTransferResult | undefined, targetActor: MissionTargetActorPreview | undefined) {
@@ -775,6 +802,41 @@ export function TavernScene({ missionSource, onBack }: TavernSceneProps = {}) {
 
               {/* Right Column: Consequences, Rewards, Faction changes */}
               <div className="battle-summary__right-col">
+                <div className="battle-summary__receipt">
+                  <div>
+                    <span>{MISSION_RECEIPT_COPY.sourceLocation}</span>
+                    <strong>{settlementData.sourceLocationName ?? currentPresentation.locationName ?? MISSION_RECEIPT_COPY.fallbackLocation}</strong>
+                  </div>
+                  <div>
+                    <span>{MISSION_RECEIPT_COPY.issuer}</span>
+                    <strong>
+                      {(settlementData.issuerActor ?? currentPresentation.issuerActor)?.displayName
+                        ?? settlementData.issuerDisplayName
+                        ?? MISSION_RECEIPT_COPY.fallbackIssuer}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>{MISSION_RECEIPT_COPY.target}</span>
+                    <strong>
+                      {(settlementData.targetActor ?? currentPresentation.targetActor)?.displayName
+                        ?? currentPresentation.enemyName}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>{MISSION_RECEIPT_COPY.powerFlow}</span>
+                    <strong>
+                      {settlementData.result === 'SUCCESS'
+                        ? (settlementData.powerResult?.powerTransfer
+                          ? formatPowerTransfer(settlementData.powerResult.powerTransfer)
+                          : MISSION_RECEIPT_COPY.rewardBooked)
+                        : MISSION_RECEIPT_COPY.noTransfer}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>{MISSION_RECEIPT_COPY.officeFlow}</span>
+                    <strong>{settlementData.result === 'SUCCESS' ? formatOfficeSettlement(settlementData) : MISSION_RECEIPT_COPY.noTransfer}</strong>
+                  </div>
+                </div>
                 {settlementData.result === 'SUCCESS' ? (
                   <>
                     {settlementData.powerResult?.powerTransfer ? (

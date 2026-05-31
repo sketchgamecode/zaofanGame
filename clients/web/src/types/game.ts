@@ -199,7 +199,10 @@ export type PowerLocationService =
   | 'promotion'
   | 'intel'
   | 'estate'
-  | 'stamina';
+  | 'stamina'
+  | 'office_registry'
+  | 'appointment'
+  | 'evaluation';
 export type PowerLocationStatus = 'locked' | 'open' | 'hostile' | 'favored';
 
 export type PowerLocationServiceActor = {
@@ -215,6 +218,13 @@ export type PowerLocationServiceActor = {
 
 export type ServicePositionStatus = 'bot_held' | 'player_held' | 'vacant' | 'locked';
 
+export type ServicePositionControlProfile = {
+  appointmentControllerLabel: string;
+  financeControllerLabel: string;
+  paylineHint: string;
+  loyaltyCostHint: string;
+};
+
 export type ServicePositionView = {
   positionId: string;
   locationId: string;
@@ -225,6 +235,7 @@ export type ServicePositionView = {
   incomeHint: string;
   replaceHint: string;
   status: ServicePositionStatus;
+  controlProfile?: ServicePositionControlProfile;
   occupant: {
     actorId: string;
     kind: 'bot' | 'player';
@@ -280,6 +291,7 @@ export type WorldActorDetailView = {
 };
 
 export type WorldServicePositionListItem = ActorPositionSummary & {
+  controlProfile?: ServicePositionControlProfile;
   occupant: {
     actorId: string;
     kind: 'player' | 'bot';
@@ -293,6 +305,122 @@ export type WorldServicePositionListItem = ActorPositionSummary & {
 
 export type WorldServicePositionsListView = {
   positions: WorldServicePositionListItem[];
+};
+
+export type OfficeLedgerEntryType =
+  | 'mission_tax'
+  | 'mission_power'
+  | 'bot_tax'
+  | 'bot_power'
+  | 'shop_tax'
+  | 'stamina_tax'
+  | 'evaluation';
+
+export type OfficeLedgerEntry = {
+  entryId: string;
+  createdAt: number;
+  positionId: string;
+  locationId: string;
+  service: PowerLocationService;
+  beneficiaryActorId?: string;
+  beneficiaryDisplayName?: string;
+  sourceActorId?: string;
+  sourceActorDisplayName?: string;
+  targetActorId?: string;
+  targetActorDisplayName?: string;
+  type: OfficeLedgerEntryType;
+  taxValueDelta?: number;
+  powerValueDelta?: number;
+  description: string;
+};
+
+export type WorldServicePositionLedgerView = {
+  entries: OfficeLedgerEntry[];
+};
+
+export type OfficeCandidateScoreItem = {
+  label: string;
+  value: number;
+  passed: boolean;
+  hint: string;
+};
+
+export type OfficeCandidateView = {
+  actorId: string;
+  kind: 'player' | 'bot';
+  displayName: string;
+  avatarId: string;
+  level: number;
+  faction: PowerFactionId;
+  powerShare: number;
+  combatRating?: number;
+  isCurrentPlayer: boolean;
+  score: number;
+  scoreBreakdown: OfficeCandidateScoreItem[];
+  recommendation: string;
+};
+
+export type WorldServicePositionCandidatesView = {
+  positionId: string;
+  incumbent: OfficeCandidateView;
+  currentPlayer?: OfficeCandidateView;
+  candidates: OfficeCandidateView[];
+  plottingAdvice: string[];
+  currentPlayerRank?: number;
+};
+
+export type ServicePositionCandidatesPreview = {
+  currentPlayerRank?: number;
+  topCandidate?: OfficeCandidateView;
+  advice: string[];
+};
+
+export type OfficeKpiProfile = {
+  termStartsAt: number;
+  termEndsAt: number;
+  taxDuePerTerm: number;
+  taxDeliveredThisTerm: number;
+  powerDuePerTerm: number;
+  powerDeliveredThisTerm: number;
+};
+
+export type OfficeControlDetail = {
+  appointmentControllerActorId?: string;
+  appointmentControllerDisplayName?: string;
+  financeControllerActorId?: string;
+  financeControllerDisplayName?: string;
+  treasurySplit: {
+    imperialPrivatePct: number;
+    publicTreasuryPct: number;
+    superiorPct: number;
+    officeHolderPct: number;
+  };
+};
+
+export type OfficeEligibility = {
+  canBeConsidered: boolean;
+  reasons: string[];
+};
+
+export type WorldServicePositionDetailView = {
+  position: ServicePositionView;
+  occupant: ServicePositionView['occupant'];
+  location: {
+    locationId: string;
+    name: string;
+    ownerFaction: PowerFactionId;
+    unlockLevel: number;
+  };
+  service: PowerLocationService;
+  incomeHint: string;
+  replaceHint: string;
+  controlProfile?: ServicePositionControlProfile;
+  kpiProfile: OfficeKpiProfile;
+  controlDetail: OfficeControlDetail;
+  eligibility: OfficeEligibility;
+  imperialOverrideHint: string;
+  ledgerPreview: OfficeLedgerEntry[];
+  candidatesPreview?: ServicePositionCandidatesPreview;
 };
 
 export type PowerTransferResult = {

@@ -19,8 +19,14 @@ import type {
   PowerLocationStatus,
   PowerLocationView,
   SceneId,
+  ServicePositionControlProfile,
+  OfficeLedgerEntry,
+  OfficeCandidateView,
   WorldActorDetailView,
   WorldLocationsStatusView,
+  WorldServicePositionCandidatesView,
+  WorldServicePositionDetailView,
+  WorldServicePositionLedgerView,
   WorldServicePositionsListView,
 } from '../types/game';
 import type { TavernInfoData } from '../types/tavern';
@@ -58,6 +64,9 @@ const SERVICE_ACTION_LABELS: Partial<Record<PowerLocationService, string>> = {
   promotion: '求见升迁',
   intel: '查看情报',
   stamina: '补充体力',
+  office_registry: '\u67e5\u770b\u540d\u518c',
+  appointment: '\u95ee\u4efb\u514d',
+  evaluation: '\u67e5\u8003\u529f',
 };
 
 const SERVICE_SCENE_BY_LOCATION: Record<string, Partial<Record<PowerLocationService, SceneId>>> = {
@@ -108,6 +117,11 @@ const LOCATION_ART: Record<string, LocationSceneArt> = {
     background: '/assets/backgrounds/bg_system_tavern_task_bg_04.png',
     npcImage: '/assets/figure/portrait/avatar_placeholder_030.png',
     npcName: '织造局买办',
+  },
+  ministry_of_personnel: {
+    background: '/assets/backgrounds/bg_system_tavern_task_bg_05.png',
+    npcImage: '/assets/figure/portrait/avatar_placeholder_044.png',
+    npcName: '\u540f\u90e8\u4e66\u540f',
   },
   wine_house: {
     background: '/assets/backgrounds/bg_location_wine_house_placeholder.png',
@@ -289,27 +303,212 @@ function toPanelPositions(positions: WorldActorDetailView['positions']): Charact
   }));
 }
 
+type HuangcePosition = WorldServicePositionsListView['positions'][number];
+
+type HuangcePositionGroup = {
+  locationId: string;
+  locationName: string;
+  ownerLabel: string;
+  positions: HuangcePosition[];
+};
+
+const HUANGCE_STATUS_LABELS: Record<string, string> = {
+  bot_held: '\u521d\u59cb\u540d\u518c\u5360\u4f4d',
+  player_held: '\u73a9\u5bb6\u4efb\u804c',
+  vacant: '\u6682\u7f3a',
+  locked: '\u672a\u5f00\u653e',
+};
+
+const HUANGCE_FALLBACK_CONTROL_PROFILE = {
+  appointmentControllerLabel: '\u5f85\u5b9a\u4eba\u4e8b\u6743',
+  financeControllerLabel: '\u5f85\u5b9a\u8d22\u6743',
+  paylineHint: '\u4ff8\u7984\u94fe\u5c1a\u672a\u767b\u8bb0\u3002',
+  loyaltyCostHint: '\u5fe0\u8bda\u4ee3\u4ef7\u5c1a\u672a\u767b\u8bb0\u3002',
+};
+function formatHuangceStatus(status: string) {
+  return HUANGCE_STATUS_LABELS[status] ?? status;
+}
+
+function getHuangceControlProfile(position: { controlProfile?: ServicePositionControlProfile }) {
+  return position.controlProfile ?? HUANGCE_FALLBACK_CONTROL_PROFILE;
+}
+
+function formatOfficeAmount(value: number) {
+  return value.toLocaleString('zh-CN');
+}
+
+function formatOfficeDate(epochSec: number) {
+  if (!epochSec) {
+    return '--';
+  }
+
+  return new Date(epochSec * 1000).toLocaleDateString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+  });
+}
+
+function formatOfficeProgress(done: number, due: number) {
+  if (due <= 0) {
+    return '\u6682\u65e0\u8003\u8bfe';
+  }
+
+  return `${formatOfficeAmount(done)} / ${formatOfficeAmount(due)}`;
+}
+
+function formatLedgerAmount(entry: OfficeLedgerEntry) {
+  const parts = [
+    entry.taxValueDelta ? `\u7a0e\u94b1 +${entry.taxValueDelta}` : null,
+    entry.powerValueDelta ? `\u6743\u67c4 +${formatPowerShare(entry.powerValueDelta)}` : null,
+  ].filter(Boolean);
+
+  return parts.join(' / ') || '\u8bb0\u8d26';
+}
+
+function formatLedgerTime(createdAt: number) {
+  if (!createdAt) {
+    return '--';
+  }
+
+  return new Date(createdAt * 1000).toLocaleDateString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+  });
+}
+
+function formatCandidateScore(score: number) {
+  return `${Math.round(score)}\u5206`;
+}
+
+function groupHuangcePositions(positions: HuangcePosition[]): HuangcePositionGroup[] {
+  const groups = new Map<string, HuangcePositionGroup>();
+
+  for (const position of positions) {
+    const group = groups.get(position.locationId) ?? {
+      locationId: position.locationId,
+      locationName: position.locationName,
+      ownerLabel: position.ownerLabel,
+      positions: [],
+    };
+
+    group.positions.push(position);
+    groups.set(position.locationId, group);
+  }
+
+  return [...groups.values()].sort((left, right) => left.locationName.localeCompare(right.locationName, 'zh-Hans-CN'));
+}
+
 const INITIAL_LOCATION_ID =
   CITY_MAP_SCENE_ENTRIES.find((entry) => entry.sceneId && entry.lifecycle === 'active')?.locationId
   ?? CITY_MAP_SCENE_ENTRIES[0]?.locationId
   ?? 'imperial_palace';
 
+const RECOMMENDED_FIRST_LOCATION_BY_FACTION: Record<PowerFactionId, string> = {
+  imperial: 'northern_bureau',
+  noble: 'noble_mansion',
+  censorate: 'censorate',
+  border: 'northern_bureau',
+  silver: 'northern_bureau',
+  underworld: 'northern_bureau',
+};
+
+const CITY_GUIDE_COPY = {
+  ariaLabel: '\u5165\u4eac\u6307\u5f15',
+  kicker: '\u5165\u4eac\u7b2c\u4e00\u6b65',
+  title: '\u5148\u53bb\u4eae\u8d77\u7684\u95e8\u8def\u63a5\u4e00\u6869\u5dee\u4e8b',
+  body: '\u5f53\u524d\u804c\u53f8\u4f1a\u5f71\u54cd\u5404\u5904\u5bf9\u4f60\u7684\u6001\u5ea6\u3002\u70b9\u51fb\u9ad8\u4eae\u573a\u6240\uff0c\u8fdb\u53bb\u540e\u627e\u5e95\u90e8\u4efb\u804c\u7684\u89d2\u8272\u5361\uff0c\u518d\u70b9\u4ed6\u8eab\u4e0b\u7684\u5dee\u4e8b\u6309\u94ae\u3002',
+  go: '\u524d\u5f80\u63a8\u8350\u95e8\u8def',
+  dismiss: '\u6211\u77e5\u9053\u4e86',
+};
+
+function getRecommendedFirstLocationId(faction?: PowerFactionId) {
+  return faction ? RECOMMENDED_FIRST_LOCATION_BY_FACTION[faction] : INITIAL_LOCATION_ID;
+}
+
+function getCityGuideStorageKey(characterName?: string) {
+  return `manual.cityGuide.v1.${characterName || 'anonymous'}`;
+}
+
+function OfficeCandidateCard({
+  candidate,
+  label,
+  onActorClick,
+}: {
+  candidate: OfficeCandidateView;
+  label?: string;
+  onActorClick: (actorId: string) => void;
+}) {
+  return (
+    <article className={`office-detail-modal__candidate-card${candidate.isCurrentPlayer ? ' office-detail-modal__candidate-card--current' : ''}`}>
+      <div className="office-detail-modal__candidate-portrait">
+        <CharacterPortraitCard
+          avatarUrl={getAvatarUrl(candidate.avatarId)}
+          level={candidate.level}
+          name={candidate.displayName}
+          rankText={`${POWER_FACTION_LABELS[candidate.faction]} \u00b7 \u6743\u67c4${formatPowerShare(candidate.powerShare)}`}
+          title={label ?? (candidate.kind === 'player' ? '\u73a9\u5bb6' : '\u540d\u518c\u5019\u9009')}
+          xpProgress={Math.min(1, candidate.score / 100)}
+        />
+      </div>
+      <div className="office-detail-modal__candidate-body">
+        <div className="office-detail-modal__candidate-head">
+          <span>{label ?? '\u5019\u9009\u4eba'}</span>
+          <strong>{formatCandidateScore(candidate.score)}</strong>
+        </div>
+        <p>{candidate.recommendation}</p>
+        <div className="office-detail-modal__candidate-breakdown">
+          {candidate.scoreBreakdown.map((item) => (
+            <span key={item.label} className={item.passed ? 'is-passed' : 'is-blocked'} title={item.hint}>
+              {item.label} {Math.round(item.value)}
+            </span>
+          ))}
+        </div>
+        <button type="button" onClick={() => onActorClick(candidate.actorId)}>
+          {'\u67e5\u770b\u5c65\u5386'}
+        </button>
+      </div>
+    </article>
+  );
+}
+
 export function CityScene({ onSceneChange }: CitySceneProps) {
   const { character, refreshCharacterInfo, runServerAction } = useGameState();
   const powerFaction = getClassPowerFaction(character?.player.classId);
+  const recommendedLocationId = getRecommendedFirstLocationId(powerFaction);
   const [locationsStatus, setLocationsStatus] = useState<WorldLocationsStatusView | null>(null);
   const [locationsError, setLocationsError] = useState<string | null>(null);
   const [activeLocationId, setActiveLocationId] = useState(INITIAL_LOCATION_ID);
   const [enteredLocationId, setEnteredLocationId] = useState<string | null>(null);
   const [serviceMessage, setServiceMessage] = useState<string | null>(null);
   const [actorDetail, setActorDetail] = useState<WorldActorDetailView | null>(null);
+  const [actorLedgerEntries, setActorLedgerEntries] = useState<OfficeLedgerEntry[]>([]);
   const [actorDetailError, setActorDetailError] = useState<string | null>(null);
   const [servicePositions, setServicePositions] = useState<WorldServicePositionsListView | null>(null);
+  const [positionDetail, setPositionDetail] = useState<WorldServicePositionDetailView | null>(null);
+  const [positionDetailLoading, setPositionDetailLoading] = useState(false);
+  const [positionCandidates, setPositionCandidates] = useState<WorldServicePositionCandidatesView | null>(null);
+  const [positionCandidatesLoading, setPositionCandidatesLoading] = useState(false);
   const [huangceOpen, setHuangceOpen] = useState(false);
   const [missionSource, setMissionSource] = useState<TavernMissionSource | null>(null);
   const [shopSource, setShopSource] = useState<ActiveShopSource | null>(null);
   const [dungeonSource, setDungeonSource] = useState<DungeonSource | null>(null);
   const [arenaSource, setArenaSource] = useState<ArenaSource | null>(null);
+  const [cityGuideDismissed, setCityGuideDismissed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const storageKey = getCityGuideStorageKey(character?.player.displayName);
+    setCityGuideDismissed(window.localStorage.getItem(storageKey) === 'dismissed');
+  }, [character?.player.displayName]);
+
+  useEffect(() => {
+    if (!cityGuideDismissed && !enteredLocationId) {
+      setActiveLocationId(recommendedLocationId);
+    }
+  }, [cityGuideDismissed, enteredLocationId, recommendedLocationId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -348,6 +547,10 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
       { actorCount: 0, powerShare: 0 },
     );
   }, [locations]);
+  const huangceGroups = useMemo(
+    () => groupHuangcePositions(servicePositions?.positions ?? []),
+    [servicePositions?.positions],
+  );
 
   async function handleLocationService(
     node: SceneRegistryEntry,
@@ -413,6 +616,20 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
       }
     }
 
+    if (service === 'office_registry') {
+      void openHuangce();
+      return;
+    }
+
+    if (service === 'appointment' || service === 'evaluation') {
+      if (entry.sourcePositionId) {
+        void handlePositionDetail(entry.sourcePositionId);
+      } else {
+        setServiceMessage('\u6b64\u804c\u8fd8\u6ca1\u6709\u767b\u8bb0\u5230\u540f\u90e8\u518c\u4e2d\u3002');
+      }
+      return;
+    }
+
     if (sceneId) {
       onSceneChange(sceneId);
       return;
@@ -433,9 +650,57 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
         'WORLD_ACTOR_GET_DETAIL',
         () => postGameAction<WorldActorDetailView>('WORLD_ACTOR_GET_DETAIL', { actorId }),
       );
+      const ledger = await runServerAction(
+        'WORLD_SERVICE_POSITION_LEDGER_GET',
+        () => postGameAction<WorldServicePositionLedgerView>('WORLD_SERVICE_POSITION_LEDGER_GET', { actorId, limit: 8 }),
+      );
       setActorDetail(detail);
+      setActorLedgerEntries(ledger.entries);
     } catch (error) {
       setActorDetailError(toActionErrorMessage(error, '角色详情读取失败。'));
+    }
+  }
+
+  async function handlePositionDetail(positionId: string | undefined) {
+    if (!positionId) {
+      setServiceMessage('\u6b64\u804c\u8fd8\u6ca1\u6709\u767b\u8bb0\u5230\u540f\u90e8\u518c\u4e2d\u3002');
+      return;
+    }
+
+    setActorDetailError(null);
+    setPositionDetailLoading(true);
+    setPositionCandidates(null);
+    try {
+      const detail = await runServerAction(
+        'WORLD_SERVICE_POSITION_GET_DETAIL',
+        () => postGameAction<WorldServicePositionDetailView>('WORLD_SERVICE_POSITION_GET_DETAIL', { positionId }),
+      );
+      setPositionDetail(detail);
+    } catch (error) {
+      setActorDetailError(toActionErrorMessage(error, '\u804c\u4f4d\u8be6\u60c5\u8bfb\u53d6\u5931\u8d25\u3002'));
+    } finally {
+      setPositionDetailLoading(false);
+    }
+  }
+
+  async function handlePositionCandidates(positionId: string | undefined) {
+    if (!positionId) {
+      setServiceMessage('\u6b64\u804c\u8fd8\u6ca1\u6709\u767b\u8bb0\u5230\u540f\u90e8\u518c\u4e2d\u3002');
+      return;
+    }
+
+    setActorDetailError(null);
+    setPositionCandidatesLoading(true);
+    try {
+      const candidates = await runServerAction(
+        'WORLD_SERVICE_POSITION_CANDIDATES_GET',
+        () => postGameAction<WorldServicePositionCandidatesView>('WORLD_SERVICE_POSITION_CANDIDATES_GET', { positionId, limit: 8 }),
+      );
+      setPositionCandidates(candidates);
+    } catch (error) {
+      setActorDetailError(toActionErrorMessage(error, '\u5019\u9009\u540d\u518c\u8bfb\u53d6\u5931\u8d25\u3002'));
+    } finally {
+      setPositionCandidatesLoading(false);
     }
   }
 
@@ -457,6 +722,13 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
     }
   }
 
+  function dismissCityGuide() {
+    setCityGuideDismissed(true);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(getCityGuideStorageKey(character?.player.displayName), 'dismissed');
+    }
+  }
+
   const actorDetailModal = actorDetail ? (
     <div className="character-detail-modal" role="dialog" aria-modal="true" aria-label="角色详情">
       <button className="character-detail-modal__close" type="button" onClick={() => setActorDetail(null)}>
@@ -465,10 +737,178 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
       <div className="character-detail-modal__panel">
         <CharacterPanel
           character={actorDetail.character}
+          ledgerEntries={actorLedgerEntries}
           pendingAction={null}
           positions={toPanelPositions(actorDetail.positions)}
           readOnly
         />
+      </div>
+    </div>
+  ) : null;
+
+  const positionDetailModal = positionDetail ? (
+    <div className="office-detail-modal" role="dialog" aria-modal="true" aria-label="\u804c\u4f4d\u8be6\u60c5">
+      <div className="office-detail-modal__panel">
+        <button
+          className="office-detail-modal__close"
+          type="button"
+          onClick={() => {
+            setPositionDetail(null);
+            setPositionCandidates(null);
+          }}
+        >
+          {'\u5173\u95ed'}
+        </button>
+        <div className="office-detail-modal__head">
+          <span>{positionDetail.location.name}</span>
+          <h2>{positionDetail.position.title}</h2>
+          <p>{positionDetail.position.service ? SERVICE_LABELS[positionDetail.position.service] : positionDetail.service}</p>
+        </div>
+        <div className="office-detail-modal__grid">
+          <section>
+            <h3>{'\u73b0\u4efb'}</h3>
+            <CharacterPortraitCard
+              avatarUrl={getAvatarUrl(positionDetail.occupant.avatarId)}
+              level={positionDetail.occupant.level}
+              name={positionDetail.occupant.displayName}
+              rankText={`${POWER_FACTION_LABELS[positionDetail.occupant.faction]} Â· \u6743\u67c4${formatPowerShare(positionDetail.occupant.powerShare)}`}
+              title={positionDetail.occupant.kind === 'player' ? '\u73a9\u5bb6\u4efb\u804c' : '\u51b7\u542f\u52a8\u540d\u518c'}
+              xpProgress={0.42}
+            />
+          </section>
+          <section>
+            <h3>{'\u8003\u529f'}</h3>
+            <div className="office-detail-modal__stat">
+              <span>{'\u4efb\u671f'}</span>
+              <strong>{formatOfficeDate(positionDetail.kpiProfile.termStartsAt)} - {formatOfficeDate(positionDetail.kpiProfile.termEndsAt)}</strong>
+            </div>
+            <div className="office-detail-modal__stat">
+              <span>{'\u4ea4\u7a0e'}</span>
+              <strong>{formatOfficeProgress(positionDetail.kpiProfile.taxDeliveredThisTerm, positionDetail.kpiProfile.taxDuePerTerm)}</strong>
+            </div>
+            <div className="office-detail-modal__stat">
+              <span>{'\u4ea4\u6743\u67c4'}</span>
+              <strong>{formatOfficeProgress(positionDetail.kpiProfile.powerDeliveredThisTerm, positionDetail.kpiProfile.powerDuePerTerm)}</strong>
+            </div>
+          </section>
+          <section>
+            <h3>{'\u4eba\u4e8b\u4e0e\u8d22\u6743'}</h3>
+            <div className="office-detail-modal__stat">
+              <span>{'\u4eba\u4e8b\u4e3b\u7ba1'}</span>
+              <strong>{positionDetail.controlDetail.appointmentControllerDisplayName ?? getHuangceControlProfile(positionDetail.position).appointmentControllerLabel}</strong>
+            </div>
+            <div className="office-detail-modal__stat">
+              <span>{'\u8d22\u6743\u4e3b\u7ba1'}</span>
+              <strong>{positionDetail.controlDetail.financeControllerDisplayName ?? getHuangceControlProfile(positionDetail.position).financeControllerLabel}</strong>
+            </div>
+            <div className="office-detail-modal__split">
+              <span>{'\u5185\u5e93'} {positionDetail.controlDetail.treasurySplit.imperialPrivatePct}%</span>
+              <span>{'\u56fd\u5e93'} {positionDetail.controlDetail.treasurySplit.publicTreasuryPct}%</span>
+              <span>{'\u4e0a\u53f8'} {positionDetail.controlDetail.treasurySplit.superiorPct}%</span>
+              <span>{'\u5b9e\u5f97'} {positionDetail.controlDetail.treasurySplit.officeHolderPct}%</span>
+            </div>
+          </section>
+          <section>
+            <h3>{'\u8c0b\u7f3a\u8bca\u65ad'}</h3>
+            <strong className="office-detail-modal__eligibility">
+              {positionDetail.eligibility.canBeConsidered ? '\u53ef\u5165\u5019\u9009\u540d\u518c' : '\u6682\u4e0d\u53ef\u8c0b\u6b64\u7f3a'}
+            </strong>
+            <ul>
+              {positionDetail.eligibility.reasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+            <p>{positionDetail.imperialOverrideHint}</p>
+          </section>
+          <section className="office-detail-modal__candidates">
+            <h3>{'\u8c0b\u7f3a\u6392\u4f4d'}</h3>
+            {positionDetail.candidatesPreview ? (
+              <div className="office-detail-modal__candidate-summary">
+                <div className="office-detail-modal__stat">
+                  <span>{'\u4f60\u7684\u6392\u4f4d'}</span>
+                  <strong>
+                    {typeof positionDetail.candidatesPreview.currentPlayerRank === 'number'
+                      ? `\u7b2c ${positionDetail.candidatesPreview.currentPlayerRank} \u540d`
+                      : '\u6682\u672a\u5165\u699c'}
+                  </strong>
+                </div>
+                <div className="office-detail-modal__stat">
+                  <span>{'\u6700\u5f3a\u5019\u9009'}</span>
+                  <strong>
+                    {positionDetail.candidatesPreview.topCandidate
+                      ? `${positionDetail.candidatesPreview.topCandidate.displayName} ${formatCandidateScore(positionDetail.candidatesPreview.topCandidate.score)}`
+                      : '\u6682\u65e0\u5019\u9009'}
+                  </strong>
+                </div>
+                <ul>
+                  {positionDetail.candidatesPreview.advice.map((advice) => (
+                    <li key={advice}>{advice}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p>{'\u540f\u90e8\u5c1a\u672a\u7ed9\u6b64\u7f3a\u5217\u51fa\u5019\u9009\u8bca\u65ad\u3002'}</p>
+            )}
+            <button
+              className="office-detail-modal__candidate-button"
+              type="button"
+              disabled={positionCandidatesLoading}
+              onClick={() => void handlePositionCandidates(positionDetail.position.positionId)}
+            >
+              {positionCandidatesLoading ? '\u540d\u518c\u540c\u6b65\u4e2d...' : '\u67e5\u770b\u5019\u9009\u540d\u518c'}
+            </button>
+            {positionCandidates?.positionId === positionDetail.position.positionId ? (
+              <div className="office-detail-modal__candidate-list">
+                <OfficeCandidateCard
+                  candidate={positionCandidates.incumbent}
+                  label={'\u73b0\u4efb'}
+                  onActorClick={(actorId) => void handleActorDetail(actorId)}
+                />
+                {positionCandidates.currentPlayer ? (
+                  <OfficeCandidateCard
+                    candidate={positionCandidates.currentPlayer}
+                    label={typeof positionCandidates.currentPlayerRank === 'number'
+                      ? `\u4f60\u00b7\u7b2c${positionCandidates.currentPlayerRank}\u540d`
+                      : '\u4f60'}
+                    onActorClick={(actorId) => void handleActorDetail(actorId)}
+                  />
+                ) : null}
+                {positionCandidates.candidates.map((candidate, index) => (
+                  <OfficeCandidateCard
+                    key={candidate.actorId}
+                    candidate={candidate}
+                    label={`\u5019\u9009\u7b2c${index + 1}\u540d`}
+                    onActorClick={(actorId) => void handleActorDetail(actorId)}
+                  />
+                ))}
+                <div className="office-detail-modal__plotting-advice">
+                  <strong>{'\u540f\u90e8\u5efa\u8bae'}</strong>
+                  <ul>
+                    {positionCandidates.plottingAdvice.map((advice) => (
+                      <li key={advice}>{advice}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ) : null}
+          </section>
+          <section className="office-detail-modal__ledger">
+            <h3>{'\u8fd1\u671f\u8d26\u672c'}</h3>
+            {positionDetail.ledgerPreview.length > 0 ? (
+              <div className="office-detail-modal__ledger-list">
+                {positionDetail.ledgerPreview.map((entry) => (
+                  <article key={entry.entryId} className="office-detail-modal__ledger-entry">
+                    <span>{formatLedgerTime(entry.createdAt)}</span>
+                    <strong>{formatLedgerAmount(entry)}</strong>
+                    <p>{entry.description}</p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p>{'\u672c\u671f\u5c1a\u65e0\u53ef\u89c1\u8fdb\u8d26\u3002'}</p>
+            )}
+          </section>
+        </div>
       </div>
     </div>
   ) : null;
@@ -480,32 +920,95 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
           关闭
         </button>
         <h2>皇宫黄册</h2>
-        <p>各处衙门、商路与场所职务名册。点击任职者可查看角色详情。</p>
+        <p>各处衙门、商路与场所职务名册。点击任职者可查看角色详情，查看他现在坐着什么位置。</p>
+        <div className="huangce-modal__summary">
+          <div>
+            <span>登记场所</span>
+            <strong>{servicePositions ? huangceGroups.length : '--'}</strong>
+          </div>
+          <div>
+            <span>登记职位</span>
+            <strong>{servicePositions?.positions.length ?? '--'}</strong>
+          </div>
+          <div>
+            <span>用途</span>
+            <strong>看谁占位</strong>
+          </div>
+        </div>
         {actorDetailError ? <div className="huangce-modal__notice">{actorDetailError}</div> : null}
-        <div className="huangce-modal__grid">
-          {(servicePositions?.positions ?? []).map((position) => (
-            <article key={position.positionId} className="huangce-modal__entry">
-              <button
-                className="huangce-modal__portrait-button"
-                type="button"
-                onClick={() => void handleActorDetail(position.occupant.actorId)}
-              >
-                <CharacterPortraitCard
-                  avatarUrl={getAvatarUrl(position.occupant.avatarId)}
-                  level={position.occupant.level}
-                  name={position.occupant.displayName}
-                  rankText={`${POWER_FACTION_LABELS[position.occupant.faction]} · 权柄${formatPowerShare(position.occupant.powerShare)}`}
-                  title={position.title}
-                  xpProgress={0.38}
-                />
-              </button>
-              <div className="huangce-modal__entry-copy">
-                <strong>{position.locationName}</strong>
-                <span>{position.serviceLabel}</span>
+        {positionDetailLoading ? <div className="huangce-modal__notice">{'\u804c\u4f4d\u8be6\u60c5\u540c\u6b65\u4e2d...'}</div> : null}
+        <div className="huangce-modal__body">
+          {huangceGroups.map((group) => (
+            <section key={group.locationId} className="huangce-modal__group">
+              <div className="huangce-modal__group-head">
+                <h3>{group.locationName}</h3>
+                <span>{group.ownerLabel}</span>
               </div>
-            </article>
+              <div className="huangce-modal__group-grid">
+                {group.positions.map((position) => (
+                  <article key={position.positionId} className="huangce-modal__entry">
+                    <div className="huangce-modal__office">
+                      <strong>{position.title}</strong>
+                      <span>{position.serviceLabel} · {formatHuangceStatus(position.status)}</span>
+                    </div>
+                    <button
+                      className="huangce-modal__office-detail"
+                      type="button"
+                      onClick={() => void handlePositionDetail(position.positionId)}
+                    >
+                      {'\u67e5\u770b\u804c\u4f4d\u8be6\u60c5'}
+                    </button>
+                    <button
+                      className="huangce-modal__portrait-button"
+                      type="button"
+                      onClick={() => void handleActorDetail(position.occupant.actorId)}
+                    >
+                      <CharacterPortraitCard
+                        avatarUrl={getAvatarUrl(position.occupant.avatarId)}
+                        level={position.occupant.level}
+                        name={position.occupant.displayName}
+                        rankText={`${POWER_FACTION_LABELS[position.occupant.faction]} · 权柄${formatPowerShare(position.occupant.powerShare)}`}
+                        title={position.occupant.kind === 'player' ? '玩家任职' : '冷启动名册'}
+                        xpProgress={0.38}
+                      />
+                    </button>
+                    <div className="huangce-modal__control-grid">
+                      <div>
+                        <span>人事权</span>
+                        <strong>{getHuangceControlProfile(position).appointmentControllerLabel}</strong>
+                      </div>
+                      <div>
+                        <span>财权</span>
+                        <strong>{getHuangceControlProfile(position).financeControllerLabel}</strong>
+                      </div>
+                      <div>
+                        <span>俸禄链</span>
+                        <strong>{getHuangceControlProfile(position).paylineHint}</strong>
+                      </div>
+                    </div>
+                    <div className="huangce-modal__entry-copy">
+                      <div>
+                        <span>收益</span>
+                        <strong>{position.incomeHint}</strong>
+                      </div>
+                      <div>
+                        <span>替代</span>
+                        <strong>{position.replaceHint}</strong>
+                      </div>
+                      <div>
+                        <span>忠诚代价</span>
+                        <strong>{getHuangceControlProfile(position).loyaltyCostHint}</strong>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
           ))}
           {!servicePositions ? <div className="huangce-modal__loading">黄册同步中...</div> : null}
+          {servicePositions && huangceGroups.length === 0 ? (
+            <div className="huangce-modal__loading">暂无职位登记。</div>
+          ) : null}
         </div>
       </div>
     </div>
@@ -666,6 +1169,7 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
       ) : null}
       {actorDetailError ? <div className="city-scene__floating-error">{actorDetailError}</div> : null}
       {huangceModal}
+      {positionDetailModal}
       {actorDetailModal}
       </>
     );
@@ -681,6 +1185,29 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
       </div>
 
       <div className="city-scene">
+        {!cityGuideDismissed ? (
+          <section className="city-scene__guide" aria-label={CITY_GUIDE_COPY.ariaLabel}>
+            <div className="city-scene__guide-kicker">{CITY_GUIDE_COPY.kicker}</div>
+            <h2>{CITY_GUIDE_COPY.title}</h2>
+            <p>{CITY_GUIDE_COPY.body}</p>
+            <div className="city-scene__guide-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  dismissCityGuide();
+                  setServiceMessage(null);
+                  setEnteredLocationId(recommendedLocationId);
+                }}
+              >
+                {CITY_GUIDE_COPY.go}
+              </button>
+              <button type="button" onClick={dismissCityGuide}>
+                {CITY_GUIDE_COPY.dismiss}
+              </button>
+            </div>
+          </section>
+        ) : null}
+
         <section className="city-scene__faction-board">
           <div className="city-scene__faction-board-title">京城权柄分布</div>
           <div className="city-scene__faction-grid">
@@ -712,7 +1239,7 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
           return (
             <button
               key={node.locationId}
-              className={`${node.className} city-scene__node--status-${status}${isDisabled || isGateRestricted ? ' city-scene__node--locked' : ''}`}
+              className={`${node.className} city-scene__node--status-${status}${isDisabled || isGateRestricted ? ' city-scene__node--locked' : ''}${!cityGuideDismissed && node.locationId === recommendedLocationId ? ' city-scene__node--recommended' : ''}`}
               type="button"
               aria-disabled={false}
               onFocus={() => setActiveLocationId(node.locationId)}
@@ -779,3 +1306,4 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
     </div>
   );
 }
+

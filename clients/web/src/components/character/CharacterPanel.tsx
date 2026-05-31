@@ -25,6 +25,7 @@ import {
   type CharacterInfoView,
   type EquipmentItem,
   type EquipmentSlot,
+  type OfficeLedgerEntry,
   type PowerFactionId,
 } from '../../types/game';
 
@@ -45,6 +46,7 @@ type CharacterPanelProps = {
   pendingAction: string | null;
   onUpgradeAttribute?: (attribute: AttributeKey) => void;
   positions?: CharacterPanelPosition[];
+  ledgerEntries?: OfficeLedgerEntry[];
   readOnly?: boolean;
 };
 
@@ -61,6 +63,45 @@ type DerivedStat = {
   value: string;
   hint: string;
 };
+
+type CharacterPanelTab = 'attributes' | 'positions' | 'relations';
+
+const PANEL_TAB_LABELS: Record<CharacterPanelTab, string> = {
+  attributes: '\u5c5e\u6027',
+  positions: '\u4efb\u804c',
+  relations: '\u5173\u7cfb',
+};
+
+const POSITION_STATUS_LABELS: Record<string, string> = {
+  bot_held: '\u521d\u59cb\u540d\u518c',
+  player_held: '\u73a9\u5bb6\u4efb\u804c',
+  vacant: '\u6682\u7f3a',
+  locked: '\u672a\u5f00\u653e',
+};
+
+function formatPositionStatus(status?: string) {
+  return status ? POSITION_STATUS_LABELS[status] ?? status : null;
+}
+
+function formatLedgerAmount(entry: OfficeLedgerEntry) {
+  const parts = [
+    entry.taxValueDelta ? `\u7a0e\u94b1 +${entry.taxValueDelta}` : null,
+    entry.powerValueDelta ? `\u6743\u67c4 +${(entry.powerValueDelta / 100).toFixed(2)}%` : null,
+  ].filter(Boolean);
+
+  return parts.join(' / ') || '\u8bb0\u8d26';
+}
+
+function formatLedgerTime(createdAt: number) {
+  if (!createdAt) {
+    return '--';
+  }
+
+  return new Date(createdAt * 1000).toLocaleDateString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+  });
+}
 
 function formatBp(bp = 0) {
   return `${(bp / 100).toFixed(2)}%`;
@@ -210,7 +251,13 @@ function DerivedStatRow({ hint, label, value }: DerivedStat) {
 }
 
 // ── CharacterPanel ────────────────────────────────────────────────
-function CharacterPanelPositions({ positions }: { positions: CharacterPanelPosition[] }) {
+function CharacterPanelPositions({
+  ledgerEntries,
+  positions,
+}: {
+  ledgerEntries: OfficeLedgerEntry[];
+  positions: CharacterPanelPosition[];
+}) {
   if (positions.length === 0) {
     return (
       <div className="character-panel__positions-empty">
@@ -221,22 +268,92 @@ function CharacterPanelPositions({ positions }: { positions: CharacterPanelPosit
   }
 
   return (
-    <div className="character-panel__positions-list">
-      {positions.map((position) => (
-        <article key={position.positionId} className="character-panel__position-card">
-          <div className="character-panel__position-head">
-            <span>{position.locationName}</span>
-            <strong>{position.title}</strong>
+    <div className="character-panel__positions-wrap">
+      <div className="character-panel__positions-list">
+        {positions.map((position) => (
+          <article key={position.positionId} className="character-panel__position-card">
+            <div className="character-panel__position-head">
+              <span>{position.locationName}</span>
+              <strong>{position.title}</strong>
+            </div>
+            <div className="character-panel__position-meta">
+              <span>{position.ownerLabel}</span>
+              <span>{position.serviceLabel}</span>
+              {formatPositionStatus(position.statusLabel) ? <span>{formatPositionStatus(position.statusLabel)}</span> : null}
+            </div>
+            <p><strong>{'\u6536\u76ca'}</strong>{position.incomeHint}</p>
+            <p><strong>{'\u66ff\u4ee3'}</strong>{position.replaceHint}</p>
+          </article>
+        ))}
+      </div>
+      <section className="character-panel__ledger">
+        <div className="character-panel__ledger-head">
+          <strong>{'\u8fd1\u671f\u8fdb\u8d26'}</strong>
+          <span>{ledgerEntries.length > 0 ? `${ledgerEntries.length} \u6761` : '\u5c1a\u65e0'}</span>
+        </div>
+        {ledgerEntries.length > 0 ? (
+          <div className="character-panel__ledger-list">
+            {ledgerEntries.slice(0, 5).map((entry) => (
+              <article key={entry.entryId} className="character-panel__ledger-entry">
+                <span>{formatLedgerTime(entry.createdAt)}</span>
+                <strong>{formatLedgerAmount(entry)}</strong>
+                <p>{entry.description}</p>
+              </article>
+            ))}
           </div>
-          <div className="character-panel__position-meta">
-            <span>{position.ownerLabel}</span>
-            <span>{position.serviceLabel}</span>
-            {position.statusLabel ? <span>{position.statusLabel}</span> : null}
+        ) : (
+          <p className="character-panel__ledger-empty">{'\u6b64\u89d2\u8272\u672c\u671f\u5c1a\u65e0\u53ef\u89c1\u7684\u4efb\u804c\u8fdb\u8d26\u3002'}</p>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function CharacterPanelRelations({
+  character,
+  originFaction,
+  powerFaction,
+  powerHint,
+  suspicionHint,
+}: {
+  character: CharacterInfoView;
+  originFaction?: PowerFactionId;
+  powerFaction?: PowerFactionId;
+  powerHint: string;
+  suspicionHint: string;
+}) {
+  const suspicionEntries = (Object.entries(character.player.suspicion ?? {}) as Array<[PowerFactionId, number]>)
+    .filter(([, value]) => typeof value === 'number' && value > 0)
+    .sort((left, right) => right[1] - left[1]);
+
+  return (
+    <div className="character-panel__relations">
+      <section className="character-panel__relation-card">
+        <span>{'\u5f53\u524d\u95e8\u8def'}</span>
+        <strong>{powerFaction ? POWER_FACTION_LABELS[powerFaction] : '\u672a\u5b9a'}</strong>
+        <p>{powerHint}</p>
+      </section>
+      <section className="character-panel__relation-card">
+        <span>{'\u51fa\u8eab\u7275\u8fde'}</span>
+        <strong>{originFaction ? POWER_FACTION_LABELS[originFaction] : '\u672a\u5199\u5165'}</strong>
+        <p>{'\u51fa\u8eab\u662f\u5165\u4eac\u524d\u7684\u6839\u5e95\uff0c\u804c\u53f8\u662f\u5f53\u524d\u80fd\u8d70\u7684\u95e8\u8def\u3002\u4e24\u8005\u4e00\u8d77\u5f71\u54cd\u5404\u5904\u5bf9\u4f60\u7684\u6001\u5ea6\u3002'}</p>
+      </section>
+      <section className="character-panel__relation-card character-panel__relation-card--wide">
+        <span>{'\u5404\u65b9\u7591\u5fc3'}</span>
+        <strong>{suspicionHint}</strong>
+        {suspicionEntries.length > 0 ? (
+          <div className="character-panel__suspicion-grid">
+            {suspicionEntries.map(([faction, value]) => (
+              <div key={faction}>
+                <span>{POWER_FACTION_LABELS[faction]}</span>
+                <strong>{value}</strong>
+              </div>
+            ))}
           </div>
-          <p>{position.incomeHint}</p>
-          <p>{position.replaceHint}</p>
-        </article>
-      ))}
+        ) : (
+          <p>{'\u5c1a\u672a\u88ab\u4efb\u4f55\u4e00\u65b9\u660e\u663e\u8bb0\u4e0a\u540d\u518c\u3002'}</p>
+        )}
+      </section>
     </div>
   );
 }
@@ -246,10 +363,11 @@ export function CharacterPanel({
   highlightedEquipmentSlot = null,
   pendingAction,
   onUpgradeAttribute,
+  ledgerEntries = [],
   positions = [],
   readOnly = false,
 }: CharacterPanelProps) {
-  const [activeTab, setActiveTab] = useState<'attributes' | 'positions'>('attributes');
+  const [activeTab, setActiveTab] = useState<CharacterPanelTab>('attributes');
   const { tooltip } = useItemTooltip();
   const classMeta = CLASS_META[character.player.classId];
   const powerFaction = classMeta.powerFaction;
@@ -312,24 +430,18 @@ export function CharacterPanel({
 
         {/* 属性区 */}
         <div className="character-panel__tabs" role="tablist" aria-label="角色详情分页">
-          <button
-            className={`character-panel__tab${activeTab === 'attributes' ? ' character-panel__tab--active' : ''}`}
-            role="tab"
-            type="button"
-            aria-selected={activeTab === 'attributes'}
-            onClick={() => setActiveTab('attributes')}
-          >
-            属性
-          </button>
-          <button
-            className={`character-panel__tab${activeTab === 'positions' ? ' character-panel__tab--active' : ''}`}
-            role="tab"
-            type="button"
-            aria-selected={activeTab === 'positions'}
-            onClick={() => setActiveTab('positions')}
-          >
-            任职
-          </button>
+          {(Object.keys(PANEL_TAB_LABELS) as CharacterPanelTab[]).map((tab) => (
+            <button
+              key={tab}
+              className={`character-panel__tab${activeTab === tab ? ' character-panel__tab--active' : ''}`}
+              role="tab"
+              type="button"
+              aria-selected={activeTab === tab}
+              onClick={() => setActiveTab(tab)}
+            >
+              {PANEL_TAB_LABELS[tab]}
+            </button>
+          ))}
         </div>
 
         <div className="character-panel__tab-body">
@@ -353,8 +465,16 @@ export function CharacterPanel({
                 ))}
               </div>
             </div>
+          ) : activeTab === 'positions' ? (
+            <CharacterPanelPositions ledgerEntries={ledgerEntries} positions={positions} />
           ) : (
-            <CharacterPanelPositions positions={positions} />
+            <CharacterPanelRelations
+              character={character}
+              originFaction={originFaction}
+              powerFaction={powerFaction}
+              powerHint={powerHint}
+              suspicionHint={suspicionHint}
+            />
           )}
         </div>
 

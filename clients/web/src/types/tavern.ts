@@ -200,6 +200,15 @@ export type MissionPowerResult = {
 
 export type CompleteMissionResult = 'SUCCESS' | 'FAILED' | 'ALREADY_SETTLED';
 
+export type OfficeSettlementPreview = {
+  sourcePositionId?: string;
+  beneficiaryActorId?: string;
+  beneficiaryDisplayName?: string;
+  taxValueDelta?: number;
+  powerValueDelta?: number;
+  routingReason: string;
+};
+
 export type CompleteMissionData = {
   result: CompleteMissionResult;
   missionId: string;
@@ -220,6 +229,7 @@ export type CompleteMissionData = {
   issuerTitle?: string;
   issuerFaction?: PowerFactionId;
   issuerActor?: MissionIssuerActorPreview;
+  officeSettlement?: OfficeSettlementPreview;
   canSaveReplay?: boolean;
   replayId?: string | null;
 };

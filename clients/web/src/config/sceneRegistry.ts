@@ -32,6 +32,9 @@ export const SERVICE_LABELS: Record<PowerLocationService, string> = {
   intel: '情报',
   estate: '府邸',
   stamina: '补给',
+  office_registry: '\u540f\u7c4d',
+  appointment: '\u4efb\u514d',
+  evaluation: '\u8003\u529f',
 };
 
 export const SCENE_REGISTRY: SceneRegistryEntry[] = [
@@ -48,6 +51,20 @@ export const SCENE_REGISTRY: SceneRegistryEntry[] = [
     showOnCityMap: true,
     showInRightRail: false,
     lifecycle: 'planned',
+  },
+  {
+    locationId: 'ministry_of_personnel',
+    fallbackOwner: 'censorate',
+    fallbackName: '\u540f\u90e8\u8859\u95e8',
+    fallbackFlavor: '\u94e8\u9009\u8003\u529f',
+    fallbackDetail: '\u6587\u9009\u53f8\u3001\u8003\u529f\u53f8\u4e0e\u5185\u5ef7\u6279\u7ea2\u7684\u4eba\u4e8b\u95e8\u8def\u3002\u5404\u5904\u804c\u4f4d\u7684\u4efb\u671f\u3001\u4ff8\u7984\u3001KPI \u548c\u8c03\u6362\u90fd\u8981\u5728\u8fd9\u91cc\u8fc7\u518c\u3002',
+    className: 'city-scene__node city-scene__node--personnel',
+    services: ['office_registry', 'appointment', 'evaluation'],
+    channelName: '\u540f\u90e8\u94e8\u9009',
+    channelSummary: '\u770b\u804c\u4f4d\u3001\u67e5\u8003\u529f\u3001\u95ee\u4efb\u514d',
+    showOnCityMap: true,
+    showInRightRail: false,
+    lifecycle: 'active',
   },
   {
     sceneId: 'tavern',

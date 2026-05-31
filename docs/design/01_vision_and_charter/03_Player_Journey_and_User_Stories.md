@@ -338,3 +338,29 @@ This section records the next player-facing clarity requirement after the locati
 3. As a player, I want combat playback to show my portrait card against the target actor's portrait card, so the battle feels like a conflict between two roles in the world.
 4. As a player, I want mission settlement to show what changed after beating that actor, so XP, copper, suspicion, and power transfer feel connected to the world.
 5. As a player, I do not expect the first version to kill the target, remove their office, or trigger personal revenge. I only need to understand who I handled and which faction relationship changed.
+
+## 11. Patronage and Dependence Story
+
+This section records the player-facing fantasy behind future patronage, loyalty, and outer-labor systems.
+
+1. As a low-status player, I want to understand who can protect me, who can command me, and who can destroy me, so faction choice feels like a survival decision rather than a color choice.
+2. As a player, I want high-rank actors to have visible patrons, superiors, and actual controllers, so I can read the real power chain behind a formal office.
+3. As a player, I want rituals such as bowing, kneeling, kowtow, patron recognition, teacher-student ties, and adoptive-father relationships to signal hierarchy, so social control is visible and emotionally legible.
+4. As a player, I want to choose whether to attach myself to a patron, stay peripheral, betray a patron, or seek another route, so submission to power is a strategic choice with benefits and costs.
+5. As a player, I want a patron to grant access to offices, shops, missions, protection, and equipment, but demand tribute, loyalty, and political risk in return.
+6. As a player, I want the Beijing office network to sit on top of a large base of farmers, workers, miners, porters, refugees, and other dependent actors, so the power pyramid feels materially grounded.
+7. As a high-power player, I want to become a patron whose dependents bring tribute, labor, and influence, but also make me visible, envied, and vulnerable to cleaning or betrayal.
+8. As a player, I want the Huangce or office registry to show not only title and occupant, but also nominal superior, actual backer, loyalty requirement, tribute expectation, and replacement route.
+9. As a player, I want "loyalty" to mean access and protection, while betrayal or changing sides creates lasting suspicion, debt, or retaliation.
+10. As a player, I want the game to express harsh feudal hierarchy without turning humiliation into the main reward: power, survival, and access are the rewards; obedience and ritual submission are the price.
+
+## 12. Appointment and Payline Story
+
+1. As a player, I want every desirable office to show who controls appointment, so I understand that promotion is also upward management, not only personal combat power.
+2. As a player, I want the Huangce to show who controls finance for a position, so I can see whether the office is backed by inner court money, military pay, merchant silver, or local rent.
+3. As a lower-status player, I want salary, ration, or reward payouts to arrive through a superior-controlled cycle, so dependence on a patron feels material and not just textual.
+4. As a subordinate, I may not know the full upstream account. I only see what actually arrives, whether it is full pay, underpay, reward, arrears, or nothing.
+5. As a middle official or patron, I want to decide how much to distribute to dependents, so I can choose between building loyalty and extracting resources.
+6. As a patron, I want misuse, shortage, or deliberate skimming to create risk: resentment, petitions, betrayal, or faction suspicion.
+7. As a farmer, miner, porter, or other outer-map dependent, I want to submit grain, ore, labor, or rent and wait for a return payout controlled by my superior, so the lower pyramid of the world feels real.
+8. As a player, I want "actual control" to mean control of appointments and money, not only a title label.

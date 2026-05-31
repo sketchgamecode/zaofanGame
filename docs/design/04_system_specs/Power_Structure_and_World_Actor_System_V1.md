@@ -756,4 +756,389 @@ These are later systems and should not block the first roleplay clarity pass.
 
 ---
 
-*Last Updated: 2026-05-27*
+## Patronage, Ritual Submission, and Controlled Dependence
+
+This section records the long-term design direction for feudal control relationships under the Ming power theme. It should guide future Huangce, office, faction, and outer-map systems.
+
+### Design Goal
+
+The game should not treat faction reputation as a flat modern relationship meter. It should represent a pyramid of control:
+
+1. A low-status actor needs a patron to survive and grow.
+2. A patron grants access, protection, office nomination, equipment, and mission channels.
+3. The cost is tribute, loyalty, obedience, risk sharing, and reduced freedom.
+4. The higher the patron, the more valuable the resources and the heavier the ritual and political cost.
+
+Player-facing language should favor Ming-flavored terms:
+
+| System idea | Preferred in-game wording |
+| :--- | :--- |
+| Ultimate controller | 共主 / 上意 / 实控后台 |
+| Beneficial owner | 最终得利者 / 幕后门路 |
+| Patron | 恩主 / 靠山 / 提携人 / 座师 / 义父 |
+| Dependency | 投附 / 投献 / 挂靠 / 认门路 |
+| Loyalty | 表忠 / 递投名状 / 纳贡 / 听差 |
+| Rent extraction | 贡纳 / 抽成 / 租课 / 份例 |
+| Downline labor | 佃户 / 苦力 / 矿丁 / 脚夫 / 外役 |
+
+### Faction Common Representatives
+
+Each power faction should eventually expose one or more representative figures. These figures do not need to own all power personally. They are the visible actor through whom many holders coordinate, similar to an actual controller or一致行动人.
+
+| Faction | Common representative direction | Control fantasy |
+| :--- | :--- | :--- |
+| 皇权 | 皇帝、宗室、司礼监秉笔、受宠近侍 | 唯上意是从，资源来自圣眷，也随时可能被清算 |
+| 勋贵 | 国公、世袭武勋、开国旧门第 | 门第、家将、旧功、军功旧账 |
+| 清流 | 座师、士林盟主、都察院言官 | 名分、公论、师门、门生故旧 |
+| 边镇 | 总兵、家丁头目、军粮经手人 | 私兵、军粮、边功、兵权尾大 |
+| 商税 | 盐商首总、织造买办、牙行总揽 | 银路、账本、贡品、供应链 |
+| 暗流 | 香头、流民首领、脚夫帮主、秘社头目 | 活命、藏匿、脏活、底层动员 |
+
+### Ritual and Submission
+
+Ritual is not decoration. It is the UI language of hierarchy.
+
+Important Ming-flavored control images:
+
+1. **叩拜**: Publicly, the highest ritual submission should point toward imperial authority. Privately, kneeling to patrons, teachers, eunuchs, generals, or adoptive fathers can exist as gray social behavior.
+2. **认义父 / 拜门**: A strong patronage action. It grants protection and route access, but creates loyalty obligations and betrayal cost.
+3. **座师门生**: A literati version of patronage. Less violent in surface wording, but equally binding through exam lineage, recommendation, and public reputation.
+4. **投献 / 挂靠**: A commercial or local-power version. A weak actor offers resources, labor, name, or land under a stronger name to survive.
+5. **自阉入内廷**: This should be treated as an extreme identity and body-right surrender to the imperial machine. It can exist as NPC background, rare route, or historical event flavor, but should not be a casual joke button.
+
+Implementation principle:
+
+1. Use these relationships to explain access, protection, tribute, suspicion, and office nomination.
+2. Avoid making humiliation itself the reward. The reward is access to power; humiliation or submission is the cost and flavor of the hierarchy.
+3. Always preserve player choice between taking protection, staying peripheral, betraying a patron, or seeking another patron.
+
+### Patronage Fields for Future Data
+
+Future actor or position data can add:
+
+```ts
+type PatronageProfile = {
+  nominalSuperiorActorId?: string;
+  actualControllerActorId?: string;
+  patronActorId?: string;
+  ritualLevel: 'none' | 'bow' | 'kneel' | 'kowtow' | 'private_submission';
+  loyaltyRequirement: number;
+  tributeRequirement?: {
+    copperPct?: number;
+    resourcePct?: number;
+    serviceCount?: number;
+  };
+  betrayalCost?: {
+    suspicionDelta?: Partial<Record<PowerFaction, number>>;
+    standingDelta?: Partial<Record<PowerFaction, number>>;
+    powerShareLoss?: number;
+  };
+};
+```
+
+These fields are not required for current V1 implementation. They exist to keep future systems coherent.
+
+### Appointment Power, Financial Power, and Payline
+
+Actual control in this game should primarily mean two practical powers:
+
+1. **Appointment power**: who can recommend, nominate, appoint, remove, protect, or suppress a position holder.
+2. **Financial power**: who controls salary, stipend, tribute return, office funds, supply grants, and downstream resource distribution.
+
+In many cases, the visible office holder is not the actual controller. A position can be nominally owned by one faction, appointed by another patron, and paid through a third account chain. This creates the core "manage upward" gameplay.
+
+Recommended position fields for future versions:
+
+```ts
+type OfficeControlProfile = {
+  positionId: string;
+  nominalOwnerFaction: PowerFaction;
+  appointmentControllerActorId?: string;
+  appointmentControllerFaction?: PowerFaction;
+  financeControllerActorId?: string;
+  financeControllerFaction?: PowerFaction;
+  paylineControllerActorId?: string;
+  expectedPayPerCycle: number;
+  actualPayPerCycle?: number;
+  payCycleSec: number;
+  arrears: number;
+  skimmedAmount?: number;
+};
+```
+
+Player-facing interpretation:
+
+1. A player does not seize an office only by defeating the current occupant. They must make the appointment controller willing to recommend or appoint them.
+2. A superior can promise salary or protection but fail to pay if their own account is empty.
+3. A finance controller can set how much actually reaches subordinates.
+4. A subordinate may only see the final received amount, not the full upstream deductions.
+5. Overpaying builds loyalty; underpaying creates resentment, betrayal risk, petitions, or defection.
+
+Payline examples:
+
+1. A middle official receives central allocation and automatically distributes salary to several lower actors on a cooldown.
+2. The middle official can set the payout amount. Keeping more increases personal resources but reduces subordinate loyalty.
+3. If the middle official has misused funds and their account lacks money, the scheduled payout fails and becomes arrears.
+4. Rural dependents submit grain, ore, transport service, or rent. Their return copper or ration is decided by the patron's payout settings.
+5. Low-status actors feel the hierarchy as delayed, uncertain payment: they wait for the payout cycle and discover whether they were paid in full, underpaid, rewarded, or ignored.
+
+This system should make "loyalty" concrete. A subordinate is loyal not because a number says so, but because access, salary, survival, and future appointment depend on a superior's controlled resources.
+
+### Bottom Pyramid: Outer Labor and Rent
+
+The world should eventually include a large base of low-status roles outside the central Beijing office network. They are not only background population; they form the production base of the pyramid.
+
+Possible outer-map roles:
+
+1. Tenant farmers and military colony households.
+2. Salt workers, miners, kiln workers, and transport laborers.
+3. Porters, runners, boatmen, and city gate labor.
+4. Refugees, escape households, and secret-society dependents.
+5. Shop apprentices, account-room clerks, and household servants.
+
+Gameplay direction:
+
+1. Low-status actors pay rent, quota, tax, or tribute to survive.
+2. Patrons can extract from their dependent base and redistribute a small amount as protection, equipment, or permissions.
+3. High-spending or high-power players can become visible patrons, but their pyramid creates more enemies and more cleaning risk.
+4. The bottom layer should have limited growth but many routes of dependency, making "find a backer" a real strategic choice.
+
+This supports the long-term social pyramid: many actors provide labor and tribute; fewer actors control posts and channels; very few actors coordinate faction-level power.
+
+---
+
+## Office Appointment, KPI, and Centralization V1
+
+This section supersedes the earlier loose idea of "challenge the current office holder directly". V1 office competition should be appointment-driven, not arena-driven.
+
+### Core Decision
+
+Offices are not won by clicking a duel button. They are granted, renewed, removed, or reassigned through superior appointment power.
+
+The player-facing fantasy:
+
+1. A player sees offices in the Huangce and the Ministry of Personnel registry.
+2. Each office has a current holder, a superior who controls appointment, and a finance/payline controller.
+3. A player can try to become eligible, cultivate a superior, weaken the incumbent, or wait for weekly review.
+4. The final change of office is an appointment decision, not a direct loot drop.
+
+### New Location: Ministry of Personnel
+
+Add a Beijing location:
+
+```ts
+locationId: 'ministry_of_personnel'
+name: '吏部衙门'
+ownerFaction: 'censorate' | 'imperial'
+services: ['office_registry', 'appointment', 'evaluation']
+```
+
+Suggested NPC/position roles:
+
+1. `吏部文选司郎中`: shows office list, requirements, appointment chain, and eligible candidates.
+2. `吏部考功司郎中`: shows weekly KPI, term result, tax delivery, power delivery, and review risk.
+3. `内廷批红中使`: represents imperial override authority when the emperor seat intervenes.
+
+If client scope needs to stay small, V1 can place these three service positions inside `imperial_palace` first, then split them into a standalone `ministry_of_personnel` location later.
+
+### Office KPI Is Only Two Numbers
+
+Do not make V1 KPI complex. Every office tracks at most two weekly obligations:
+
+1. **Tax delivery**: how much copper/silver/resources the office sends upward per cycle.
+2. **Power delivery**: how much world power the office transfers upward per cycle.
+
+Interpretation:
+
+1. Tax delivery is the concrete basis of financial power.
+2. Power delivery is the concrete basis of appointment power.
+3. Offices can differ by which KPI matters more, but the model remains the same.
+
+Example fields:
+
+```ts
+type OfficeKpiProfile = {
+  termStartsAt: number;
+  termEndsAt: number; // one week in V1
+  taxDuePerTerm: number;
+  taxDeliveredThisTerm: number;
+  powerDuePerTerm: number;
+  powerDeliveredThisTerm: number;
+};
+```
+
+### Term Rule
+
+V1 term length: one week.
+
+At term end:
+
+1. If KPI is met, the office holder becomes eligible for renewal.
+2. If KPI is missed, the office holder becomes easier to remove or replace.
+3. A superior may still protect a failed office holder, but this should cost power, money, or political risk in later versions.
+
+### Unseating an Incumbent
+
+Pulling someone down should attack the two foundations of office:
+
+1. **Break their finance**: make the office holder fail tax delivery, lose money, or accumulate arrears.
+2. **Reduce their power**: make the office holder lose `powerShare`, lowering their appointment value and protection.
+
+V1 should not implement murder, deletion, permanent injury, or equipment loss.
+
+Possible unseating channels:
+
+1. Mission targeting: a service position holder can influence a location's mission target pool.
+2. Censorate impeachment: future channel, mainly reduces finance score or adds review pressure.
+3. Northern Bureau investigation: future channel, mainly reduces target power.
+4. Imperial override: emperor-only power to reassign posts if candidate power exceeds incumbent power.
+
+### Mission Output Depends on Issuer Location
+
+Missions should not all produce the same strategic resource.
+
+Recommended V1 rule:
+
+1. **Northern Bureau / Jinyiwei missions**: power taken from the target flows upward to the Northern Bureau chief or their superior chain. The executing player receives XP and copper, not the power.
+2. **Other institution missions**: the executing player can receive a small amount of power, while money or tax value flows to the institution's office holder.
+3. **Shop and stamina services**: money/tax value flows to the service position holder or finance controller.
+
+This gives each location a clear identity:
+
+1. Jinyiwei is a power-stripping machine.
+2. Commercial locations are money/tax machines.
+3. Personnel and palace locations decide who can sit in offices.
+
+### Mission Target Control
+
+Some office holders can influence their location's mission target pool.
+
+For example:
+
+1. The Northern Bureau mission office holder can designate or bias mission targets.
+2. Other players taking Northern Bureau missions naturally weaken those targets.
+3. The power stripped by those missions flows to the Northern Bureau chief or imperial chain.
+4. This allows real player politics outside the server: a powerful emperor player can pressure the Northern Bureau chief to list a disliked player as a target.
+
+This is intentional. The game should support social standing, loyalty, pressure, betrayal, and private negotiation.
+
+### Emperor-Only Override
+
+The emperor seat is the only position that may directly reassign any office by decree.
+
+V1 rule:
+
+1. Emperor can replace an office holder only if the incoming candidate's `powerShare` is greater than the current holder's `powerShare`.
+2. This expresses that even imperial will needs a usable power base.
+3. The replaced holder loses the office but does not lose equipment, level, or character existence.
+4. This creates a centralization loop: loyal players can be empowered by the emperor, then used to take over more offices.
+
+This should be a rare, highly visible action in UI, not a hidden admin operation.
+
+### Suspicion Direction
+
+The earlier `suspicion` concept is useful as a server-side risk meter, but it should not dominate player-facing office politics.
+
+Current direction:
+
+1. Player-facing conflict should be explained through office, finance, power, patronage, and target lists.
+2. Suspicion can remain as a hidden or secondary risk term for legacy mission/faction logic.
+3. Do not make suspicion the main reason a player understands why they were attacked.
+
+Players should feel: "someone with office power listed me as a target", not "the server's suspicion number selected me".
+
+### First Implementation Scope
+
+Server V1 should implement data and read APIs before heavy interaction:
+
+1. Add `ministry_of_personnel` location or equivalent palace service positions.
+2. Add office detail fields: term, KPI, appointment controller, finance controller, treasury split, and incumbent.
+3. Add read API: `WORLD_SERVICE_POSITION_GET_DETAIL`.
+4. Add read API or extension for office registry filtering by location, faction, service, and replace eligibility.
+5. Add mission settlement routing by issuer location:
+   - Jinyiwei power flows to issuer office chain.
+   - non-Jinyiwei power can still flow to executing player.
+   - money/tax values flow to relevant office holder or finance controller.
+
+Do not implement full appointment UI until the office detail and settlement routing are stable.
+
+### Office Candidates and Plotting V1
+
+After office detail and ledger are visible, the next step is still read-only. The game should explain how a player could enter the nomination pool before allowing any actual appointment action.
+
+Add a candidate view for each office:
+
+```ts
+type OfficeCandidateView = {
+  actorId: string;
+  kind: 'player' | 'bot';
+  displayName: string;
+  avatarId: string;
+  level: number;
+  faction: PowerFaction;
+  powerShare: number;
+  combatRating?: number;
+  isCurrentPlayer: boolean;
+  score: number;
+  scoreBreakdown: Array<{
+    label: string;
+    value: number;
+    passed: boolean;
+    hint: string;
+  }>;
+  recommendation: string;
+};
+```
+
+The office detail UI should eventually answer four player questions:
+
+1. Can I be considered for this office?
+2. If not, what exactly blocks me?
+3. Who currently looks more qualified than me?
+4. What should I do next to improve my chance?
+
+V1 should not appoint, remove, or transfer office ownership. It should only expose:
+
+1. Eligibility details.
+2. Candidate list.
+3. Recommended next action.
+4. Whether the incumbent is vulnerable due to KPI failure, lower power, or weak faction fit.
+
+Suggested API:
+
+```ts
+WORLD_SERVICE_POSITION_CANDIDATES_GET
+```
+
+Request:
+
+```ts
+{
+  positionId: string;
+  limit?: number;
+}
+```
+
+Response:
+
+```ts
+{
+  positionId: string;
+  incumbent: OfficeCandidateView;
+  currentPlayer?: OfficeCandidateView;
+  candidates: OfficeCandidateView[];
+  plottingAdvice: string[];
+}
+```
+
+Candidate scoring should remain simple:
+
+1. Level fit.
+2. Power share.
+3. Same faction or accepted faction.
+4. Current office vacancy or incumbent KPI weakness.
+5. Whether the appointment controller is aligned with the candidate.
+
+This makes the Ministry of Personnel useful before real appointment controls exist.
+
+*Last Updated: 2026-06-01*
