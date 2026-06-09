@@ -201,6 +201,75 @@ function formatOfficeSettlement(data: CompleteMissionData) {
   return parts.length > 0 ? parts.join(' / ') : settlement.routingReason;
 }
 
+function formatGrantedRewardText(data: CompleteMissionData) {
+  const parts = [
+    data.grantedReward.copper > 0 ? `\u94dc\u94b1 +${data.grantedReward.copper}` : null,
+    data.grantedReward.xp > 0 ? `\u7ecf\u9a8c +${data.grantedReward.xp}` : null,
+    data.grantedReward.equipment ? `\u88c5\u5907 ${data.grantedReward.equipment.name}` : null,
+    data.grantedReward.dungeonKey ? `\u94a5\u724c ${data.grantedReward.dungeonKey.name}` : null,
+    data.grantedReward.hourglass > 0 ? `\u6c99\u6f0f +${data.grantedReward.hourglass}` : null,
+    data.grantedReward.tokens > 0 ? `\u4ee4\u724c +${data.grantedReward.tokens}` : null,
+  ].filter(Boolean);
+
+  return parts.join(' / ') || '\u672a\u9886\u5230\u5956\u8d4f';
+}
+
+function formatTargetConsequence(data: CompleteMissionData, presentation: MissionPresentation) {
+  const targetActor = data.targetActor ?? presentation.targetActor;
+
+  if (data.result !== 'SUCCESS') {
+    return targetActor
+      ? `${targetActor.displayName}\u6321\u4e0b\u4e86\u8fd9\u6b21\u5dee\u4e8b\uff0c\u540d\u4e0b\u6743\u67c4\u672a\u52a8\u3002`
+      : '\u76ee\u6807\u6321\u4e0b\u4e86\u8fd9\u6b21\u5dee\u4e8b\uff0c\u6743\u67c4\u672a\u52a8\u3002';
+  }
+
+  if (!data.powerResult?.powerTransfer) {
+    return targetActor
+      ? `${targetActor.displayName}\u88ab\u538b\u4e0b\u4e00\u5934\uff0c\u4f46\u672a\u5f62\u6210\u6743\u67c4\u8f6c\u79fb\u3002`
+      : '\u672c\u6848\u672a\u5f62\u6210\u6743\u67c4\u8f6c\u79fb\u3002';
+  }
+
+  const transfer = data.powerResult.powerTransfer;
+  const targetWasDebited = wasTargetActorDebited(transfer, targetActor);
+  const targetFactionDelta = formatPowerTransferDelta(transfer.targetFactionPowerDelta);
+
+  return targetActor
+    ? `${targetActor.displayName}${targetWasDebited ? '\u540d\u4e0b\u88ab\u76f4\u63a5\u6263\u6743' : '\u6240\u5728\u95e8\u8def\u88ab\u6263\u6743'}\uff1a${targetFactionDelta}\u3002`
+    : `\u76ee\u6807\u95e8\u8def\u6743\u67c4\u53d8\u52a8\uff1a${targetFactionDelta}\u3002`;
+}
+
+function formatOfficeBeneficiaryText(data: CompleteMissionData) {
+  const settlement = data.officeSettlement;
+
+  if (!settlement) {
+    return '\u6b64\u6b21\u6ca1\u6709\u8bb0\u5165\u5177\u4f53\u804c\u4f4d\u8d26\u672c\u3002';
+  }
+
+  const beneficiary = settlement.beneficiaryDisplayName ?? '\u573a\u6240\u4efb\u804c\u8005';
+  const gains = [
+    settlement.taxValueDelta ? `\u7a0e\u94b1 +${settlement.taxValueDelta}` : null,
+    settlement.powerValueDelta ? `\u6743\u67c4 +${formatPowerShare(settlement.powerValueDelta)}` : null,
+  ].filter(Boolean).join(' / ');
+
+  return gains
+    ? `${beneficiary}\u5165\u8d26\uff1a${gains}\u3002${settlement.routingReason}`
+    : `${beneficiary}\u8bb0\u8d26\u3002${settlement.routingReason}`;
+}
+
+function formatPlayerPowerFlow(data: CompleteMissionData) {
+  const transfer = data.powerResult?.powerTransfer;
+
+  if (data.result !== 'SUCCESS') {
+    return '\u4f60\u6ca1\u6709\u593a\u5230\u6743\u67c4\uff0c\u4e5f\u6ca1\u6709\u66ff\u4e0a\u7ea7\u5165\u8d26\u3002';
+  }
+
+  if (!transfer) {
+    return '\u6b64\u5dee\u4e8b\u53ea\u7ed3\u7b97\u5956\u8d4f\uff0c\u672a\u52a8\u6743\u67c4\u3002';
+  }
+
+  return formatActorPowerDelta(transfer);
+}
+
 function wasTargetActorDebited(transfer: PowerTransferResult | undefined, targetActor: MissionTargetActorPreview | undefined) {
   if (!transfer?.targetActorIds?.length || !targetActor) {
     return false;
@@ -836,6 +905,30 @@ export function TavernScene({ missionSource, onBack }: TavernSceneProps = {}) {
                     <span>{MISSION_RECEIPT_COPY.officeFlow}</span>
                     <strong>{settlementData.result === 'SUCCESS' ? formatOfficeSettlement(settlementData) : MISSION_RECEIPT_COPY.noTransfer}</strong>
                   </div>
+                </div>
+                <div className="battle-summary__flow-board">
+                  <article>
+                    <span>{'\u4f60\u7684\u5dee\u9977'}</span>
+                    <strong>{settlementData.result === 'SUCCESS' ? formatGrantedRewardText(settlementData) : '\u672a\u7ed3\u7b97\u5dee\u9977'}</strong>
+                    <p>{settlementData.result === 'SUCCESS' ? formatPlayerPowerFlow(settlementData) : '\u5dee\u4e8b\u5931\u624b\uff0c\u4e0d\u52a8\u804c\u4f4d\u8d26\u672c\u3002'}</p>
+                  </article>
+                  <article>
+                    <span>{'\u76ee\u6807\u4ee3\u4ef7'}</span>
+                    <strong>
+                      {(settlementData.targetActor ?? currentPresentation.targetActor)?.displayName
+                        ?? currentPresentation.enemyName}
+                    </strong>
+                    <p>{formatTargetConsequence(settlementData, currentPresentation)}</p>
+                  </article>
+                  <article>
+                    <span>{'\u4e0a\u7ea7\u5165\u8d26'}</span>
+                    <strong>
+                      {settlementData.officeSettlement?.beneficiaryDisplayName
+                        ?? (settlementData.issuerActor ?? currentPresentation.issuerActor)?.displayName
+                        ?? MISSION_RECEIPT_COPY.fallbackIssuer}
+                    </strong>
+                    <p>{settlementData.result === 'SUCCESS' ? formatOfficeBeneficiaryText(settlementData) : '\u5dee\u4e8b\u5931\u624b\uff0c\u4e0a\u7ea7\u672a\u5f97\u8d22\u6743\u6216\u6743\u67c4\u3002'}</p>
+                  </article>
                 </div>
                 {settlementData.result === 'SUCCESS' ? (
                   <>

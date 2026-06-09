@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { postGameAction } from '../api/gameApi';
+import { BattleReplay } from '../components/combat/BattleReplay';
 import {
   LocationSceneView,
   type LocationSceneArt,
@@ -22,6 +23,16 @@ import type {
   ServicePositionControlProfile,
   OfficeLedgerEntry,
   OfficeCandidateView,
+  LocationGuardClaimData,
+  LocationChiefDashboardView,
+  LocationFinanceReportView,
+  LocationRaidChoice,
+  LocationRaidSettleData,
+  LocationRaidStartData,
+  LocationTreasuryView,
+  OfficeTributeListView,
+  OfficeTributePayData,
+  OfficeTributeTerm,
   WorldActorDetailView,
   WorldLocationsStatusView,
   WorldServicePositionCandidatesView,
@@ -48,6 +59,307 @@ type FactionLocationRow = {
 type ActiveShopSource = ShopSource & {
   shopType: 'weapon' | 'magic';
 };
+
+type MingCityEntry = {
+  cityId: string;
+  name: string;
+  region: string;
+  summary: string;
+  detail: string;
+  x: number;
+  y: number;
+  locationIds: string[];
+  background?: string;
+  plannedLocations?: {
+    id: string;
+    name: string;
+    kind: string;
+    summary: string;
+    detail: string;
+  }[];
+};
+
+const MING_CITY_ENTRIES: MingCityEntry[] = [
+  {
+    cityId: 'beijing',
+    name: '顺天府',
+    region: '京师',
+    summary: '皇城、厂卫、六部与京师生活场所',
+    detail: '大明权力机器的中心。升迁、差事、守卫、劫掠与人事名册目前都先在这里展开。',
+    x: 59,
+    y: 28,
+    background: '/assets/backgrounds/bg_ming_dynasty_map.png',
+    locationIds: [
+      'imperial_palace',
+      'ministry_of_personnel',
+      'northern_bureau',
+      'divine_engine_camp',
+      'censorate',
+      'noble_mansion',
+      'wine_house',
+      'bun_shop',
+      'pleasure_quarter',
+    ],
+  },
+  {
+    cityId: 'liaodong',
+    name: '辽阳',
+    region: '九边军镇',
+    summary: '边镇军令、军需、塘报与武职门路',
+    detail: '边防军镇的代表。后续适合承载军户、边镇总兵、军需粮饷和外敌压力。',
+    x: 78,
+    y: 22,
+    background: '/assets/backgrounds/landscapes/bg_build_border.png',
+    locationIds: ['border_command'],
+  },
+  {
+    cityId: 'lianghuai',
+    name: '扬州府',
+    region: '两淮盐引',
+    summary: '盐商、税银、贡品和灰色采购',
+    detail: '盐引与银路聚集之地。商贾、税务、走私和地方财权可以从这里继续扩。',
+    x: 62,
+    y: 61,
+    background: '/assets/backgrounds/landscapes/bg_build_store.png',
+    locationIds: ['salt_merchant_guild'],
+  },
+  {
+    cityId: 'nanjing',
+    name: '应天府',
+    region: '留都旧制',
+    summary: '织造、内库采办与南方门路',
+    detail: '留都和江南门路的代表。织造、贡品、世家、清流和商业利益适合放在这里。',
+    x: 57,
+    y: 67,
+    background: '/assets/backgrounds/citys/ChatGPT Image Jun 9, 2026, 11_58_25 PM (6).png',
+    locationIds: ['weaving_bureau'],
+  },
+];
+
+function createProvincePlannedLocations(cityId: string, cityName: string, militaryName: string, famousName: string) {
+  return [
+    {
+      id: `${cityId}_three_commission`,
+      name: '三司署',
+      kind: '地方官署',
+      summary: '布政、按察、都司三路地方权力',
+      detail: `${cityName}的省级官署预告。后续可承载地方税粮、刑名、军政和赴任考功。`,
+    },
+    {
+      id: `${cityId}_military`,
+      name: militaryName,
+      kind: '军事场所',
+      summary: '卫所、营伍、军械、塘报',
+      detail: `${cityName}的军事门路预告。后续可承载当地军务、守备、军需和武职任务。`,
+    },
+    {
+      id: `${cityId}_inn`,
+      name: '客栈',
+      kind: '市井补给',
+      summary: '住宿、打听消息、补给体力',
+      detail: `${cityName}的客栈预告。后续可承载旅行、补给、地方传闻和低门槛差事。`,
+    },
+    {
+      id: `${cityId}_famous`,
+      name: famousName,
+      kind: '地方名胜',
+      summary: '地方文化、人情、名望门路',
+      detail: `${cityName}的著名场所预告。后续可承载地方声望、人情、奇遇和历史事件包装。`,
+    },
+  ];
+}
+
+const MING_CITY_PLANNED_BY_ID: Record<string, ReturnType<typeof createProvincePlannedLocations>> = {
+  beijing: createProvincePlannedLocations('beijing', '顺天府', '京营校场', '天坛'),
+  liaodong: createProvincePlannedLocations('liaodong', '辽阳', '辽东镇军府', '辽阳城'),
+  lianghuai: createProvincePlannedLocations('lianghuai', '扬州府', '漕运营汛', '瘦西湖'),
+  nanjing: createProvincePlannedLocations('nanjing', '应天府', '南京守备府', '秦淮河'),
+};
+
+const ADDITIONAL_MING_CITY_ENTRIES: MingCityEntry[] = [
+  {
+    cityId: 'shanhai_pass',
+    name: '山海关',
+    region: '蓟辽咽喉',
+    summary: '关城、边墙、塘报与入关门户',
+    detail: '山海关地标预告。后续可承载边墙守御、入关盘查、军情塘报和辽东牵连。',
+    x: 67,
+    y: 25,
+    background: '/assets/backgrounds/landscapes/bg_build_border.png',
+    locationIds: [],
+    plannedLocations: createProvincePlannedLocations('shanhai_pass', '山海关', '山海关守御署', '天下第一关'),
+  },
+  {
+    cityId: 'jiayu_pass',
+    name: '嘉峪关',
+    region: '河西锁钥',
+    summary: '关城、烽燧、军屯与西陲商路',
+    detail: '嘉峪关地标预告。后续可承载河西军屯、烽燧传报、西域商路和边关劫掠。',
+    x: 28,
+    y: 37,
+    background: '/assets/backgrounds/landscapes/bg_build_border.png',
+    locationIds: [],
+    plannedLocations: createProvincePlannedLocations('jiayu_pass', '嘉峪关', '嘉峪关守备营', '关城楼'),
+  },
+  {
+    cityId: 'jinan',
+    name: '济南府',
+    region: '山东布政司治所',
+    summary: '漕粮、河道、山东士绅与布政门路',
+    detail: '山东省会预告。后续可承载漕运、河道、士绅、粮税和北方门户事件。',
+    x: 60,
+    y: 39,
+    background: '/assets/backgrounds/citys/bg_city_jinan.png',
+    locationIds: [],
+    plannedLocations: createProvincePlannedLocations('jinan', '济南府', '山东都司营', '趵突泉'),
+  },
+  {
+    cityId: 'taiyuan',
+    name: '太原府',
+    region: '山西布政司治所',
+    summary: '晋商、边饷、煤铁与北地军务',
+    detail: '山西省会预告。后续可承载晋商银路、边饷、矿产和北地军务。',
+    x: 51,
+    y: 34,
+    background: '/assets/backgrounds/landscapes/bg_build_offical_road.png',
+    locationIds: [],
+    plannedLocations: createProvincePlannedLocations('taiyuan', '太原府', '山西都司营', '晋祠'),
+  },
+  {
+    cityId: 'kaifeng',
+    name: '开封府',
+    region: '河南布政司治所',
+    summary: '中原粮道、河患与王府旧势',
+    detail: '河南省会预告。后续可承载中原粮道、黄河水患、王府与地方官场。',
+    x: 55,
+    y: 48,
+    background: '/assets/backgrounds/citys/bg_city_kaifeng.png',
+    locationIds: [],
+    plannedLocations: createProvincePlannedLocations('kaifeng', '开封府', '河南卫所营', '大相国寺'),
+  },
+  {
+    cityId: 'xian',
+    name: '西安府',
+    region: '陕西布政司治所',
+    summary: '西北军饷、秦地门阀与边防根基',
+    detail: '陕西省会预告。后续可承载西北军饷、秦地门阀、边防和流民压力。',
+    x: 43,
+    y: 48,
+    background: '/assets/backgrounds/citys/bg_city_xian.png',
+    locationIds: [],
+    plannedLocations: createProvincePlannedLocations('xian', '西安府', '陕西都司营', '钟鼓楼'),
+  },
+  {
+    cityId: 'hangzhou',
+    name: '杭州府',
+    region: '浙江布政司治所',
+    summary: '丝绸、海贸、士林与江南财富',
+    detail: '浙江省会预告。后续可承载丝绸、海贸、士林声望和江南财富。',
+    x: 66,
+    y: 70,
+    background: '/assets/backgrounds/citys/bg_city_hangzhou.png',
+    locationIds: [],
+    plannedLocations: createProvincePlannedLocations('hangzhou', '杭州府', '浙江都司营', '西湖'),
+  },
+  {
+    cityId: 'nanchang',
+    name: '南昌府',
+    region: '江西布政司治所',
+    summary: '赣江粮道、书院士林与地方税粮',
+    detail: '江西省会预告。后续可承载粮道、书院、税粮和江右士林。',
+    x: 58,
+    y: 75,
+    background: '/assets/backgrounds/landscapes/bg_build_xihu.png',
+    locationIds: [],
+    plannedLocations: createProvincePlannedLocations('nanchang', '南昌府', '江西都司营', '滕王阁'),
+  },
+  {
+    cityId: 'wuchang',
+    name: '武昌府',
+    region: '湖广布政司治所',
+    summary: '湖广粮仓、长江水路与楚地军政',
+    detail: '湖广省会预告。后续可承载粮仓、水路、地方军政和长江利益。',
+    x: 51,
+    y: 68,
+    background: '/assets/backgrounds/landscapes/bg_build_offical_road.png',
+    locationIds: [],
+    plannedLocations: createProvincePlannedLocations('wuchang', '武昌府', '湖广都司营', '黄鹤楼'),
+  },
+  {
+    cityId: 'chengdu',
+    name: '成都府',
+    region: '四川布政司治所',
+    summary: '蜀地财赋、茶马门路与西南兵备',
+    detail: '四川省会预告。后续可承载茶马、蜀地财赋、西南兵备和土司关系。',
+    x: 35,
+    y: 68,
+    background: '/assets/backgrounds/citys/bg_city_chengdu.png',
+    locationIds: [],
+    plannedLocations: createProvincePlannedLocations('chengdu', '成都府', '四川都司营', '武侯祠'),
+  },
+  {
+    cityId: 'fuzhou',
+    name: '福州府',
+    region: '福建布政司治所',
+    summary: '海防、船厂、闽商与沿海走私',
+    detail: '福建省会预告。后续可承载海防、船厂、闽商和沿海走私。',
+    x: 70,
+    y: 82,
+    background: '/assets/backgrounds/citys/bg_city_fuzhou.png',
+    locationIds: [],
+    plannedLocations: createProvincePlannedLocations('fuzhou', '福州府', '福建水师营', '三坊七巷'),
+  },
+  {
+    cityId: 'guangzhou',
+    name: '广州府',
+    region: '广东布政司治所',
+    summary: '海贸、粤商、关税与南海门路',
+    detail: '广东省会预告。后续可承载海贸、粤商、关税和南海门路。',
+    x: 58,
+    y: 88,
+    background: '/assets/backgrounds/landscapes/bg_build_sea.png',
+    locationIds: [],
+    plannedLocations: createProvincePlannedLocations('guangzhou', '广州府', '广东水师营', '镇海楼'),
+  },
+  {
+    cityId: 'guilin',
+    name: '桂林府',
+    region: '广西布政司治所',
+    summary: '土司、山地军务与西南转运',
+    detail: '广西省会预告。后续可承载土司、山地军务、转运和边地人情。',
+    x: 47,
+    y: 84,
+    background: '/assets/backgrounds/landscapes/bg_build_xihu.png',
+    locationIds: [],
+    plannedLocations: createProvincePlannedLocations('guilin', '桂林府', '广西都司营', '象鼻山'),
+  },
+  {
+    cityId: 'kunming',
+    name: '云南府',
+    region: '云南布政司治所',
+    summary: '滇地土司、矿路与西南边务',
+    detail: '云南省会预告。后续可承载矿路、土司、西南边务和贡道。',
+    x: 31,
+    y: 88,
+    background: '/assets/backgrounds/citys/city_bg_yunnan.png',
+    locationIds: [],
+    plannedLocations: createProvincePlannedLocations('kunming', '云南府', '云南都司营', '金马碧鸡坊'),
+  },
+  {
+    cityId: 'guiyang',
+    name: '贵阳府',
+    region: '贵州布政司治所',
+    summary: '苗疆、土司、驿道与山地军务',
+    detail: '贵州省会预告。后续可承载苗疆、土司、驿道和山地军务。',
+    x: 41,
+    y: 80,
+    background: '/assets/backgrounds/landscapes/bg_build_offical_road.png',
+    locationIds: [],
+    plannedLocations: createProvincePlannedLocations('guiyang', '贵阳府', '贵州都司营', '甲秀楼'),
+  },
+];
+
+const ALL_MING_CITY_ENTRIES = [...MING_CITY_ENTRIES, ...ADDITIONAL_MING_CITY_ENTRIES];
 
 const STATUS_LABELS: Record<PowerLocationStatus, string> = {
   locked: '未够资格',
@@ -79,62 +391,62 @@ const SERVICE_SCENE_BY_LOCATION: Record<string, Partial<Record<PowerLocationServ
 
 const LOCATION_ART: Record<string, LocationSceneArt> = {
   imperial_palace: {
-    background: '/assets/backgrounds/bg_system_tavern_task_bg_05.png',
+    background: '/assets/backgrounds/landscapes/bg_build_huanggong.png',
     npcImage: '/assets/figure/portrait/avatar_placeholder_021.png',
     npcName: '内廷门官',
   },
   northern_bureau: {
-    background: '/assets/backgrounds/bg_system_tavern.png',
+    background: '/assets/backgrounds/landscapes/bg_build_beizhenfusi.png',
     npcImage: '/assets/foregrounds/tavern_guest_1.png',
     npcName: '北镇经历司吏',
   },
   divine_engine_camp: {
-    background: '/assets/backgrounds/bg_system_weaponshop.jpg',
+    background: '/assets/backgrounds/landscapes/bg_build_battlefield.png',
     npcImage: '/assets/figure/npc/npc_weaponshop_keeper.png',
     npcName: '神机营军需官',
   },
   censorate: {
-    background: '/assets/backgrounds/bg_system_tavern_task_bg_02.png',
+    background: '/assets/backgrounds/landscapes/bg_build_offical_road.png',
     npcImage: '/assets/foregrounds/tavern_guest_3.png',
     npcName: '都察院书吏',
   },
   noble_mansion: {
-    background: '/assets/backgrounds/bg_system_pvp.png',
+    background: '/assets/backgrounds/landscapes/bg_huild_countryyard.png',
     npcImage: '/assets/foregrounds/tavern_guest_0.png',
     npcName: '国公府校尉',
   },
   border_command: {
-    background: '/assets/backgrounds/bg_system_tavern_task_bg_03.png',
+    background: '/assets/backgrounds/landscapes/bg_build_border.png',
     npcImage: '/assets/foregrounds/tavern_guest_4.png',
     npcName: '九边塘报官',
   },
   salt_merchant_guild: {
-    background: '/assets/backgrounds/bg_system_magicshop.png',
+    background: '/assets/backgrounds/landscapes/bg_build_store.png',
     npcImage: '/assets/figure/npc/npc_magicshop_keeper.png',
     npcName: '盐商会馆账房',
   },
   weaving_bureau: {
-    background: '/assets/backgrounds/bg_system_tavern_task_bg_04.png',
+    background: '/assets/backgrounds/landscapes/bg_build_store.png',
     npcImage: '/assets/figure/portrait/avatar_placeholder_030.png',
     npcName: '织造局买办',
   },
   ministry_of_personnel: {
-    background: '/assets/backgrounds/bg_system_tavern_task_bg_05.png',
+    background: '/assets/backgrounds/landscapes/bg_build_linyingshi.png',
     npcImage: '/assets/figure/portrait/avatar_placeholder_044.png',
     npcName: '\u540f\u90e8\u4e66\u540f',
   },
   wine_house: {
-    background: '/assets/backgrounds/bg_location_wine_house_placeholder.png',
+    background: '/assets/backgrounds/landscapes/bg_build_tavern.png',
     npcImage: '/assets/figure/npc/npc_wine_house_keeper_placeholder.png',
     npcName: '酒楼掌柜',
   },
   bun_shop: {
-    background: '/assets/backgrounds/bg_location_bun_shop_placeholder.png',
+    background: '/assets/backgrounds/landscapes/bg_build_poor_house.png',
     npcImage: '/assets/figure/npc/npc_bun_shop_keeper_placeholder.png',
     npcName: '包子铺老板',
   },
   pleasure_quarter: {
-    background: '/assets/backgrounds/bg_location_pleasure_quarter_placeholder.png',
+    background: '/assets/backgrounds/landscapes/bg_build_happy_ending.png',
     npcImage: '/assets/figure/npc/npc_pleasure_quarter_madam_placeholder.png',
     npcName: '教司坊妈妈',
   },
@@ -142,6 +454,58 @@ const LOCATION_ART: Record<string, LocationSceneArt> = {
 
 function formatPowerShare(value = 0) {
   return `${(value / 100).toFixed(2)}%`;
+}
+
+function getRaidChoiceLabel(choice: LocationRaidChoice) {
+  return choice === 'wealth' ? '\u52ab\u63a0\u516c\u8d26' : '\u52ab\u63a0\u7ed3\u679c';
+}
+
+function getRaidOutcomeTitle(choice: LocationRaidChoice) {
+  return choice === 'wealth' ? '\u89e3\u8863\u88f9\u8d27\uff0c\u591c\u5954\u800c\u8d70' : '\u5f97\u624b\u800c\u8d70';
+}
+
+function formatRaidReward(settlement: LocationRaidSettleData) {
+  const rewards = [
+    settlement.rewardCopper ? `\u94dc\u94b1 +${settlement.rewardCopper}` : null,
+    settlement.rewardPower ? `\u6743\u67c4 +${formatPowerShare(settlement.rewardPower)}` : null,
+    settlement.rewardPrestige ? `\u58f0\u671b +${settlement.rewardPrestige}` : null,
+  ].filter(Boolean);
+
+  return rewards.join(' / ') || '\u6b64\u6b21\u672a\u83b7\u5f97\u53ef\u89c1\u6536\u76ca';
+}
+
+function formatRaidTreasuryDelta(before: LocationTreasuryView, after: LocationTreasuryView) {
+  const copperDelta = after.copperBalance - before.copperBalance;
+
+  return copperDelta ? `\u516c\u8d26\u94dc\u94b1 ${copperDelta}` : '\u516c\u8d26\u6570\u989d\u672a\u89c1\u53d8\u52a8';
+}
+
+function getRaidDefenderRole(data: LocationRaidStartData) {
+  const defenderId = data.defenderActor?.actorId ?? data.battleResult.enemy.id;
+  const guard = data.treasuryBefore.guards.find((entry) => entry.actorId === defenderId);
+
+  if (guard) {
+    return {
+      label: '\u503c\u5b88\u5b88\u536b',
+      reason: `\u6b64\u4eba\u5f53\u65f6\u5728${data.locationName}\u5e94\u4e0b\u5b88\u536b\u5dee\uff0c\u4e3b\u5b98\u672a\u4eb2\u81ea\u4e0b\u573a\u3002`,
+      detail: `\u5269\u4f59 ${Math.max(0, Math.ceil(guard.remainingSeconds / 60))}\u5206 \u00b7 \u9977\u94f6 ${guard.wageCopper}`,
+    };
+  }
+
+  const reason = data.defenderActor?.reason ?? '';
+  if (reason.includes('\u573a\u6240\u5b88\u536b') || reason.includes('\u9632\u5b88')) {
+    return {
+      label: '\u573a\u6240\u9632\u4e01',
+      reason: '\u6b64\u5730\u6ca1\u6709\u73a9\u5bb6\u503c\u5b88\uff0c\u7531\u573a\u6240\u9632\u4e01\u51fa\u9762\u62e6\u4f60\u3002',
+      detail: '\u4e34\u65f6\u9632\u52a1',
+    };
+  }
+
+  return {
+    label: '\u573a\u6240\u4e3b\u4e8b',
+    reason: '\u6b64\u5730\u65e0\u503c\u5b88\u5b88\u536b\u53ef\u7528\uff0c\u624d\u7531\u4efb\u4e8b\u8005\u6216\u573a\u6240\u4e2d\u4eba\u4eb2\u81ea\u5e94\u6218\u3002',
+    detail: data.defenderActor?.reason || '\u4eb2\u81ea\u5e94\u6218',
+  };
 }
 
 function formatServices(services: PowerLocationService[]) {
@@ -325,6 +689,9 @@ const HUANGCE_FALLBACK_CONTROL_PROFILE = {
   paylineHint: '\u4ff8\u7984\u94fe\u5c1a\u672a\u767b\u8bb0\u3002',
   loyaltyCostHint: '\u5fe0\u8bda\u4ee3\u4ef7\u5c1a\u672a\u767b\u8bb0\u3002',
 };
+
+const LOCATION_LEDGER_LIMIT = 20;
+
 function formatHuangceStatus(status: string) {
   return HUANGCE_STATUS_LABELS[status] ?? status;
 }
@@ -337,12 +704,20 @@ function formatOfficeAmount(value: number) {
   return value.toLocaleString('zh-CN');
 }
 
-function formatOfficeDate(epochSec: number) {
-  if (!epochSec) {
+function isCurrentPlayerActorByName(character: ReturnType<typeof useGameState>['character'], actor?: { displayName?: string }) {
+  return Boolean(actor?.displayName && character?.player.displayName && actor.displayName === character.player.displayName);
+}
+
+function toDateFromEpoch(value: number) {
+  return new Date(value > 10_000_000_000 ? value : value * 1000);
+}
+
+function formatOfficeDate(epoch: number) {
+  if (!epoch) {
     return '--';
   }
 
-  return new Date(epochSec * 1000).toLocaleDateString('zh-CN', {
+  return toDateFromEpoch(epoch).toLocaleDateString('zh-CN', {
     month: '2-digit',
     day: '2-digit',
   });
@@ -370,7 +745,7 @@ function formatLedgerTime(createdAt: number) {
     return '--';
   }
 
-  return new Date(createdAt * 1000).toLocaleDateString('zh-CN', {
+  return toDateFromEpoch(createdAt).toLocaleDateString('zh-CN', {
     month: '2-digit',
     day: '2-digit',
   });
@@ -425,6 +800,36 @@ function getRecommendedFirstLocationId(faction?: PowerFactionId) {
   return faction ? RECOMMENDED_FIRST_LOCATION_BY_FACTION[faction] : INITIAL_LOCATION_ID;
 }
 
+function getCityById(cityId: string | null) {
+  return ALL_MING_CITY_ENTRIES.find((city) => city.cityId === cityId) ?? ALL_MING_CITY_ENTRIES[0];
+}
+
+function getCityForLocation(locationId: string) {
+  return ALL_MING_CITY_ENTRIES.find((city) => city.locationIds.includes(locationId)) ?? ALL_MING_CITY_ENTRIES[0];
+}
+
+function getCitySceneEntries(city: MingCityEntry, faction?: PowerFactionId) {
+  return city.locationIds
+    .map((locationId) => CITY_MAP_SCENE_ENTRIES.find((entry) => entry.locationId === locationId))
+    .filter((entry): entry is SceneRegistryEntry => Boolean(entry))
+    .map((entry) => resolveSceneEntryForFaction(entry, faction));
+}
+
+function getCityLocationStats(city: MingCityEntry, locations: PowerLocationView[] | null) {
+  const cityLocations = city.locationIds
+    .map((locationId) => getLocation(locations, locationId))
+    .filter((location): location is PowerLocationView => Boolean(location));
+
+  return {
+    actorCount: cityLocations.reduce((sum, location) => sum + location.actorCount, 0),
+    powerShare: cityLocations.reduce((sum, location) => sum + location.powerShare, 0),
+  };
+}
+
+function getPlannedLocationsForCity(city: MingCityEntry) {
+  return city.plannedLocations ?? MING_CITY_PLANNED_BY_ID[city.cityId] ?? [];
+}
+
 function getCityGuideStorageKey(characterName?: string) {
   return `manual.cityGuide.v1.${characterName || 'anonymous'}`;
 }
@@ -446,13 +851,13 @@ function OfficeCandidateCard({
           level={candidate.level}
           name={candidate.displayName}
           rankText={`${POWER_FACTION_LABELS[candidate.faction]} \u00b7 \u6743\u67c4${formatPowerShare(candidate.powerShare)}`}
-          title={label ?? (candidate.kind === 'player' ? '\u73a9\u5bb6' : '\u540d\u518c\u5019\u9009')}
+          title={label ?? (candidate.kind === 'player' ? '\u73a9\u5bb6' : '\u53ef\u7528\u4eba\u9009')}
           xpProgress={Math.min(1, candidate.score / 100)}
         />
       </div>
       <div className="office-detail-modal__candidate-body">
         <div className="office-detail-modal__candidate-head">
-          <span>{label ?? '\u5019\u9009\u4eba'}</span>
+          <span>{label ?? '\u53ef\u7528\u4eba\u9009'}</span>
           <strong>{formatCandidateScore(candidate.score)}</strong>
         </div>
         <p>{candidate.recommendation}</p>
@@ -478,10 +883,26 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
   const [locationsStatus, setLocationsStatus] = useState<WorldLocationsStatusView | null>(null);
   const [locationsError, setLocationsError] = useState<string | null>(null);
   const [activeLocationId, setActiveLocationId] = useState(INITIAL_LOCATION_ID);
+  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [enteredLocationId, setEnteredLocationId] = useState<string | null>(null);
   const [serviceMessage, setServiceMessage] = useState<string | null>(null);
   const [actorDetail, setActorDetail] = useState<WorldActorDetailView | null>(null);
   const [actorLedgerEntries, setActorLedgerEntries] = useState<OfficeLedgerEntry[]>([]);
+  const [locationLedgerEntries, setLocationLedgerEntries] = useState<OfficeLedgerEntry[]>([]);
+  const [locationLedgerLoading, setLocationLedgerLoading] = useState(false);
+  const [locationTreasury, setLocationTreasury] = useState<LocationTreasuryView | null>(null);
+  const [locationTreasuryLoading, setLocationTreasuryLoading] = useState(false);
+  const [locationTributes, setLocationTributes] = useState<OfficeTributeTerm[]>([]);
+  const [locationTributesLoading, setLocationTributesLoading] = useState(false);
+  const [locationFinanceReport, setLocationFinanceReport] = useState<LocationFinanceReportView | null>(null);
+  const [locationFinanceReportLoading, setLocationFinanceReportLoading] = useState(false);
+  const [locationChiefDashboard, setLocationChiefDashboard] = useState<LocationChiefDashboardView | null>(null);
+  const [locationChiefDashboardLoading, setLocationChiefDashboardLoading] = useState(false);
+  const [tributePayLoading, setTributePayLoading] = useState(false);
+  const [raidStartData, setRaidStartData] = useState<LocationRaidStartData | null>(null);
+  const [raidSettleData, setRaidSettleData] = useState<LocationRaidSettleData | null>(null);
+  const [raidLoading, setRaidLoading] = useState(false);
+  const [guardActionLoading, setGuardActionLoading] = useState<string | null>(null);
   const [actorDetailError, setActorDetailError] = useState<string | null>(null);
   const [servicePositions, setServicePositions] = useState<WorldServicePositionsListView | null>(null);
   const [positionDetail, setPositionDetail] = useState<WorldServicePositionDetailView | null>(null);
@@ -509,6 +930,78 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
       setActiveLocationId(recommendedLocationId);
     }
   }, [cityGuideDismissed, enteredLocationId, recommendedLocationId]);
+
+  useEffect(() => {
+    if (!enteredLocationId) {
+      setLocationLedgerEntries([]);
+      setLocationLedgerLoading(false);
+      setLocationTreasury(null);
+      setLocationTreasuryLoading(false);
+      setLocationTributes([]);
+      setLocationTributesLoading(false);
+      setLocationFinanceReport(null);
+      setLocationFinanceReportLoading(false);
+      setLocationChiefDashboard(null);
+      setLocationChiefDashboardLoading(false);
+      setRaidStartData(null);
+      setRaidSettleData(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadLocationLedgerAndTreasury() {
+      setLocationLedgerLoading(true);
+      setLocationTreasuryLoading(true);
+      setLocationTributesLoading(true);
+      try {
+        const [ledger, treasury, tribute] = await Promise.all([
+          runServerAction(
+          'WORLD_SERVICE_POSITION_LEDGER_GET',
+          () => postGameAction<WorldServicePositionLedgerView>('WORLD_SERVICE_POSITION_LEDGER_GET', {
+            locationId: enteredLocationId,
+            limit: LOCATION_LEDGER_LIMIT,
+          }),
+          ),
+          runServerAction(
+            'WORLD_LOCATION_TREASURY_GET',
+            () => postGameAction<LocationTreasuryView>('WORLD_LOCATION_TREASURY_GET', { locationId: enteredLocationId }),
+          ),
+          runServerAction(
+            'WORLD_OFFICE_TRIBUTE_GET',
+            () => postGameAction<OfficeTributeListView>('WORLD_OFFICE_TRIBUTE_GET', {
+              locationId: enteredLocationId,
+              includeHistory: true,
+            }),
+          ),
+        ]);
+        if (!cancelled) {
+          setLocationLedgerEntries(ledger.entries);
+          setLocationTreasury(treasury);
+          setLocationTributes(tribute.terms);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setLocationLedgerEntries([]);
+          setLocationTreasury(null);
+          setLocationTributes([]);
+          setServiceMessage(toActionErrorMessage(error, '\u672c\u5730\u8fd1\u65e5\u62a5\u544a\u8bfb\u53d6\u5931\u8d25\u3002'));
+        }
+      } finally {
+        if (!cancelled) {
+          setLocationLedgerLoading(false);
+          setLocationTreasuryLoading(false);
+          setLocationTributesLoading(false);
+        }
+      }
+    }
+
+    void loadLocationLedgerAndTreasury();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enteredLocationId, runServerAction]);
 
   useEffect(() => {
     let cancelled = false;
@@ -547,10 +1040,103 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
       { actorCount: 0, powerShare: 0 },
     );
   }, [locations]);
+  const selectedCity = selectedCityId ? getCityById(selectedCityId) : null;
+  const selectedCityEntries = selectedCity ? getCitySceneEntries(selectedCity, powerFaction) : [];
+  const selectedCityPlannedEntries = selectedCity ? getPlannedLocationsForCity(selectedCity) : [];
   const huangceGroups = useMemo(
     () => groupHuangcePositions(servicePositions?.positions ?? []),
     [servicePositions?.positions],
   );
+
+  async function refreshLocationPublicState(locationId: string) {
+    const [ledger, treasury, tribute] = await Promise.all([
+      runServerAction(
+        'WORLD_SERVICE_POSITION_LEDGER_GET',
+        () => postGameAction<WorldServicePositionLedgerView>('WORLD_SERVICE_POSITION_LEDGER_GET', {
+          locationId,
+          limit: LOCATION_LEDGER_LIMIT,
+        }),
+      ),
+      runServerAction(
+        'WORLD_LOCATION_TREASURY_GET',
+        () => postGameAction<LocationTreasuryView>('WORLD_LOCATION_TREASURY_GET', { locationId }),
+      ),
+      runServerAction(
+        'WORLD_OFFICE_TRIBUTE_GET',
+        () => postGameAction<OfficeTributeListView>('WORLD_OFFICE_TRIBUTE_GET', {
+          locationId,
+          includeHistory: true,
+        }),
+      ),
+    ]);
+    setLocationLedgerEntries(ledger.entries);
+    setLocationTreasury(treasury);
+    setLocationTributes(tribute.terms);
+  }
+
+  async function handleFinanceReportOpen(locationId: string) {
+    setLocationFinanceReportLoading(true);
+    try {
+      const report = await runServerAction(
+        'WORLD_LOCATION_FINANCE_REPORT_GET',
+        () => postGameAction<LocationFinanceReportView>('WORLD_LOCATION_FINANCE_REPORT_GET', {
+          locationId,
+          days: 7,
+        }),
+      );
+      setLocationFinanceReport(report);
+    } catch (error) {
+      setLocationFinanceReport(null);
+      setServiceMessage(toActionErrorMessage(error, '\u8d22\u52a1\u62a5\u8868\u8bfb\u53d6\u5931\u8d25\u3002'));
+    } finally {
+      setLocationFinanceReportLoading(false);
+    }
+  }
+
+  async function handleChiefDashboardOpen(locationId: string) {
+    setLocationChiefDashboardLoading(true);
+    try {
+      const dashboard = await runServerAction(
+        'WORLD_LOCATION_CHIEF_DASHBOARD_GET',
+        () => postGameAction<LocationChiefDashboardView>('WORLD_LOCATION_CHIEF_DASHBOARD_GET', {
+          locationId,
+        }),
+      );
+      setLocationChiefDashboard(dashboard);
+    } catch (error) {
+      setLocationChiefDashboard(null);
+      setServiceMessage(toActionErrorMessage(error, '\u4e3b\u5b98\u7ba1\u4e8b\u9762\u677f\u8bfb\u53d6\u5931\u8d25\u3002'));
+    } finally {
+      setLocationChiefDashboardLoading(false);
+    }
+  }
+
+  async function handleTributePay(locationId: string, tributeId: string, amountCopper: number) {
+    if (amountCopper <= 0) {
+      setServiceMessage('\u7f34\u7eb3\u6570\u989d\u5fc5\u987b\u5927\u4e8e 0\u3002');
+      return;
+    }
+
+    setTributePayLoading(true);
+    try {
+      const result = await runServerAction(
+        'WORLD_OFFICE_TRIBUTE_PAY',
+        () => postGameAction<OfficeTributePayData>('WORLD_OFFICE_TRIBUTE_PAY', {
+          tributeId,
+          amountCopper,
+        }),
+      );
+      await refreshCharacterInfo();
+      await refreshLocationPublicState(locationId);
+      await handleFinanceReportOpen(locationId);
+      await handleChiefDashboardOpen(locationId);
+      setServiceMessage(`\u5df2\u7f34\u7eb3\u672c\u5468\u8d21\u989d ${result.term.paidCopper}/${result.term.dueCopper}\u3002`);
+    } catch (error) {
+      setServiceMessage(toActionErrorMessage(error, '\u7f34\u7eb3\u671f\u8d21\u5931\u8d25\u3002'));
+    } finally {
+      setTributePayLoading(false);
+    }
+  }
 
   async function handleLocationService(
     node: SceneRegistryEntry,
@@ -618,6 +1204,12 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
 
     if (service === 'office_registry') {
       void openHuangce();
+      return;
+    }
+
+    if (service === 'tribute_registry') {
+      void handleFinanceReportOpen(node.locationId);
+      setServiceMessage('\u793c\u90e8\u8d21\u7eb3\u7c3f\u5df2\u8c03\u51fa\uff0c\u53ef\u5728\u573a\u6240\u8d22\u52a1\u62a5\u8868\u4e2d\u67e5\u770b\u672c\u5468\u4e0a\u7f34\u4e0e\u8d26\u9762\u53d8\u52a8\u3002');
       return;
     }
 
@@ -698,9 +1290,110 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
       );
       setPositionCandidates(candidates);
     } catch (error) {
-      setActorDetailError(toActionErrorMessage(error, '\u5019\u9009\u540d\u518c\u8bfb\u53d6\u5931\u8d25\u3002'));
+      setActorDetailError(toActionErrorMessage(error, '\u4e0a\u7ea7\u53ef\u7528\u540d\u518c\u8bfb\u53d6\u5931\u8d25\u3002'));
     } finally {
       setPositionCandidatesLoading(false);
+    }
+  }
+
+  async function handleLocationRaid(locationId: string) {
+    setActorDetailError(null);
+    setRaidSettleData(null);
+    setRaidLoading(true);
+    try {
+      const raid = await runServerAction(
+        'WORLD_LOCATION_RAID_START',
+        () => postGameAction<LocationRaidStartData>('WORLD_LOCATION_RAID_START', { locationId }),
+      );
+      setRaidStartData(raid);
+    } catch (error) {
+      setServiceMessage(toActionErrorMessage(error, '\u591c\u95ef\u6b64\u5730\u5931\u8d25\u3002'));
+    } finally {
+      setRaidLoading(false);
+    }
+  }
+
+  async function handleRaidSettle(choice: LocationRaidChoice) {
+    if (!raidStartData) {
+      return;
+    }
+
+    setRaidLoading(true);
+    try {
+      const settlement = await runServerAction(
+        'WORLD_LOCATION_RAID_SETTLE',
+        () => postGameAction<LocationRaidSettleData>('WORLD_LOCATION_RAID_SETTLE', {
+          raidId: raidStartData.raidId,
+          choice,
+        }),
+      );
+      setRaidSettleData(settlement);
+      setLocationTreasury(settlement.treasuryAfter);
+      await refreshCharacterInfo();
+      await refreshLocationPublicState(settlement.locationId);
+    } catch (error) {
+      setActorDetailError(toActionErrorMessage(error, '\u52ab\u63a0\u7ed3\u7b97\u5931\u8d25\u3002'));
+    } finally {
+      setRaidLoading(false);
+    }
+  }
+
+  async function handleGuardJoin(locationId: string, durationMinutes: number) {
+    setServiceMessage(null);
+    setGuardActionLoading(`join:${durationMinutes}`);
+    try {
+      const treasury = await runServerAction(
+        'WORLD_LOCATION_GUARD_JOIN',
+        () => postGameAction<LocationTreasuryView>('WORLD_LOCATION_GUARD_JOIN', { locationId, durationMinutes }),
+      );
+      setLocationTreasury(treasury);
+      await refreshLocationPublicState(locationId);
+      setServiceMessage(`\u5df2\u5728${treasury.locationName}\u5e94\u4e0b\u5b88\u536b\u5dee\uff0c\u82e5\u672a\u6ee1\u65f6\u8fb0\u79bb\u5c97\uff0c\u9977\u94f6\u4f5c\u5e9f\u3002`);
+    } catch (error) {
+      setServiceMessage(toActionErrorMessage(error, '\u5e94\u4e0b\u5b88\u536b\u5931\u8d25\u3002'));
+    } finally {
+      setGuardActionLoading(null);
+    }
+  }
+
+  async function handleGuardLeave(dutyId: string) {
+    setServiceMessage(null);
+    setGuardActionLoading(dutyId);
+    try {
+      const treasury = await runServerAction(
+        'WORLD_LOCATION_GUARD_LEAVE',
+        () => postGameAction<LocationTreasuryView>('WORLD_LOCATION_GUARD_LEAVE', { dutyId }),
+      );
+      setLocationTreasury(treasury);
+      await refreshLocationPublicState(treasury.locationId);
+      setServiceMessage('\u5df2\u64c5\u81ea\u79bb\u5c97\uff0c\u6b64\u6b21\u503c\u5b88\u4e0d\u53d1\u9977\u94f6\u3002');
+    } catch (error) {
+      setServiceMessage(toActionErrorMessage(error, '\u79bb\u5c97\u5931\u8d25\u3002'));
+    } finally {
+      setGuardActionLoading(null);
+    }
+  }
+
+  async function handleGuardClaim(dutyId: string) {
+    setServiceMessage(null);
+    setGuardActionLoading(dutyId);
+    try {
+      const claim = await runServerAction(
+        'WORLD_LOCATION_GUARD_CLAIM',
+        () => postGameAction<LocationGuardClaimData>('WORLD_LOCATION_GUARD_CLAIM', { dutyId }),
+      );
+      setLocationTreasury(claim.treasuryAfter);
+      await refreshCharacterInfo();
+      await refreshLocationPublicState(claim.locationId);
+      setServiceMessage(
+        claim.shortfall > 0
+          ? `\u516c\u8d26\u4e0d\u8db3\uff0c\u672c\u6b21\u53ea\u9886\u5230 ${claim.wagePaid} \u94dc\u94b1\uff0c\u77ed\u53d1 ${claim.shortfall}\u3002`
+          : `\u503c\u5b88\u5df2\u6ee1\uff0c\u9886\u5f97\u9977\u94f6 ${claim.wagePaid} \u94dc\u94b1\u3002`,
+      );
+    } catch (error) {
+      setServiceMessage(toActionErrorMessage(error, '\u9886\u53d6\u5b88\u536b\u9977\u94f6\u5931\u8d25\u3002'));
+    } finally {
+      setGuardActionLoading(null);
     }
   }
 
@@ -809,9 +1502,9 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
             </div>
           </section>
           <section>
-            <h3>{'\u8c0b\u7f3a\u8bca\u65ad'}</h3>
+            <h3>{'\u4efb\u514d\u53e3\u5f84'}</h3>
             <strong className="office-detail-modal__eligibility">
-              {positionDetail.eligibility.canBeConsidered ? '\u53ef\u5165\u5019\u9009\u540d\u518c' : '\u6682\u4e0d\u53ef\u8c0b\u6b64\u7f3a'}
+              {positionDetail.eligibility.canBeConsidered ? '\u53ef\u88ab\u4e0a\u7ea7\u7eb3\u5165\u53ef\u7528\u540d\u518c' : '\u6682\u4e0d\u8db3\u4ee5\u5a01\u80c1\u73b0\u4efb'}
             </strong>
             <ul>
               {positionDetail.eligibility.reasons.map((reason) => (
@@ -821,23 +1514,24 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
             <p>{positionDetail.imperialOverrideHint}</p>
           </section>
           <section className="office-detail-modal__candidates">
-            <h3>{'\u8c0b\u7f3a\u6392\u4f4d'}</h3>
+            <h3>{'\u4e0a\u7ea7\u53ef\u7528\u540d\u518c'}</h3>
+            <p>{'\u6b64\u5904\u53ea\u663e\u793a\u4e0a\u7ea7\u624b\u91cc\u53ef\u7528\u7684\u7b79\u7801\u3002\u662f\u5426\u6362\u4eba\uff0c\u4ecd\u770b\u638c\u4eba\u4e8b\u6743\u8005\u7684\u559c\u597d\u548c\u5229\u76ca\u3002'}</p>
             {positionDetail.candidatesPreview ? (
               <div className="office-detail-modal__candidate-summary">
                 <div className="office-detail-modal__stat">
-                  <span>{'\u4f60\u7684\u6392\u4f4d'}</span>
+                  <span>{'\u4f60\u7684\u53ef\u7528\u987a\u4f4d'}</span>
                   <strong>
                     {typeof positionDetail.candidatesPreview.currentPlayerRank === 'number'
-                      ? `\u7b2c ${positionDetail.candidatesPreview.currentPlayerRank} \u540d`
-                      : '\u6682\u672a\u5165\u699c'}
+                      ? `\u7b2c ${positionDetail.candidatesPreview.currentPlayerRank} \u987a\u4f4d`
+                      : '\u6682\u672a\u5165\u4e0a\u7ea7\u89c6\u91ce'}
                   </strong>
                 </div>
                 <div className="office-detail-modal__stat">
-                  <span>{'\u6700\u5f3a\u5019\u9009'}</span>
+                  <span>{'\u6700\u5f3a\u53ef\u7528\u4eba'}</span>
                   <strong>
                     {positionDetail.candidatesPreview.topCandidate
                       ? `${positionDetail.candidatesPreview.topCandidate.displayName} ${formatCandidateScore(positionDetail.candidatesPreview.topCandidate.score)}`
-                      : '\u6682\u65e0\u5019\u9009'}
+                      : '\u6682\u65e0\u53ef\u7528\u4eba'}
                   </strong>
                 </div>
                 <ul>
@@ -847,7 +1541,7 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
                 </ul>
               </div>
             ) : (
-              <p>{'\u540f\u90e8\u5c1a\u672a\u7ed9\u6b64\u7f3a\u5217\u51fa\u5019\u9009\u8bca\u65ad\u3002'}</p>
+              <p>{'\u540f\u90e8\u5c1a\u672a\u7ed9\u6b64\u7f3a\u5217\u51fa\u53ef\u7528\u540d\u518c\u3002'}</p>
             )}
             <button
               className="office-detail-modal__candidate-button"
@@ -855,7 +1549,7 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
               disabled={positionCandidatesLoading}
               onClick={() => void handlePositionCandidates(positionDetail.position.positionId)}
             >
-              {positionCandidatesLoading ? '\u540d\u518c\u540c\u6b65\u4e2d...' : '\u67e5\u770b\u5019\u9009\u540d\u518c'}
+              {positionCandidatesLoading ? '\u540d\u518c\u540c\u6b65\u4e2d...' : '\u67e5\u770b\u4e0a\u7ea7\u53ef\u7528\u540d\u518c'}
             </button>
             {positionCandidates?.positionId === positionDetail.position.positionId ? (
               <div className="office-detail-modal__candidate-list">
@@ -868,7 +1562,7 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
                   <OfficeCandidateCard
                     candidate={positionCandidates.currentPlayer}
                     label={typeof positionCandidates.currentPlayerRank === 'number'
-                      ? `\u4f60\u00b7\u7b2c${positionCandidates.currentPlayerRank}\u540d`
+                      ? `\u4f60\u00b7\u7b2c${positionCandidates.currentPlayerRank}\u987a\u4f4d`
                       : '\u4f60'}
                     onActorClick={(actorId) => void handleActorDetail(actorId)}
                   />
@@ -877,12 +1571,12 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
                   <OfficeCandidateCard
                     key={candidate.actorId}
                     candidate={candidate}
-                    label={`\u5019\u9009\u7b2c${index + 1}\u540d`}
+                    label={`\u53ef\u7528\u7b2c${index + 1}\u987a\u4f4d`}
                     onActorClick={(actorId) => void handleActorDetail(actorId)}
                   />
                 ))}
                 <div className="office-detail-modal__plotting-advice">
-                  <strong>{'\u540f\u90e8\u5efa\u8bae'}</strong>
+                  <strong>{'\u540f\u90e8\u4efb\u514d\u53e3\u5f84'}</strong>
                   <ul>
                     {positionCandidates.plottingAdvice.map((advice) => (
                       <li key={advice}>{advice}</li>
@@ -910,6 +1604,61 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
           </section>
         </div>
       </div>
+    </div>
+  ) : null;
+
+  const raidModal = raidStartData ? (
+    <div className="location-raid-modal" role="dialog" aria-modal="true" aria-label="\u573a\u6240\u52ab\u63a0">
+      <BattleReplay
+        battleResult={raidStartData.battleResult}
+        heading={raidStartData.battleResult.playerWon ? '\u591c\u95ef\u5f97\u624b' : '\u591c\u95ef\u5931\u624b'}
+        subheading={`${raidStartData.locationName} \u00b7 \u516c\u8d26\u52ab\u63a0`}
+        contextLabel="RAID"
+        resultBody={(
+          <div className="location-raid-result">
+            <div className="location-raid-result__defender">
+              <span>{getRaidDefenderRole(raidStartData).label}</span>
+              <strong>{raidStartData.defenderActor?.displayName ?? raidStartData.battleResult.enemy.name}</strong>
+              <p>{getRaidDefenderRole(raidStartData).reason}</p>
+              <small>{getRaidDefenderRole(raidStartData).detail}</small>
+            </div>
+            <div className="location-raid-result__treasury">
+              <div><span>{'\u94dc\u94b1'}</span><strong>{raidSettleData?.treasuryAfter.copperBalance ?? raidStartData.treasuryBefore.copperBalance}</strong></div>
+              <div><span>{'\u5b88\u536b'}</span><strong>{raidStartData.defenderActor?.displayName ?? raidStartData.battleResult.enemy.name}</strong></div>
+            </div>
+            {raidSettleData ? (
+              <div className="location-raid-result__settled">
+                <span>{getRaidChoiceLabel(raidSettleData.choice)}</span>
+                <strong>{getRaidOutcomeTitle(raidSettleData.choice)}</strong>
+                <p>{formatRaidReward(raidSettleData)}</p>
+                <p>{formatRaidTreasuryDelta(raidStartData.treasuryBefore, raidSettleData.treasuryAfter)}</p>
+                <p>{'\u6b64\u4e8b\u5df2\u5199\u5165\u672c\u5730\u8fd1\u65e5\u62a5\u544a\uff0c\u4ed6\u4eba\u8fdb\u573a\u4e5f\u80fd\u770b\u5230\u8fd9\u7b14\u6d41\u6c34\u3002'}</p>
+              </div>
+            ) : raidStartData.canChooseOutcome ? (
+              <div className="location-raid-result__choice-copy">
+                <strong>{'\u5b88\u536b\u5df2\u88ab\u538b\u4e0b\uff0c\u53ef\u4ee5\u52a8\u6b64\u5730\u516c\u8d26\u3002'}</strong>
+                <p>{'\u7b2c\u4e00\u7248\u52ab\u63a0\u53ea\u5904\u7406\u516c\u8d26\u94dc\u94b1\uff0c\u5176\u4ed6\u573a\u6240\u7279\u8272\u6389\u843d\u7b49\u573a\u6240\u7c7b\u578b\u4e30\u5bcc\u540e\u518d\u63a5\u5165\u3002'}</p>
+              </div>
+            ) : (
+              <div className="location-raid-result__choice-copy">
+                <strong>{'\u5b88\u536b\u6321\u4e0b\u4e86\u4f60'}</strong>
+                <p>{'\u6b64\u6b21\u4e0d\u52a8\u516c\u8d26\uff0c\u8fd1\u65e5\u62a5\u544a\u4f1a\u8bb0\u4e0b\u8fd9\u573a\u5931\u624b\u3002'}</p>
+              </div>
+            )}
+          </div>
+        )}
+        actions={[
+          ...(raidStartData.canChooseOutcome && !raidSettleData
+            ? [
+              { key: 'wealth', label: '\u52ab\u63a0\u516c\u8d26', onClick: () => void handleRaidSettle('wealth'), disabled: raidLoading },
+            ]
+            : []),
+          { key: 'close', label: raidSettleData || !raidStartData.canChooseOutcome ? '\u56de\u5230\u573a\u6240' : '\u6682\u4e0d\u7ed3\u7b97', variant: 'quiet', onClick: () => {
+            setRaidStartData(null);
+            setRaidSettleData(null);
+          } },
+        ]}
+      />
     </div>
   ) : null;
 
@@ -1019,6 +1768,7 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
       <TavernScene
         missionSource={missionSource}
         onBack={() => {
+          void refreshLocationPublicState(missionSource.locationId);
           setMissionSource(null);
           setServiceMessage(null);
         }}
@@ -1132,6 +1882,7 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
           sourceLocationId: activeNode.locationId,
         }],
       }));
+    const canPayTribute = isCurrentPlayerActorByName(character, locationTreasury?.chiefActor);
 
     return (
       <>
@@ -1148,6 +1899,20 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
           `聚集角色：${location ? `${location.actorCount}人` : '--'}`,
         ]}
         npcCards={npcCards}
+        treasury={locationTreasury}
+        treasuryLoading={locationTreasuryLoading}
+        raidLoading={raidLoading}
+        guardActionLoading={guardActionLoading}
+        ledgerEntries={locationLedgerEntries}
+        ledgerLoading={locationLedgerLoading}
+        tributeTerms={locationTributes}
+        tributeLoading={locationTributesLoading}
+        tributePayLoading={tributePayLoading}
+        financeReport={locationFinanceReport}
+        financeReportLoading={locationFinanceReportLoading}
+        chiefDashboard={locationChiefDashboard}
+        chiefDashboardLoading={locationChiefDashboardLoading}
+        canPayTribute={canPayTribute}
         serviceMessage={serviceMessage}
         onBack={() => {
           setServiceMessage(null);
@@ -1161,6 +1926,14 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
             setServiceMessage(buildNpcClickMessage(npc));
           }
         }}
+        onLedgerActorClick={(actorId) => void handleActorDetail(actorId)}
+        onRaid={() => void handleLocationRaid(activeNode.locationId)}
+        onGuardJoin={(durationMinutes) => void handleGuardJoin(activeNode.locationId, durationMinutes)}
+        onGuardLeave={(dutyId) => void handleGuardLeave(dutyId)}
+        onGuardClaim={(dutyId) => void handleGuardClaim(dutyId)}
+        onFinanceReportOpen={() => void handleFinanceReportOpen(activeNode.locationId)}
+        onChiefDashboardOpen={() => void handleChiefDashboardOpen(activeNode.locationId)}
+        onTributePay={(tributeId, amountCopper) => void handleTributePay(activeNode.locationId, tributeId, amountCopper)}
       />
       {activeNode.locationId === 'imperial_palace' ? (
         <button className="city-scene__huangce-button" type="button" onClick={() => void openHuangce()}>
@@ -1171,12 +1944,67 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
       {huangceModal}
       {positionDetailModal}
       {actorDetailModal}
+      {raidModal}
       </>
     );
   }
 
+  if (!selectedCity) {
+    const recommendedCity = getCityForLocation(recommendedLocationId);
+
+    return (
+      <div className="scene scene--city scene--ming-map">
+        <div className="scene__banner scene__banner--left">大明版图</div>
+        <div className="scene__banner scene__banner--center">
+          {locations
+            ? `天下名册 ${totals.actorCount}人 · 地点权柄 ${formatPowerShare(totals.powerShare)}`
+            : locationsError ?? '先选城市，再入场所；场所里找任职角色办事。'}
+        </div>
+
+        <section className="ming-map" aria-label="大明主要城市入口">
+          <div className="ming-map__panel">
+            <span>天下门路</span>
+            <h2>先选一座城</h2>
+            <p>全国地图只负责城市地标。进入城市后，衙门、店铺、营房和街市统一显示在底部入口卡片中。</p>
+          </div>
+
+          {ALL_MING_CITY_ENTRIES.map((city) => {
+            const stats = getCityLocationStats(city, locations);
+            const isRecommended = city.cityId === recommendedCity.cityId;
+
+            return (
+              <button
+                key={city.cityId}
+                className={`ming-map__city ming-map__city--${city.cityId}${isRecommended ? ' ming-map__city--recommended' : ''}`}
+                type="button"
+                style={{ left: `${city.x}%`, top: `${city.y}%` }}
+                onClick={() => {
+                  setSelectedCityId(city.cityId);
+                  setActiveLocationId(city.locationIds[0] ?? INITIAL_LOCATION_ID);
+                  setServiceMessage(null);
+                }}
+              >
+                <span>{city.region}</span>
+                <strong>{city.name}</strong>
+                <em>{stats.actorCount ? `${stats.actorCount}人 · 权柄${formatPowerShare(stats.powerShare)}` : city.summary}</em>
+              </button>
+            );
+          })}
+        </section>
+        {actorDetailError ? <div className="city-scene__floating-error">{actorDetailError}</div> : null}
+      </div>
+    );
+  }
+
   return (
-    <div className="scene scene--city">
+    <div
+      className="scene scene--city"
+      style={selectedCity.background ? { backgroundImage: `url("${selectedCity.background}")` } : undefined}
+    >
+      <div className="scene__banner scene__banner--left scene__banner--city-current">{selectedCity.name}</div>
+      <div className="scene__banner scene__banner--center scene__banner--city-current">
+        {locations ? `${selectedCity.region} · ${selectedCity.summary}` : locationsError ?? selectedCity.detail}
+      </div>
       <div className="scene__banner scene__banner--left">大明京城</div>
       <div className="scene__banner scene__banner--center">
         {locations
@@ -1185,7 +2013,18 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
       </div>
 
       <div className="city-scene">
-        {!cityGuideDismissed ? (
+        <button
+          className="city-scene__world-back"
+          type="button"
+          onClick={() => {
+            setSelectedCityId(null);
+            setServiceMessage(null);
+          }}
+        >
+          返回大明地图
+        </button>
+
+        {!cityGuideDismissed && selectedCity.cityId === getCityForLocation(recommendedLocationId).cityId ? (
           <section className="city-scene__guide" aria-label={CITY_GUIDE_COPY.ariaLabel}>
             <div className="city-scene__guide-kicker">{CITY_GUIDE_COPY.kicker}</div>
             <h2>{CITY_GUIDE_COPY.title}</h2>
@@ -1228,8 +2067,68 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
           </div>
         </section>
 
-        {CITY_MAP_SCENE_ENTRIES.map((baseNode) => {
-          const node = resolveSceneEntryForFaction(baseNode, powerFaction);
+        <section className="city-scene__location-strip" aria-label="京城场所入口">
+          {selectedCityEntries.map((node) => {
+            const location = getLocation(locations, node.locationId);
+            const ownerFaction = getNodeOwner(node, location);
+            const status = location?.status ?? 'open';
+            const art = getLocationArt(node.locationId);
+            const isRecommended = !cityGuideDismissed && node.locationId === recommendedLocationId;
+
+            return (
+              <button
+                key={node.locationId}
+                className={`city-scene__location-card city-scene__location-card--status-${status}${isRecommended ? ' city-scene__location-card--recommended' : ''}`}
+                type="button"
+                onFocus={() => setActiveLocationId(node.locationId)}
+                onMouseEnter={() => setActiveLocationId(node.locationId)}
+                onClick={() => {
+                  setServiceMessage(null);
+                  setEnteredLocationId(node.locationId);
+                }}
+              >
+                <span className="city-scene__location-art" style={{ backgroundImage: `url("${art.background}")` }} />
+                <span className="city-scene__location-body">
+                  <span className="city-scene__location-tags">
+                    <em>{POWER_FACTION_LABELS[ownerFaction]}</em>
+                    <em>{STATUS_LABELS[status]}</em>
+                    {node.lifecycle !== 'active' ? <em>认门</em> : null}
+                  </span>
+                  <strong>{getNodeName(node, location)}</strong>
+                  <span>{node.channelName}</span>
+                  <small>
+                    {location ? `${location.actorCount}人 · 权柄${formatPowerShare(location.powerShare)}` : node.channelSummary}
+                  </small>
+                </span>
+              </button>
+            );
+          })}
+          {selectedCityPlannedEntries.map((planned) => (
+            <button
+              key={planned.id}
+              className="city-scene__location-card city-scene__location-card--planned"
+              type="button"
+              onClick={() => {
+                setServiceMessage(`${selectedCity.name} · ${planned.name}：${planned.detail}`);
+              }}
+            >
+              <span className="city-scene__location-art city-scene__location-art--planned" />
+              <span className="city-scene__location-body">
+                <span className="city-scene__location-tags">
+                  <em>{planned.kind}</em>
+                  <em>预告</em>
+                </span>
+                <strong>{planned.name}</strong>
+                <span>{planned.summary}</span>
+                <small>{selectedCity.name}地方门路，后续接入。</small>
+              </span>
+            </button>
+          ))}
+        </section>
+
+        {serviceMessage ? <div className="city-scene__city-message">{serviceMessage}</div> : null}
+
+        {selectedCityEntries.map((node) => {
           const location = getLocation(locations, node.locationId);
           const ownerFaction = getNodeOwner(node, location);
           const status = location?.status ?? 'open';
@@ -1260,9 +2159,8 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
           );
         })}
 
-        {(() => {
-          const activeBaseNode = CITY_MAP_SCENE_ENTRIES.find((node) => node.locationId === activeLocationId) ?? CITY_MAP_SCENE_ENTRIES[0]!;
-          const activeNode = resolveSceneEntryForFaction(activeBaseNode, powerFaction);
+        {selectedCityEntries.length > 0 ? (() => {
+          const activeNode = selectedCityEntries.find((node) => node.locationId === activeLocationId) ?? selectedCityEntries[0]!;
           const location = getLocation(locations, activeNode.locationId);
           const ownerFaction = getNodeOwner(activeNode, location);
           const status = location?.status ?? 'open';
@@ -1301,7 +2199,40 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
               </div>
             </aside>
           );
-        })()}
+        })() : (
+          <aside className="city-scene__detail city-scene__detail--city">
+            <span className="city-scene__detail-faction">{selectedCity.region}</span>
+            <span className="city-scene__detail-status">预告</span>
+            <h2>{selectedCity.name}</h2>
+            <p>{selectedCity.detail}</p>
+            <div className="city-scene__detail-stats">
+              <div>
+                <span>地方官署</span>
+                <strong>三司署</strong>
+              </div>
+              <div>
+                <span>军事门路</span>
+                <strong>卫所营伍</strong>
+              </div>
+              <div>
+                <span>市井门路</span>
+                <strong>客栈</strong>
+              </div>
+              <div>
+                <span>地方文化</span>
+                <strong>名胜人情</strong>
+              </div>
+              <div>
+                <span>开放状态</span>
+                <strong>世界观预告</strong>
+              </div>
+              <div>
+                <span>预留场所</span>
+                <strong>{selectedCityPlannedEntries.length}处</strong>
+              </div>
+            </div>
+          </aside>
+        )}
       </div>
     </div>
   );

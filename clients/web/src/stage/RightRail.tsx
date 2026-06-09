@@ -1,7 +1,5 @@
-import { layout } from '../config/layout';
 import { CLASS_META, getAvatarUrl, POWER_FACTION_BADGES } from '../config/characterCatalog';
 import { getNextLevelXp } from '../config/xpTable';
-import { CharacterPortraitCard } from '../components/character/CharacterPortraitCard';
 import { PlayerResourcePanel } from '../components/ui/PlayerResourcePanel';
 import { useGameState } from '../state/GameStateContext';
 import type { SceneId } from '../types/game';
@@ -26,25 +24,17 @@ export function RightRail({ activeSceneId, onSceneChange, onInventoryOpen }: Rig
   const xpProgress = Math.min(1, Math.max(0, character.player.exp / Math.max(1, nextLevelXp)));
 
   return (
-    <aside
-      className="right-rail"
-      style={{
-        left: `${layout.rightRail.x}px`,
-        top: `${layout.rightRail.y}px`,
-        width: `${layout.rightRail.width}px`,
-        height: `${layout.rightRail.height}px`,
-      }}
-    >
-      <button className="right-rail__portrait-button" type="button" onClick={onInventoryOpen}>
-        <CharacterPortraitCard
-          avatarUrl={getAvatarUrl(character.player.avatarId)}
-          level={character.player.level}
-          name={character.player.displayName || '无名好汉'}
-          rankText={`${powerBadge} · 官声排名 ${character.combatPreview.combatRating}`}
-          title={classMeta.name}
-          xpProgress={xpProgress}
-        />
+    <aside className="right-rail">
+      <button className="right-rail__portrait-button" type="button" onClick={onInventoryOpen} title="打开角色与背包">
+        <img alt={character.player.displayName || '角色'} src={getAvatarUrl(character.player.avatarId)} />
+        <span>{character.player.level}</span>
       </button>
+
+      <div className="right-rail__player-summary">
+        <strong>{character.player.displayName || '无名好汉'}</strong>
+        <span>{`${classMeta.name} · ${powerBadge} · ${character.combatPreview.combatRating}`}</span>
+        <i style={{ width: `${xpProgress * 100}%` }} />
+      </div>
 
       <PlayerResourcePanel resources={character.resources} />
 

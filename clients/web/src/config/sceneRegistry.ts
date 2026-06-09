@@ -35,6 +35,7 @@ export const SERVICE_LABELS: Record<PowerLocationService, string> = {
   office_registry: '\u540f\u7c4d',
   appointment: '\u4efb\u514d',
   evaluation: '\u8003\u529f',
+  tribute_registry: '\u8d21\u7eb3',
 };
 
 export const SCENE_REGISTRY: SceneRegistryEntry[] = [

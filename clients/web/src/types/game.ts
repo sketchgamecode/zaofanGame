@@ -202,7 +202,8 @@ export type PowerLocationService =
   | 'stamina'
   | 'office_registry'
   | 'appointment'
-  | 'evaluation';
+  | 'evaluation'
+  | 'tribute_registry';
 export type PowerLocationStatus = 'locked' | 'open' | 'hostile' | 'favored';
 
 export type PowerLocationServiceActor = {
@@ -314,7 +315,15 @@ export type OfficeLedgerEntryType =
   | 'bot_power'
   | 'shop_tax'
   | 'stamina_tax'
-  | 'evaluation';
+  | 'evaluation'
+  | 'raid_wealth'
+  | 'raid_power'
+  | 'raid_fame'
+  | 'raid_failed'
+  | 'guard_join'
+  | 'guard_leave'
+  | 'guard_wage'
+  | 'guard_wage_shortfall';
 
 export type OfficeLedgerEntry = {
   entryId: string;
@@ -421,6 +430,187 @@ export type WorldServicePositionDetailView = {
   imperialOverrideHint: string;
   ledgerPreview: OfficeLedgerEntry[];
   candidatesPreview?: ServicePositionCandidatesPreview;
+};
+
+export type LocationTreasuryView = {
+  locationId: string;
+  copperBalance: number;
+  goodsValue: number;
+  powerValue: number;
+  nextDistributionAt: number;
+  guardSlotsUsed: number;
+  guardSlotsMax: number;
+  defenseRating: number;
+  updatedAt: number;
+  locationName: string;
+  ownerFaction: PowerFactionId;
+  ownerLabel: string;
+  raidRiskHint: string;
+  carryHint: string;
+  guards: LocationGuardDutyView[];
+  guardHint: string;
+  chiefActor?: ChiefActorView;
+};
+
+export type ChiefActorView = {
+  actorId: string;
+  displayName: string;
+  avatarId: string;
+  level: number;
+  faction: PowerFactionId;
+  title?: string;
+  personalCopperExposed: number;
+};
+
+export type OfficeTributeStatus = 'active' | 'passed' | 'failed';
+
+export type OfficeTributeTerm = {
+  tributeId: string;
+  positionId: string;
+  locationId: string;
+  officeHolderActorId: string;
+  superiorActorId: string;
+  dueCopper: number;
+  paidCopper: number;
+  termStartsAt: number;
+  termEndsAt: number;
+  status: OfficeTributeStatus;
+  reviewLabel: string;
+  lastPaidAt?: number;
+};
+
+export type OfficeTributeListView = {
+  terms: OfficeTributeTerm[];
+};
+
+export type OfficeTributePayData = {
+  term: OfficeTributeTerm;
+  copperBefore: number;
+  copperAfter: number;
+};
+
+export type LocationFinanceDailyRow = {
+  dayKey: string;
+  peakCopper: number;
+  netCopperDelta: number;
+  incomeCopper: number;
+  expenseCopper: number;
+  raidLossCopper: number;
+  guardWageCopper: number;
+  tributePaidCopper: number;
+};
+
+export type LocationFinanceReportView = {
+  locationId: string;
+  locationName: string;
+  chiefActor: {
+    actorId: string;
+    displayName: string;
+    title?: string;
+    avatarId: string;
+  };
+  currentExposedCopper: number;
+  nextTribute?: OfficeTributeTerm;
+  dailyRows: LocationFinanceDailyRow[];
+};
+
+export type LocationChiefDashboardView = {
+  locationId: string;
+  locationName: string;
+  chiefActor: ChiefActorView;
+  treasury: LocationTreasuryView;
+  activeTribute?: OfficeTributeTerm;
+  topPositions: Array<{
+    positionId: string;
+    title: string;
+    service: PowerLocationService;
+    status: ServicePositionStatus;
+    occupant: {
+      actorId: string;
+      kind: 'bot' | 'player';
+      displayName: string;
+      avatarId: string;
+      level: number;
+      powerShare: number;
+    };
+  }>;
+  recentLedger: OfficeLedgerEntry[];
+  financeSummary: Array<{
+    dayKey: string;
+    netCopperDelta: number;
+    incomeCopper: number;
+    expenseCopper: number;
+    raidLossCopper: number;
+    guardWageCopper: number;
+    tributePaidCopper: number;
+  }>;
+};
+
+export type LocationGuardDutyStatus = 'active' | 'completed' | 'abandoned';
+
+export type LocationGuardDutyView = {
+  dutyId: string;
+  locationId: string;
+  actorId: string;
+  actorDisplayName: string;
+  actorAvatarId: string;
+  actorKind: 'player' | 'bot';
+  faction: PowerFactionId;
+  level: number;
+  combatRating: number;
+  startsAt: number;
+  endsAt: number;
+  wageCopper: number;
+  status: LocationGuardDutyStatus;
+  remainingSeconds: number;
+  canClaimWage: boolean;
+  canLeave: boolean;
+};
+
+export type LocationRaidStartData = {
+  raidId: string;
+  locationId: string;
+  locationName: string;
+  defenderActor?: {
+    actorId: string;
+    kind: 'bot' | 'player';
+    displayName: string;
+    avatarId: string;
+    level: number;
+    classId: PlayerClassId;
+    raceId?: RaceId;
+    faction: PowerFactionId;
+    locationId: string;
+    locationName?: string;
+    powerShare: number;
+    title?: string;
+    positionId?: string;
+    reason: string;
+  };
+  battleResult: import('./combat').BattleResultV2;
+  canChooseOutcome: boolean;
+  treasuryBefore: LocationTreasuryView;
+};
+
+export type LocationRaidChoice = 'wealth' | 'power' | 'fame';
+
+export type LocationRaidSettleData = {
+  raidId: string;
+  locationId: string;
+  choice: LocationRaidChoice;
+  rewardCopper: number;
+  rewardPower: number;
+  rewardPrestige: number;
+  treasuryAfter: LocationTreasuryView;
+};
+
+export type LocationGuardClaimData = {
+  dutyId: string;
+  locationId: string;
+  wageExpected: number;
+  wagePaid: number;
+  shortfall: number;
+  treasuryAfter: LocationTreasuryView;
 };
 
 export type PowerTransferResult = {

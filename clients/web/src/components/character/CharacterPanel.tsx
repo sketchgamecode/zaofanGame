@@ -97,7 +97,8 @@ function formatLedgerTime(createdAt: number) {
     return '--';
   }
 
-  return new Date(createdAt * 1000).toLocaleDateString('zh-CN', {
+  const date = new Date(createdAt > 10_000_000_000 ? createdAt : createdAt * 1000);
+  return date.toLocaleDateString('zh-CN', {
     month: '2-digit',
     day: '2-digit',
   });

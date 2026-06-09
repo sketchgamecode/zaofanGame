@@ -364,3 +364,25 @@ This section records the player-facing fantasy behind future patronage, loyalty,
 6. As a patron, I want misuse, shortage, or deliberate skimming to create risk: resentment, petitions, betrayal, or faction suspicion.
 7. As a farmer, miner, porter, or other outer-map dependent, I want to submit grain, ore, labor, or rent and wait for a return payout controlled by my superior, so the lower pyramid of the world feels real.
 8. As a player, I want "actual control" to mean control of appointments and money, not only a title label.
+
+## 13. Location Treasury and Estate Direction
+
+1. As a player, I want each location to have one clear public account, so I understand that guarding and raiding are both about the same visible pile of money.
+2. As a player, I do not want every location to introduce separate abstract resources, so the location page should not ask me to learn "goods", "power value", and "defense value" as equal currencies before they have real loops.
+3. As a raider, I want the first version of raiding to mean "fight the defender and take from the public account", so the action remains easy to understand.
+4. As a player, I can accept that different locations may later have different loot tables, such as military equipment from the Divine Engine Camp or illicit armor from hidden channels, but only after those location types are actually rich enough.
+5. As a long-term player, I want outer cities and player estates to become a second layer of the world, where players can own visitable places, learn professions, produce goods, and sell them to others.
+6. As a player visiting another player's estate, I want to see that estate owner as a real world actor, not a faceless shop menu.
+7. As a designer or developer, I should treat estates as a later private-production layer. It should not interrupt the current capital loop of offices, public locations, missions, guards, raids, and ledgers.
+
+## 14. Office Chief Money and Weekly Tribute Story
+
+1. As a player, I want a location's exposed money to belong to the office chief, so I immediately understand who gains when the location prospers and who loses when it is raided.
+2. As an office chief, I want my position to expose part of my private wealth to the world, so holding office feels profitable but dangerous.
+3. As a raider, I want attacking a location to feel like hurting the person who controls that location, not draining a faceless system account.
+4. As a superior, I want subordinate offices to owe weekly tribute, so control of money feels like a real command relationship.
+5. As a subordinate office holder, I want to manually pay tribute before the deadline, like servicing a debt, so keeping office creates a recurring pressure.
+6. As a player, I want missed tribute to create a visible bad review, so failure to pay becomes a political weakness rather than a hidden variable.
+7. As a player, I want the first hierarchy to be simple: emperor above inner-court chief, inner-court chief above ordinary location chiefs.
+8. As a player, I want the palace to visibly contain the emperor and the inner-court chief, so the top of the power pyramid is concrete and named.
+9. As a player, I want a report page to show daily peak exposed copper and daily net movement, so I can judge whether a location is fat, drained, or worth raiding.

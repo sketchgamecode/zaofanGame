@@ -1062,11 +1062,13 @@ Server V1 should implement data and read APIs before heavy interaction:
 
 Do not implement full appointment UI until the office detail and settlement routing are stable.
 
-### Office Candidates and Plotting V1
+### Office Usable Roster and Appointment Optics V1
 
-After office detail and ledger are visible, the next step is still read-only. The game should explain how a player could enter the nomination pool before allowing any actual appointment action.
+After office detail and ledger are visible, the next step is still read-only. This is not a player-facing "apply for office" feature. It is a visibility layer for the superior's available roster: who has enough leverage to be useful if the appointment controller decides to replace the incumbent.
 
-Add a candidate view for each office:
+The code-level model may still use `OfficeCandidateView`, but player-facing UI should describe it as a "usable roster" or "appointment roster", not as voluntary application, job hunting, or open competition.
+
+Add a usable-person view for each office:
 
 ```ts
 type OfficeCandidateView = {
@@ -1092,16 +1094,16 @@ type OfficeCandidateView = {
 
 The office detail UI should eventually answer four player questions:
 
-1. Can I be considered for this office?
-2. If not, what exactly blocks me?
-3. Who currently looks more qualified than me?
-4. What should I do next to improve my chance?
+1. Am I visible as a usable person to the superior who controls appointments?
+2. If not, what exactly keeps me outside that superior's usable range?
+3. Who currently gives the superior more leverage than me?
+4. What should I do next to become more useful or more threatening?
 
 V1 should not appoint, remove, or transfer office ownership. It should only expose:
 
-1. Eligibility details.
-2. Candidate list.
-3. Recommended next action.
+1. Usable-roster details.
+2. Appointment-controller optics.
+3. Recommended next action for becoming more useful to the superior.
 4. Whether the incumbent is vulnerable due to KPI failure, lower power, or weak faction fit.
 
 Suggested API:
@@ -1131,14 +1133,412 @@ Response:
 }
 ```
 
-Candidate scoring should remain simple:
+Usable-roster scoring should remain simple:
 
 1. Level fit.
 2. Power share.
 3. Same faction or accepted faction.
 4. Current office vacancy or incumbent KPI weakness.
-5. Whether the appointment controller is aligned with the candidate.
+5. Whether the appointment controller is aligned with the usable person.
 
-This makes the Ministry of Personnel useful before real appointment controls exist.
+This makes the Ministry of Personnel useful before real appointment controls exist, while preserving the core fantasy: office ownership is a scarce grant from superiors, not a high-frequency self-service goal for every player.
+
+## Location Treasury and Raid System V1
+
+Office appointment is a scarce, low-frequency power game for a small number of players. The broader player base needs a way to participate in location-level politics through the game's core combat loop. Location treasury and raids provide that bridge.
+
+### Core Idea
+
+Each location earns money, goods, or power value during the day. Before that value is distributed to office holders, superiors, imperial private treasury, or public treasury, it sits in a location-level public account.
+
+That public account is visible, tempting, and vulnerable.
+
+Players do not need to hold office to interact with it. They can attack the location, fight its guards, and choose what kind of damage or gain to take from the raid.
+
+### Location Treasury
+
+Each roleplay location may have a treasury snapshot:
+
+```ts
+type LocationTreasuryView = {
+  locationId: string;
+  copperBalance: number;
+  goodsValue: number;
+  powerValue: number;
+  nextDistributionAt: number;
+  guardSlotsUsed: number;
+  guardSlotsMax: number;
+  defenseRating: number;
+};
+```
+
+Sources that can feed the treasury:
+
+1. Shop taxes and transaction cuts.
+2. Stamina replenishment payments.
+3. Mission tax value.
+4. Bot simulated income.
+5. Future estate, mine, farm, escort, or contraband income.
+
+Daily distribution should eventually split treasury value into:
+
+1. Imperial private treasury.
+2. Public treasury.
+3. Office holder income.
+4. Superior chain income.
+5. Temporary guard wages.
+
+V1 can store balances and next distribution time without implementing the full payout timer.
+
+### Raid Choices
+
+After a successful raid, the attacker chooses one of three outcomes:
+
+1. **Take Wealth**: steal copper or goods value from the location treasury.
+2. **Take Power**: humiliate the location and reduce its power value or the relevant office holder's power pressure.
+3. **Take Fame**: take less material value but gain prestige, honor, or a future intimidation metric.
+
+Player-facing flavor:
+
+1. No mount: the player wraps goods in clothes and leaves with a small haul.
+2. Donkey: carries a larger bundle.
+3. Ox: good for heavy goods.
+4. Horse: better escape and lower loss, not necessarily the best cargo animal.
+5. Future cart, boat, or escort team can increase carrying capacity further.
+
+This gives mounts a strategic economic purpose beyond movement speed.
+
+### Guard System Direction
+
+Locations can have guard slots.
+
+Office holders or location controllers can eventually spend premium tokens or treasury value to expand temporary guard slots. Guard slot costs should scale sharply so rich controllers can protect assets but cannot cheaply make locations untouchable.
+
+Guard slots should be visible on the location page:
+
+1. Guard character portrait card.
+2. Guard combat rating or power share.
+3. Guard duty remaining time.
+4. Wage promised if the duty completes.
+5. Whether the guard is a bot, offline player, or current player.
+
+Players can apply to stand guard for a chosen duration. If they complete the duration, they receive wages. If they leave early, they receive nothing.
+
+This supports later insider play:
+
+1. Attackers can place insiders into guard slots.
+2. Insiders can abandon duty before a raid.
+3. Defenders can set minimum combat rating or power thresholds.
+4. Weak players can still matter by filling guard slots and forcing raiders into repeated fights.
+
+### Raid Combat
+
+The first version can use a simplified combat path:
+
+1. Select one location defender or generated guard snapshot.
+2. Run one battle using existing battle engine.
+3. If attacker wins, show raid outcome choices.
+
+Future version should support guard gauntlets:
+
+1. Attacker fights guard 1, then guard 2, then guard 3.
+2. Attacker HP does not fully recover between fights, or only partially recovers.
+3. This allows multiple weaker guards to grind down a stronger raider.
+4. A raid can fail even if the attacker is stronger than each individual guard.
+
+### Why This Comes Before Full Appointment
+
+This system affects every player:
+
+1. Low-level players can raid weak locations or stand guard.
+2. Mid-level players can specialize in raiding, escorting, or defending.
+3. Office holders must care because their location treasury is exposed.
+4. Rich players can hire protection.
+5. Social play emerges without requiring every player to hold office.
+
+Office appointment remains an elite power operation. Treasury raids are the broad combat-economic layer around it.
+
+### Server V1 Scope
+
+V1 should implement:
+
+1. Location treasury state.
+2. Read API for treasury.
+3. Raid start / fight API using existing battle engine.
+4. Raid settlement choice API for Take Wealth / Take Power / Take Fame.
+5. Basic treasury ledger entries.
+6. Minimal guard snapshot or fallback defender.
+
+V1 should not implement:
+
+1. Full guard hiring marketplace.
+2. Guard gauntlet combat.
+3. Premium token guard-slot expansion.
+4. True daily distribution timer.
+5. Insider resignation timing rules.
+6. Complex mount inventory or cargo equipment.
+
+## Location Treasury Scope Correction
+
+After the first treasury and raid playtest, the V1 direction is simplified:
+
+1. The player-facing public account is only **copper in the location treasury**.
+2. Do not present `goodsValue`, `powerValue`, or `defenseRating` as equal universal resources in the main location UI.
+3. Raids in V1 should be understood as "raid the public account", not as three parallel resource systems.
+4. Existing server fields such as goods, power value, and defense rating may remain as internal placeholders or transitional data, but they should not drive player-facing explanations until their production and consumption loops are real.
+5. Location identity should come from service type, NPC office, shop inventory, mission flavor, and future loot tables, not from adding more abstract resource categories.
+
+Future location-specific rewards can be added after the location network becomes richer:
+
+1. Divine Engine Camp: public account copper, with possible firearm or military equipment drops later.
+2. Footwear shops: public account copper, with shoe equipment drops later.
+3. Hat shops: public account copper, with head equipment drops later.
+4. Illegal armor channels: public account copper, with armor drops later, wrapped as illicit acquisition rather than open sale.
+5. Wine houses and food shops: public account copper, with stamina or food item drops later.
+
+Do not implement location loot tables before there are enough differentiated locations to make the drops meaningful.
+
+## Office Private Treasury and Weekly Tribute Direction
+
+After the treasury playtest, the stronger direction is to bind a location's exposed money to the location chief's personal assets.
+
+Core rule:
+
+1. A location's visible treasury is the office chief's exposed operating money.
+2. Raiding a location means attacking the office chief's exposed money, not an abstract independent pool.
+3. This makes office holding immediately understandable: the office brings access, income, and status, but also exposes the holder's private wealth to public risk.
+4. The location page may show the chief's exposed copper and recent financial changes, while the full private inventory remains personal.
+
+Weekly tribute:
+
+1. Every office has a weekly tribute obligation to its superior office.
+2. The office chief can manually pay any amount before the deadline.
+3. When the deadline passes, unpaid tribute becomes a bad review mark for that term.
+4. The holder cannot retroactively pay after the deadline for that week.
+5. Superiors may later use missed tribute as a reason to replace the holder.
+
+V1 hierarchy should be intentionally shallow:
+
+1. Tier 1: Emperor. Seed a bot/world actor named `朱由校`, title `大明天启皇帝`.
+2. Tier 2: Inner court chief. Seed a bot/world actor named `魏忠贤`, title `司礼监秉笔太监`.
+3. Tier 3: All ordinary location chiefs and service office holders.
+
+Initial routing:
+
+1. `imperial_palace` contains both `朱由校` and `魏忠贤`.
+2. The effective palace chief for V1 is `魏忠贤`.
+3. All ordinary location weekly tribute targets route to `魏忠贤`.
+4. `魏忠贤` may later route tribute upward to `朱由校`, but V1 can record this as a control-chain hint without implementing a second payment cycle.
+
+Add a `ministry_of_rites` / `礼部衙门` location later if needed for debt management UI. Its role is to list office tribute obligations, weekly reviews, and payment records. V1 may expose the same data through existing office detail APIs first.
+
+Reporting:
+
+1. Each location should support a report view showing daily peak exposed copper for the chief.
+2. Each location should show daily net ledger movement.
+3. This report should be opened from a button, not shown as heavy default page content.
+4. The goal is to let players see whether a location is getting richer, being drained, or becoming a raid target.
+
+## Outer Cities and Player Estates Direction
+
+The second layer of the world can eventually be "outer cities and player estates", but it should not replace the V1 capital map.
+
+Recommended staging:
+
+1. V1 focus remains the capital: official bureaus, semi-official channels, office holders, public accounts, guards, raids, missions, and shops.
+2. V2 can add outer cities as a separate layer for player estates and private production.
+3. A player estate should be a real visitable place owned by a player actor, not only a menu tab.
+4. Players may learn two or three professions, unlock recipes, produce items while offline, and sell them from their estate.
+5. Other players can travel from the capital to the city where that estate is located, visit the estate, trade, inspect the owner, or later raid/interact with it.
+
+This direction is valuable because it separates two fantasies cleanly:
+
+1. Capital locations are public power and office politics.
+2. Player estates are private production, craft, trade, and local influence.
+
+Implementation should wait until the capital location loop is stable. Starting estates too early would require new systems for profession learning, recipes, production timers, shop listings, travel, city discovery, estate ownership, and player-to-player trade.
+
+## Location Guard Duty System V1
+
+After location treasury and raids exist, every exposed treasury needs a visible defensive layer. Guard duty makes location politics playable for more than office holders: weak and mid-level players can stand guard, earn wages, and help protect a location before they ever hold office.
+
+The first guard system should remain simple. It is a paid duty slot, not a full guild war, not a permanent job, and not a replacement for office positions.
+
+### Core Idea
+
+Each location has a small number of guard slots. A guard slot is filled by a world actor for a fixed duty duration. While the guard remains on duty, raiders must fight guards before they can touch the location treasury.
+
+Guard duty creates three useful player stories:
+
+1. A weak player can earn wages by standing guard for a powerful location.
+2. A location controller can raise the cost of raiding by filling guard slots.
+3. Raiders can wait for guards to expire, or later attempt insider play through early resignation.
+
+### Guard Duty State
+
+Guard duty should live under `GameState.world` because it belongs to the world map, not to a single player inventory.
+
+Suggested structure:
+
+```ts
+type LocationGuardDuty = {
+  dutyId: string;
+  locationId: string;
+  actorId: string;
+  actorDisplayName: string;
+  actorAvatarId: string;
+  actorKind: 'player' | 'bot';
+  faction: PowerFactionId;
+  level: number;
+  combatRating: number;
+  startsAt: number;
+  endsAt: number;
+  wageCopper: number;
+  status: 'active' | 'completed' | 'abandoned';
+};
+```
+
+The public location treasury view should expose a compact guard preview:
+
+```ts
+type LocationGuardDutyView = LocationGuardDuty & {
+  remainingSeconds: number;
+  canClaimWage: boolean;
+  canLeave: boolean;
+};
+```
+
+`LocationTreasuryView` can include:
+
+```ts
+guards: LocationGuardDutyView[];
+guardHint: string;
+```
+
+### Player Actions
+
+V1 should support three actions:
+
+1. **Join Guard Duty**: current player occupies an empty guard slot for a fixed duration.
+2. **Leave Guard Duty**: current player abandons an active duty and receives no wage.
+3. **Claim Guard Wage**: current player claims wage after the duty duration completes.
+
+Suggested APIs:
+
+```ts
+WORLD_LOCATION_GUARD_JOIN
+WORLD_LOCATION_GUARD_LEAVE
+WORLD_LOCATION_GUARD_CLAIM
+```
+
+`WORLD_LOCATION_GUARD_JOIN` request:
+
+```ts
+{
+  locationId: string;
+  durationMinutes?: number;
+}
+```
+
+V1 duration can be clamped to a small set:
+
+1. 30 minutes.
+2. 60 minutes.
+3. 120 minutes.
+
+The server should calculate wage from duration and location treasury pressure. Do not let players manually set wage in V1.
+
+### Raid Combat Integration
+
+When a raid starts:
+
+1. Expired completed duties are still visible until claimed, but they should not defend.
+2. Active guards at the location should be selected before generic location defenders.
+3. V1 may still use a single defender battle, but it should prefer the strongest active guard.
+4. Future V2 can implement guard gauntlets.
+
+This keeps the current raid loop stable while making guard slots matter immediately.
+
+### Wages and Treasury
+
+Guard wages should come from the location treasury if possible.
+
+V1 rule:
+
+1. On join, reserve no money yet.
+2. On claim, pay from `treasury.copperBalance`.
+3. If treasury cannot pay full wage, pay what is available and write a ledger note.
+4. Early leave pays nothing.
+
+This creates an important theme: locations can promise protection, but a drained public account may not honor wages.
+
+### Ledger
+
+Guard actions should write to the existing office/location ledger:
+
+```ts
+| 'guard_join'
+| 'guard_leave'
+| 'guard_wage'
+| 'guard_wage_shortfall'
+```
+
+The location page can then show:
+
+1. Who stood guard.
+2. Who abandoned duty.
+3. Who was paid.
+4. Which location failed to pay fully.
+
+### Non-goals
+
+Do not implement these in V1:
+
+1. Premium token guard-slot expansion.
+2. Controller-configured combat rating thresholds.
+3. Multi-guard gauntlet battle.
+4. Insider conspiracy tools.
+5. Cross-player notifications.
+6. Manual wage negotiation.
+
+V1 should only prove that guard slots exist, players can stand guard, raids prefer guards, and location ledger records guard activity.
+
+## Global World State Requirement
+
+The capital map, world actors, office holders, location treasuries, guard duties, pending public raids, and location ledgers must be global server state, not per-player save state.
+
+If these fields stay inside each player's `GameState.world`, every account silently receives a private copy of the capital:
+
+1. A player standing guard at the Northern Bureau is only visible to that same player's save.
+2. Other players see zero guards and fight fallback defenders.
+3. The capital population stays at `260 bots + current player`, usually displayed as 261, no matter how many real accounts exist.
+4. Location ledgers, treasuries, and office politics become single-player illusions rather than a shared political world.
+
+Therefore the long-term ownership boundary should be:
+
+### Per-player save
+
+Keep these in `player_saves.game_state`:
+
+1. Player identity, class, origin, level, attributes.
+2. Inventory, equipment, resources, stamina, missions in progress.
+3. Personal cooldowns, replay references, personal UI-relevant status.
+4. A local snapshot or cache of world data only if it is clearly marked as non-authoritative.
+
+### Global world state
+
+Move or source these from shared server storage:
+
+1. `world.actors`, including all bot actors and all real player shadow actors.
+2. `locationTreasuries`.
+3. `locationGuardDuties`.
+4. `officeLedger`.
+5. `botSimulation`.
+6. Office service position occupancy.
+7. Public pending raids if they can affect shared locations.
+
+Every world-facing API should load and save the shared world state first, then sync the current player's shadow actor into it.
+
+The player save can still contain a `world` view during transition, but it must not be the authoritative source for shared politics.
 
 *Last Updated: 2026-06-01*

@@ -5,13 +5,13 @@ export const layout = {
   sceneViewport: {
     x: 0,
     y: 0,
-    width: 1534,
+    width: 1920,
     height: 1080,
   },
   rightRail: {
-    x: 1534,
+    x: 0,
     y: 0,
-    width: 386,
+    width: 1920,
     height: 1080,
   },
 } as const;
