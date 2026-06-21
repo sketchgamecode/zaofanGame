@@ -68,7 +68,6 @@ function ManualGameShell() {
         onSceneChange={handleSceneChange}
       />
       <RightRail
-        activeSceneId={sceneId}
         onInventoryOpen={() => handleSceneChange('inventory')}
         onSceneChange={handleSceneChange}
       />

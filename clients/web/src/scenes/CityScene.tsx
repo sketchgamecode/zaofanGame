@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { postGameAction } from '../api/gameApi';
 import { BattleReplay } from '../components/combat/BattleReplay';
 import {
@@ -915,6 +915,61 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
   const [dungeonSource, setDungeonSource] = useState<DungeonSource | null>(null);
   const [arenaSource, setArenaSource] = useState<ArenaSource | null>(null);
   const [cityGuideDismissed, setCityGuideDismissed] = useState(false);
+  const mapScrollRef = useRef<HTMLDivElement | null>(null);
+  const mapDragRef = useRef({
+    active: false,
+    pointerId: -1,
+    startX: 0,
+    startY: 0,
+    scrollLeft: 0,
+    scrollTop: 0,
+  });
+  const [isMapDragging, setIsMapDragging] = useState(false);
+
+  const handleMapPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+
+    const target = event.target as HTMLElement;
+    if (target.closest('button, a, input, textarea, select, [role="button"]')) {
+      return;
+    }
+
+    mapDragRef.current = {
+      active: true,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: event.currentTarget.scrollLeft,
+      scrollTop: event.currentTarget.scrollTop,
+    };
+    setIsMapDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleMapPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = mapDragRef.current;
+    if (!drag.active || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    event.currentTarget.scrollLeft = drag.scrollLeft - (event.clientX - drag.startX);
+    event.currentTarget.scrollTop = drag.scrollTop - (event.clientY - drag.startY);
+  };
+
+  const handleMapPointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = mapDragRef.current;
+    if (!drag.active || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    mapDragRef.current.active = false;
+    setIsMapDragging(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -1776,19 +1831,6 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
     );
   }
 
-  if (shopSource) {
-    const onBack = () => {
-      setShopSource(null);
-      setServiceMessage(null);
-    };
-
-    return shopSource.shopType === 'weapon' ? (
-      <WeaponShopScene shopSource={shopSource} onBack={onBack} />
-    ) : (
-      <MagicShopScene shopSource={shopSource} onBack={onBack} />
-    );
-  }
-
   if (dungeonSource) {
     return (
       <DungeonScene
@@ -1940,6 +1982,25 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
           查看黄册
         </button>
       ) : null}
+      {shopSource ? (
+        shopSource.shopType === 'weapon' ? (
+          <WeaponShopScene
+            shopSource={shopSource}
+            onBack={() => {
+              setShopSource(null);
+              setServiceMessage(null);
+            }}
+          />
+        ) : (
+          <MagicShopScene
+            shopSource={shopSource}
+            onBack={() => {
+              setShopSource(null);
+              setServiceMessage(null);
+            }}
+          />
+        )
+      ) : null}
       {actorDetailError ? <div className="city-scene__floating-error">{actorDetailError}</div> : null}
       {huangceModal}
       {positionDetailModal}
@@ -1953,7 +2014,14 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
     const recommendedCity = getCityForLocation(recommendedLocationId);
 
     return (
-      <div className="scene scene--city scene--ming-map">
+      <div
+        ref={mapScrollRef}
+        className={`scene scene--city scene--ming-map${isMapDragging ? ' scene--ming-map-dragging' : ''}`}
+        onPointerDown={handleMapPointerDown}
+        onPointerMove={handleMapPointerMove}
+        onPointerUp={handleMapPointerEnd}
+        onPointerCancel={handleMapPointerEnd}
+      >
         <div className="scene__banner scene__banner--left">大明版图</div>
         <div className="scene__banner scene__banner--center">
           {locations
@@ -1984,8 +2052,12 @@ export function CityScene({ onSceneChange }: CitySceneProps) {
                   setServiceMessage(null);
                 }}
               >
-                <span>{city.region}</span>
                 <strong>{city.name}</strong>
+                <span className="ming-map__city-tooltip">
+                  <em>{city.region}</em>
+                  <b>{city.summary}</b>
+                  <small>{stats.actorCount ? `${stats.actorCount}人 · 权柄${formatPowerShare(stats.powerShare)}` : city.detail}</small>
+                </span>
                 <em>{stats.actorCount ? `${stats.actorCount}人 · 权柄${formatPowerShare(stats.powerShare)}` : city.summary}</em>
               </button>
             );

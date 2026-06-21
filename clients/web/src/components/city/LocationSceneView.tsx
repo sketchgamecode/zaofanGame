@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type {
   SceneId,
   LocationChiefDashboardView,
@@ -9,7 +9,6 @@ import type {
   PowerLocationService,
   PowerLocationStatus,
 } from '../../types/game';
-import { CharacterPortraitCard } from '../character/CharacterPortraitCard';
 
 export type LocationSceneArt = {
   background: string;
@@ -249,6 +248,30 @@ function getTributeProgress(term: OfficeTributeTerm | undefined) {
   return Math.max(0, Math.min(1, term.paidCopper / term.dueCopper));
 }
 
+function buildLocationDialogueLines(title: string, npc: LocationSceneNpcCard | undefined, fallbackDialogue: string) {
+  if (!npc) {
+    return [fallbackDialogue];
+  }
+
+  const serviceText = npc.services.length > 0
+    ? `我这里能办${npc.services.map((entry) => entry.label).join('、')}。你要办事，就照规矩来。`
+    : '我这里只管看门认人，暂时没有可办的差使。';
+
+  const positionText = npc.incomeHint || npc.replaceHint
+    ? `${npc.incomeHint ?? ''}${npc.replaceHint ? ` ${npc.replaceHint}` : ''}`.trim()
+    : `${npc.title}这个位置，不是人人都坐得稳。`;
+  const choicePrompt = npc.services.length > 0
+    ? `这位客官，到了${title}，你要办哪桩事？`
+    : `这位客官，${title}今日没有可办的差使，你可先看看此地人物。`;
+
+  return [
+    `你既到了${title}，先认清门路。此处由我这边照看。`,
+    positionText,
+    serviceText,
+    choicePrompt,
+  ].filter(Boolean);
+}
+
 /**
  * Modular UI component.
  * Every roleplay location should reuse this structure: scene art, NPC cards,
@@ -297,7 +320,15 @@ export function LocationSceneView({
   const [financeOpen, setFinanceOpen] = useState(false);
   const [chiefOpen, setChiefOpen] = useState(false);
   const [treasuryOpen, setTreasuryOpen] = useState(false);
+  const [locationInfoOpen, setLocationInfoOpen] = useState(false);
   const [tributeAmount, setTributeAmount] = useState('500');
+  const primaryNpc = npcCards[0];
+  const [activeDialogueNpc, setActiveDialogueNpc] = useState<LocationSceneNpcCard | null>(primaryNpc ?? null);
+  const [dialogueIndex, setDialogueIndex] = useState(0);
+  const dialogueLines = useMemo(
+    () => buildLocationDialogueLines(title, activeDialogueNpc ?? undefined, dialogue),
+    [activeDialogueNpc, dialogue, title],
+  );
   const filteredLedgerEntries = useMemo(() => {
     if (ledgerFilter === 'all') {
       return ledgerEntries;
@@ -318,6 +349,11 @@ export function LocationSceneView({
     ...(chiefDashboard?.financeSummary ?? []).map((row) => Math.abs(row.netCopperDelta)),
   );
 
+  useEffect(() => {
+    setActiveDialogueNpc(primaryNpc ?? null);
+    setDialogueIndex(0);
+  }, [primaryNpc?.id, title]);
+
   return (
     <div className="scene scene--city">
       <div className="location-scene" style={{ backgroundImage: `url("${art.background}")` }}>
@@ -325,6 +361,59 @@ export function LocationSceneView({
           返回京城
         </button>
         <div className="location-scene__scrim" />
+        {activeDialogueNpc ? (
+          <section className="location-dialogue" aria-label={`${activeDialogueNpc.name}\u5bf9\u8bdd`}>
+            <div className="location-dialogue__portrait">
+              <img alt={activeDialogueNpc.name} src={activeDialogueNpc.avatarUrl} />
+            </div>
+            <div className="location-dialogue__body">
+              <div className="location-dialogue__name">
+                <span>{activeDialogueNpc.title}</span>
+                <strong>{activeDialogueNpc.name}</strong>
+              </div>
+              <p>{dialogueLines[dialogueIndex] ?? dialogueLines[0]}</p>
+              {dialogueIndex < dialogueLines.length - 1 ? (
+                <button
+                  className="location-dialogue__next"
+                  type="button"
+                  onClick={() => setDialogueIndex((current) => Math.min(current + 1, dialogueLines.length - 1))}
+                >
+                  {'\u7ee7\u7eed'}
+                </button>
+              ) : (
+                <div className="location-dialogue__end-marker" aria-hidden="true" />
+              )}
+            </div>
+          </section>
+        ) : null}
+        {activeDialogueNpc && dialogueIndex >= dialogueLines.length - 1 ? (
+          <section className="location-dialogue-actions-panel" aria-label={`${activeDialogueNpc.name}\u53ef\u529e\u4e8b\u9879`}>
+            {activeDialogueNpc.services.map((entry) => (
+              <button key={`${activeDialogueNpc.id}:dialogue:${entry.service}:${entry.label}`} type="button" onClick={() => onService(entry)}>
+                <strong>{entry.label}</strong>
+                <span>{entry.summary}</span>
+              </button>
+            ))}
+            {activeDialogueNpc.actorId ? (
+              <button type="button" onClick={() => onNpcClick(activeDialogueNpc)}>
+                <strong>{'\u67e5\u770b\u6b64\u4eba'}</strong>
+                <span>{'\u67e5\u770b\u5c65\u5386\u3001\u6743\u67c4\u4e0e\u4efb\u804c\u5173\u7cfb'}</span>
+              </button>
+            ) : null}
+            <button type="button" onClick={() => setLocationInfoOpen(true)}>
+              <strong>{'\u573a\u6240\u4fe1\u606f'}</strong>
+              <span>{'\u67e5\u770b\u95e8\u8def\u3001\u72b6\u6001\u3001\u4eba\u624b\u548c\u901a\u884c\u60c5\u51b5'}</span>
+            </button>
+            <button type="button" onClick={() => setTreasuryOpen(true)}>
+              <strong>{'\u573a\u6240\u516c\u7c3f'}</strong>
+              <span>{'\u67e5\u770b\u516c\u8d26\u3001\u5b88\u536b\u3001\u52ab\u63a0\u3001\u65e5\u62a5\u548c\u4e3b\u5b98\u7ba1\u4e8b'}</span>
+            </button>
+            <button type="button" onClick={() => setActiveDialogueNpc(null)}>
+              <strong>{'\u5173\u95ed'}</strong>
+              <span>{'\u5148\u5728\u6b64\u5730\u770b\u770b'}</span>
+            </button>
+          </section>
+        ) : null}
         <section className="location-scene__dialogue">
           <span className="location-scene__faction">{ownerLabel}</span>
           <span className={`location-scene__status location-scene__status--${status}`}>{statusLabel}</span>
@@ -338,6 +427,31 @@ export function LocationSceneView({
           </div>
           {serviceMessage ? <div className="location-scene__notice">{serviceMessage}</div> : null}
         </section>
+
+        {locationInfoOpen ? (
+          <div className="location-scene__ledger-modal" role="dialog" aria-modal="true" aria-label={`${title}\u573a\u6240\u4fe1\u606f`}>
+            <div className="location-scene__ledger-panel location-scene__info-panel">
+              <div className="location-scene__ledger-head">
+                <span>{title}</span>
+                <strong>{ownerLabel}</strong>
+              </div>
+              <button className="location-scene__ledger-close" type="button" onClick={() => setLocationInfoOpen(false)}>
+                {'\u5173\u95ed'}
+              </button>
+              <div className="location-scene__info-tags">
+                <span className={`location-scene__status location-scene__status--${status}`}>{statusLabel}</span>
+                <span>{art.npcName}</span>
+              </div>
+              <p className="location-scene__info-copy">{dialogue}</p>
+              <div className="location-scene__info-grid">
+                {meta.map((item) => (
+                  <div key={item}>{item}</div>
+                ))}
+              </div>
+              {serviceMessage ? <p className="location-scene__info-copy">{serviceMessage}</p> : null}
+            </div>
+          </div>
+        ) : null}
 
         <button className="location-scene__treasury-toggle" type="button" onClick={() => setTreasuryOpen(true)}>
           {'\u516c\u8d26 / \u5b88\u536b / \u52ab\u63a0'}
@@ -510,29 +624,17 @@ export function LocationSceneView({
                 <button
                   className="location-scene__npc-card-action"
                   type="button"
-                  onClick={() => onNpcClick(npc)}
+                  onClick={() => {
+                    setActiveDialogueNpc(npc);
+                    setDialogueIndex(0);
+                  }}
                 >
-                  <CharacterPortraitCard
-                    avatarUrl={npc.avatarUrl}
-                    level={npc.level}
-                    name={npc.name}
-                    rankText={npc.rankText}
-                    title={npc.title}
-                    xpProgress={npc.xpProgress}
-                  />
+                  <img alt={npc.name} src={npc.avatarUrl} />
+                  <span>
+                    <strong>{npc.name}</strong>
+                    <small>{npc.title}</small>
+                  </span>
                 </button>
-                <div className="location-scene__npc-services">
-                  {npc.services.map((entry) => (
-                    <button
-                      key={`${npc.id}:${entry.service}:${entry.sceneId ?? entry.summary}`}
-                      type="button"
-                      onClick={() => onService(entry)}
-                    >
-                      <strong>{entry.label}</strong>
-                      <span>{entry.summary}</span>
-                    </button>
-                  ))}
-                </div>
               </article>
             ))
           ) : (

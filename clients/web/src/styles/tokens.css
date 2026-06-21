@@ -1,3 +1,19 @@
+@font-face {
+  font-family: "Simplified To Traditional Test";
+  src: url("/assets/font/R.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Simplified To Traditional Test";
+  src: url("/assets/font/R.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 500 900;
+  font-display: swap;
+}
+
 :root {
   --shell-bg: #0b0907;
   --stage-frame: #22160f;
@@ -16,5 +32,5 @@
   --shadow-heavy: 0 14px 40px rgba(0, 0, 0, 0.45);
   --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.2);
   --border-strong: 2px solid rgba(26, 16, 10, 0.7);
-  --font-ui: "Microsoft YaHei UI", "PingFang SC", "Noto Serif SC", serif;
+  --font-ui: "Simplified To Traditional Test";
 }

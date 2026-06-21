@@ -118,6 +118,34 @@ function buildTradeMessage(action: 'buy' | 'equip' | 'sell' | 'refresh', itemNam
   return `${clerkName}验过银钱，把${itemName ?? '新货'}推到你面前。`;
 }
 
+const ATTRIBUTE_LABELS: Record<string, string> = {
+  strength: '膂',
+  agility: '身',
+  intellect: '谋',
+  stamina: '骨',
+  luck: '运',
+};
+
+function formatItemMainLine(item: EquipmentItem) {
+  if (item.weaponDamage) {
+    return `伤害 ${item.weaponDamage.min}-${item.weaponDamage.max}`;
+  }
+
+  if (item.armor) {
+    return `护甲 ${item.armor}`;
+  }
+
+  return '器物';
+}
+
+function formatItemBonusLine(item: EquipmentItem) {
+  const entries = Object.entries(item.bonusAttributes)
+    .filter(([, value]) => Boolean(value))
+    .map(([key, value]) => `${ATTRIBUTE_LABELS[key] ?? key} +${value}`);
+
+  return entries.length > 0 ? entries.join(' / ') : item.description;
+}
+
 function SceneNpcIntro({
   line,
   npcName,
@@ -187,7 +215,7 @@ function ShopScene({
   const [requestError, setRequestError] = useState<string | null>(null);
   const [transactionMessage, setTransactionMessage] = useState<string | null>(null);
   const [introLine, setIntroLine] = useState(() => pickIntroLine(shopType));
-  const [introDismissed, setIntroDismissed] = useState(false);
+  const [introDismissed, setIntroDismissed] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -218,7 +246,7 @@ function ShopScene({
 
   useEffect(() => {
     setIntroLine(pickIntroLine(shopType));
-    setIntroDismissed(false);
+    setIntroDismissed(true);
   }, [shopType]);
 
   // 入场音效
@@ -359,7 +387,7 @@ function ShopScene({
   }
 
   return (
-    <div className="scene scene--blackmarket">
+    <div className={`scene scene--blackmarket${shopSource ? ' scene--blackmarket-overlay' : ''}`}>
       {onBack ? (
         <button className="shop-source-back" type="button" onClick={onBack}>
           返回场所
@@ -492,6 +520,76 @@ function ShopScene({
               ))}
             </div>
           </aside>
+          <section className="blackmarket-scene__mobile-panel" aria-label="移动端货单">
+            <header className="blackmarket-scene__mobile-header">
+              <div>
+                <span>{shopSource?.issuerDisplayName ?? getShopNpc(shopType)}</span>
+                <strong>{getShopTitle(shopType, powerFaction)}</strong>
+                <small>{getShopFlavor(shopType, powerFaction)}</small>
+              </div>
+              <button disabled={pendingAction !== null} type="button" onClick={() => void loadMarket(true)}>
+                {pendingAction === 'REFRESH_BLACKMARKET_FORCE' ? '换货中' : '换货'}
+              </button>
+            </header>
+
+            {requestError ? <div className="blackmarket-scene__mobile-message">{requestError}</div> : null}
+            {transactionMessage ? <div className="blackmarket-scene__mobile-message">{transactionMessage}</div> : null}
+
+            <div className="blackmarket-scene__mobile-list">
+              <div className="blackmarket-scene__mobile-section-title">
+                <span>货单</span>
+                <em>免费刷新 {refreshCountdown}</em>
+              </div>
+              {loading && !market ? (
+                <div className="blackmarket-scene__mobile-empty">正在盘货...</div>
+              ) : shopItems.length > 0 ? (
+                shopItems.map((item) => (
+                  <article key={item.id} className="blackmarket-scene__mobile-item">
+                    <ItemSlot compareItem={character.equipment.equipped[item.slot]} item={item} variant="shop" />
+                    <div className="blackmarket-scene__mobile-item-copy">
+                      <span>{item.rarity} · {item.slot}</span>
+                      <strong>{item.name}</strong>
+                      <small>{formatItemMainLine(item)} · {formatItemBonusLine(item)}</small>
+                    </div>
+                    <div className="blackmarket-scene__mobile-item-actions">
+                      <button disabled={pendingAction !== null} type="button" onClick={() => void handleBuyToInventory(item)}>
+                        买入 {item.price ?? item.sellPrice}
+                      </button>
+                      <button disabled={pendingAction !== null} type="button" onClick={() => void handleBuyAndEquip(item)}>
+                        买并穿
+                      </button>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <div className="blackmarket-scene__mobile-empty">此柜暂无合适货色。</div>
+              )}
+
+              <div className="blackmarket-scene__mobile-section-title">
+                <span>行囊</span>
+                <em>{character.inventory.count} / {inventoryCapacity}</em>
+              </div>
+              {character.inventory.items.length > 0 ? (
+                character.inventory.items.map((item) => (
+                  <article key={item.id} className="blackmarket-scene__mobile-item blackmarket-scene__mobile-item--sell">
+                    <ItemSlot item={item} variant="inventory" />
+                    <div className="blackmarket-scene__mobile-item-copy">
+                      <span>{item.rarity} · {item.slot}</span>
+                      <strong>{item.name}</strong>
+                      <small>{formatItemMainLine(item)} · {formatItemBonusLine(item)}</small>
+                    </div>
+                    <div className="blackmarket-scene__mobile-item-actions">
+                      <button disabled={pendingAction !== null} type="button" onClick={() => void handleSell(item)}>
+                        出售 {item.sellPrice}
+                      </button>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <div className="blackmarket-scene__mobile-empty">行囊里没有可出售的装备。</div>
+              )}
+            </div>
+          </section>
         </div>
 
         {/* 拖拽幽灵 */}

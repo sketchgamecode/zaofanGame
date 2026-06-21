@@ -438,6 +438,18 @@ function buildRewardSlots(rewardPreview: RewardPreview, visibleReward?: VisibleR
   return rewardSlots.slice(0, REWARD_X_POSITIONS.length);
 }
 
+function formatRewardSummary(rewardPreview: RewardPreview, visibleReward?: VisibleReward) {
+  const parts = [
+    `铜钱 ${rewardPreview.copper}`,
+    `经验 ${rewardPreview.xp}`,
+    rewardPreview.hasEquipment ? (visibleReward?.equipmentPreview?.name ?? '装备 1') : null,
+    rewardPreview.hasDungeonKey ? (visibleReward?.dungeonKeyPreview?.name ?? '钥牌 1') : null,
+    rewardPreview.hasHourglass ? '沙漏 1' : null,
+  ].filter(Boolean);
+
+  return parts.join(' / ');
+}
+
 function buildSettlementRewardSlots(data: CompleteMissionData): RewardSlot[] {
   const rewardSlots: RewardSlot[] = [];
 
@@ -474,6 +486,7 @@ export function TavernScene({ missionSource, onBack }: TavernSceneProps = {}) {
   const [nowMs, setNowMs] = useState(Date.now());
   const [missionPresentation, setMissionPresentation] = useState<MissionPresentation | null>(null);
   const [settlementData, setSettlementData] = useState<CompleteMissionData | null>(null);
+  const [settlementDetailsOpen, setSettlementDetailsOpen] = useState(false);
   const [replaySaved, setReplaySaved] = useState(false);
   const [actorDetail, setActorDetail] = useState<WorldActorDetailView | null>(null);
   const [actorDetailError, setActorDetailError] = useState<string | null>(null);
@@ -612,6 +625,7 @@ export function TavernScene({ missionSource, onBack }: TavernSceneProps = {}) {
       setSnapshotReceivedAtMs(Date.now());
       setNowMs(Date.now());
       setReplaySaved(!data.canSaveReplay);
+      setSettlementDetailsOpen(false);
 
       if (data.result === 'ALREADY_SETTLED') {
         setSettlementData(null);
@@ -675,8 +689,8 @@ export function TavernScene({ missionSource, onBack }: TavernSceneProps = {}) {
     setPanelOpen(true);
   };
 
-  const handleStartMission = async () => {
-    if (!selectedOffer || loadingAction) {
+  const startMissionOffer = async (offer: MissionOffer) => {
+    if (loadingAction) {
       return;
     }
 
@@ -687,11 +701,11 @@ export function TavernScene({ missionSource, onBack }: TavernSceneProps = {}) {
       const snapshot = await runServerAction(
         'START_MISSION',
         () => postGameAction<TavernInfoData>('START_MISSION', {
-          missionId: selectedOffer.missionId,
-          offerSetId: selectedOffer.offerSetId,
+          missionId: offer.missionId,
+          offerSetId: offer.offerSetId,
         }),
       );
-      setMissionPresentation(createPresentationFromOffer(selectedOffer));
+      setMissionPresentation(createPresentationFromOffer(offer));
       applyTavernSnapshot(snapshot);
       setPanelOpen(false);
     } catch (error) {
@@ -699,6 +713,14 @@ export function TavernScene({ missionSource, onBack }: TavernSceneProps = {}) {
     } finally {
       setLoadingAction(null);
     }
+  };
+
+  const handleStartMission = async () => {
+    if (!selectedOffer) {
+      return;
+    }
+
+    await startMissionOffer(selectedOffer);
   };
 
   const handleSkipCountdown = () => {
@@ -809,7 +831,7 @@ export function TavernScene({ missionSource, onBack }: TavernSceneProps = {}) {
           subheading={`${currentPresentation.title} · ${currentPresentation.locationName ?? '未知地点'}`}
           contextLabel="MISSION"
           resultBody={(
-            <div className="battle-summary">
+            <div className={`battle-summary${settlementDetailsOpen ? ' battle-summary--details-open' : ''}`}>
               {/* Left Column: Issuer Card and Target Details */}
               <div className="battle-summary__left-col">
                 {(settlementData.issuerActor ?? currentPresentation.issuerActor)
@@ -906,6 +928,13 @@ export function TavernScene({ missionSource, onBack }: TavernSceneProps = {}) {
                     <strong>{settlementData.result === 'SUCCESS' ? formatOfficeSettlement(settlementData) : MISSION_RECEIPT_COPY.noTransfer}</strong>
                   </div>
                 </div>
+                <button
+                  className="battle-summary__details-toggle"
+                  type="button"
+                  onClick={() => setSettlementDetailsOpen((open) => !open)}
+                >
+                  {settlementDetailsOpen ? '收起细目' : '查看细目'}
+                </button>
                 <div className="battle-summary__flow-board">
                   <article>
                     <span>{'\u4f60\u7684\u5dee\u9977'}</span>
@@ -1095,7 +1124,7 @@ export function TavernScene({ missionSource, onBack }: TavernSceneProps = {}) {
   }
 
   return (
-    <div className="scene scene--tavern">
+    <div className={`scene scene--tavern${missionSource ? ' scene--tavern-source' : ''}`}>
       {sourceBackButton}
       {requestError ? <div className="scene-error-banner">{requestError}</div> : null}
       {actorDetailErrorBanner}
@@ -1221,6 +1250,59 @@ export function TavernScene({ missionSource, onBack }: TavernSceneProps = {}) {
               关闭
             </button>
           </div>
+          <section className="tavern-mobile-panel" aria-label="移动端差事案牌">
+            <header className="tavern-mobile-panel__header">
+              <span>{missionSource?.sourceLabel ?? previewPresentation.locationName ?? '差事场所'}</span>
+              <strong>{npcGreeting.name}</strong>
+              <p>
+                {npcGreeting.dialogue}
+                {previewPresentation.locationName ? ` 去${previewPresentation.locationName}办一桩差事。` : ''}
+              </p>
+            </header>
+
+            {previewPresentation.sourceLabel ? (
+              <div className="tavern-mobile-panel__source">发布：{previewPresentation.sourceLabel}</div>
+            ) : null}
+
+            <div className="tavern-mobile-panel__list">
+              {tavern.missionOffers.map((offer, index) => {
+                const presentation = createPresentationFromOffer(offer);
+                return (
+                  <article
+                    key={offer.missionId}
+                    className={`tavern-mobile-mission${selectedOfferIndex === index ? ' tavern-mobile-mission--active' : ''}`}
+                  >
+                    <button
+                      className="tavern-mobile-mission__body"
+                      type="button"
+                      onClick={() => setSelectedOfferIndex(index)}
+                    >
+                      <span>{CASE_TYPE_LABELS[presentation.powerContext.caseType]}</span>
+                      <strong>{presentation.title}</strong>
+                      <small>
+                        {formatFaction(presentation.powerContext.issuerFaction)}
+                        {' 发差 · 目标 '}
+                        {presentation.targetActor?.displayName ?? presentation.enemyName}
+                      </small>
+                      <em>{formatRewardSummary(presentation.rewardPreview, presentation.visibleReward)}</em>
+                    </button>
+                    <button
+                      className="tavern-mobile-mission__start"
+                      disabled={loadingAction === 'START_MISSION'}
+                      type="button"
+                      onClick={() => void startMissionOffer(offer)}
+                    >
+                      {loadingAction === 'START_MISSION' ? '领牌中' : '领取'}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+
+            <button className="tavern-mobile-panel__close" type="button" onClick={() => setPanelOpen(false)}>
+              关闭
+            </button>
+          </section>
         </div>
       ) : null}
       {actorDetailModal}

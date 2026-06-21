@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef, type CSSProperties, type ReactNode } from 'react';
 import { CLASS_META, getAvatarUrl } from '../../config/characterCatalog';
 import type { BattleHitEvent, BattleResultV2 } from '../../types/combat';
 
@@ -24,6 +24,29 @@ type PlaybackHit = {
   roundNumber: number;
   attacker: 'player' | 'enemy';
   hit: BattleHitEvent;
+};
+
+type CombatantSide = 'player' | 'enemy';
+
+type BattlePoint = {
+  x: number;
+  y: number;
+};
+
+type FlyingWeaponState = {
+  id: number;
+  attacker: CombatantSide;
+  weaponUrl: string;
+  from: BattlePoint;
+  to: BattlePoint;
+};
+
+type FloatingTextState = {
+  id: number;
+  target: CombatantSide;
+  text: string;
+  type: 'crit' | 'dodge' | 'block' | 'normal';
+  point: BattlePoint;
 };
 
 const HIT_STEP_MS = 900;
@@ -82,6 +105,9 @@ export function BattleReplay({
   actions = [],
 }: BattleReplayProps) {
   const hits = useMemo(() => flattenHits(battleResult), [battleResult]);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const playerSideRef = useRef<HTMLElement | null>(null);
+  const enemySideRef = useRef<HTMLElement | null>(null);
   const [shownHitCount, setShownHitCount] = useState(0);
   const playbackComplete = shownHitCount > hits.length;
 
@@ -90,11 +116,9 @@ export function BattleReplay({
     enemy: battleResult.enemy.hpMax,
   });
 
-  const [flyingWeapon, setFlyingWeapon] = useState<{ id: number; attacker: 'player' | 'enemy'; weaponUrl: string } | null>(null);
-  const [shakeTarget, setShakeTarget] = useState<'player' | 'enemy' | null>(null);
-  const [floatingTexts, setFloatingTexts] = useState<
-    Array<{ id: number; target: 'player' | 'enemy'; text: string; type: 'crit' | 'dodge' | 'block' | 'normal' }>
-  >([]);
+  const [flyingWeapon, setFlyingWeapon] = useState<FlyingWeaponState | null>(null);
+  const [shakeTarget, setShakeTarget] = useState<CombatantSide | null>(null);
+  const [floatingTexts, setFloatingTexts] = useState<FloatingTextState[]>([]);
 
   const getWeaponIconUrl = useCallback((attacker: 'player' | 'enemy') => {
     const snapshot = battleResult[attacker].snapshot;
@@ -104,6 +128,23 @@ export function BattleReplay({
     }
     return `/assets/items/icons/${weaponId}.png`;
   }, [battleResult]);
+
+  const getSideAnchor = useCallback((side: CombatantSide): BattlePoint => {
+    const stage = stageRef.current;
+    const node = side === 'player' ? playerSideRef.current : enemySideRef.current;
+
+    if (!stage || !node) {
+      return side === 'player' ? { x: 220, y: 320 } : { x: 1310, y: 320 };
+    }
+
+    const stageRect = stage.getBoundingClientRect();
+    const nodeRect = node.getBoundingClientRect();
+
+    return {
+      x: nodeRect.left - stageRect.left + nodeRect.width / 2,
+      y: nodeRect.top - stageRect.top + Math.min(nodeRect.height * 0.42, 172),
+    };
+  }, []);
 
   useEffect(() => {
     setShownHitCount(0);
@@ -146,12 +187,16 @@ export function BattleReplay({
     const defender = hit.defender;
     const weaponUrl = getWeaponIconUrl(attacker);
     const hitId = shownHitCount;
+    const from = getSideAnchor(attacker);
+    const to = getSideAnchor(defender);
 
     // 1. Trigger Flying Weapon
     setFlyingWeapon({
       id: hitId,
       attacker,
       weaponUrl,
+      from,
+      to,
     });
 
     // 2. Set timeout for impact (400ms)
@@ -191,6 +236,7 @@ export function BattleReplay({
           target: defender,
           text,
           type,
+          point: to,
         },
       ]);
 
@@ -209,7 +255,7 @@ export function BattleReplay({
     return () => {
       window.clearTimeout(impactTimer);
     };
-  }, [shownHitCount, playbackComplete, hits, getWeaponIconUrl]);
+  }, [shownHitCount, playbackComplete, hits, getWeaponIconUrl, getSideAnchor]);
 
   const hpState = useMemo(() => {
     if (playbackComplete) {
@@ -233,15 +279,15 @@ export function BattleReplay({
     : 0;
 
   return (
-    <div className="battle-replay">
-      <div className="battle-replay__stage">
+    <div className={`battle-replay${playbackComplete ? ' battle-replay--result' : ''}`}>
+      <div className="battle-replay__stage" ref={stageRef}>
         <header className="battle-replay__header">
           {contextLabel ? <div className="battle-replay__eyebrow">{contextLabel}</div> : null}
           <div className="battle-replay__title">{heading}</div>
           {subheading ? <div className="battle-replay__subtitle">{subheading}</div> : null}
         </header>
 
-        <section className="battle-replay__side battle-replay__side--player">
+        <section className="battle-replay__side battle-replay__side--player" ref={playerSideRef}>
           <div className={`battle-replay__portrait-frame${shakeTarget === 'player' ? ' battle-replay__portrait-frame--shake' : ''}`}>
             <img
               alt={battleResult.player.name}
@@ -259,7 +305,7 @@ export function BattleReplay({
           <div className="battle-replay__hp-text">{hpState.playerHp} / {battleResult.player.hpMax}</div>
         </section>
 
-        <section className="battle-replay__side battle-replay__side--enemy">
+        <section className="battle-replay__side battle-replay__side--enemy" ref={enemySideRef}>
           <div className={`battle-replay__portrait-frame${shakeTarget === 'enemy' ? ' battle-replay__portrait-frame--shake' : ''}`}>
             <img
               alt={battleResult.enemy.name}
@@ -333,7 +379,15 @@ export function BattleReplay({
         ) : null}
 
         {flyingWeapon && (
-          <div className={`battle-replay__flying-weapon battle-replay__flying-weapon--${flyingWeapon.attacker}`}>
+          <div
+            className={`battle-replay__flying-weapon battle-replay__flying-weapon--${flyingWeapon.attacker}`}
+            style={{
+              '--from-x': `${flyingWeapon.from.x}px`,
+              '--from-y': `${flyingWeapon.from.y}px`,
+              '--to-x': `${flyingWeapon.to.x}px`,
+              '--to-y': `${flyingWeapon.to.y}px`,
+            } as CSSProperties}
+          >
             <img src={flyingWeapon.weaponUrl} alt="" />
           </div>
         )}
@@ -342,6 +396,10 @@ export function BattleReplay({
           <div
             key={f.id}
             className={`battle-replay__floating-text battle-replay__floating-text--${f.target} battle-replay__floating-text--${f.type}`}
+            style={{
+              '--hit-x': `${f.point.x}px`,
+              '--hit-y': `${f.point.y}px`,
+            } as CSSProperties}
           >
             {f.text}
           </div>

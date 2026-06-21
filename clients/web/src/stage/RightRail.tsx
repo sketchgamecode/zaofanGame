@@ -3,15 +3,13 @@ import { getNextLevelXp } from '../config/xpTable';
 import { PlayerResourcePanel } from '../components/ui/PlayerResourcePanel';
 import { useGameState } from '../state/GameStateContext';
 import type { SceneId } from '../types/game';
-import { RightRailNav } from './RightRailNav';
 
 type RightRailProps = {
-  activeSceneId: SceneId;
   onSceneChange: (sceneId: SceneId) => void;
   onInventoryOpen: () => void;
 };
 
-export function RightRail({ activeSceneId, onSceneChange, onInventoryOpen }: RightRailProps) {
+export function RightRail({ onSceneChange, onInventoryOpen }: RightRailProps) {
   const { character } = useGameState();
 
   if (!character) {
@@ -27,18 +25,28 @@ export function RightRail({ activeSceneId, onSceneChange, onInventoryOpen }: Rig
     <aside className="right-rail">
       <button className="right-rail__portrait-button" type="button" onClick={onInventoryOpen} title="打开角色与背包">
         <img alt={character.player.displayName || '角色'} src={getAvatarUrl(character.player.avatarId)} />
-        <span>{character.player.level}</span>
       </button>
 
       <div className="right-rail__player-summary">
-        <strong>{character.player.displayName || '无名好汉'}</strong>
-        <span>{`${classMeta.name} · ${powerBadge} · ${character.combatPreview.combatRating}`}</span>
-        <i style={{ width: `${xpProgress * 100}%` }} />
+        <div className="right-rail__player-name">
+          <strong>{character.player.displayName || '无名好汉'}</strong>
+          <span>{`${classMeta.name} · ${powerBadge}`}</span>
+        </div>
+
+        <div className="right-rail__xp-track" aria-label={`等级 ${character.player.level}，经验 ${character.player.exp}/${nextLevelXp}`}>
+          <i style={{ width: `${xpProgress * 100}%` }} />
+          <b>{`${character.player.level}级`}</b>
+          <em>{`${character.player.exp}/${nextLevelXp}`}</em>
+        </div>
       </div>
 
       <PlayerResourcePanel resources={character.resources} />
 
-      <RightRailNav activeSceneId={activeSceneId} onSceneChange={onSceneChange} />
+      <div className="right-rail__actions">
+        <button className="right-rail__icon-button" type="button" onClick={() => onSceneChange('mail')} title="战报与邮件">
+          <span aria-hidden="true">✉</span>
+        </button>
+      </div>
     </aside>
   );
 }
