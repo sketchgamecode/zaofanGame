@@ -1,8 +1,15 @@
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? 'http://localhost:3001';
 
+export type InitialPlayerState = {
+  copper: number;
+  tokens: number;
+  startingWeapons: { itemId: string; name: string }[];
+};
+
 export type DebugConfig = {
   debugTavernXpMultiplier: number;
   debugTavernCopperMultiplier: number;
+  initialPlayerState?: InitialPlayerState;
 };
 
 type DebugConfigResponse = {

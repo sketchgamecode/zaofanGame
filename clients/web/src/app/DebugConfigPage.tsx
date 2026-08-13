@@ -184,6 +184,43 @@ export function DebugConfigPage() {
 
         {errorMessage ? <div className="debug-panel__message debug-panel__message--error">{errorMessage}</div> : null}
         {successMessage ? <div className="debug-panel__message debug-panel__message--success">{successMessage}</div> : null}
+
+        {config?.initialPlayerState ? (
+          <div className="debug-panel__multiplier-group" style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border-color, #eaeaea)' }}>
+            <div className="debug-panel__group-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>🆕</span> 新主角创建初始赠送资源
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+              <div className="debug-panel__status" style={{ padding: '12px' }}>
+                <span>赠送铜钱</span>
+                <strong>{config.initialPlayerState.copper}</strong>
+              </div>
+              <div className="debug-panel__status" style={{ padding: '12px' }}>
+                <span>赠送令牌</span>
+                <strong>{config.initialPlayerState.tokens}</strong>
+              </div>
+            </div>
+            <div className="debug-panel__group-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>🎒</span> 初始背囊兵刃（各1把）
+            </div>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '8px' }}>
+              {config.initialPlayerState.startingWeapons.map((weapon, index) => (
+                <li key={index} style={{
+                  padding: '10px 14px',
+                  background: 'var(--card-bg, #f9f9f9)',
+                  border: '1px solid var(--border-color, #eee)',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <span style={{ fontWeight: 500 }}>{weapon.name}</span>
+                  <code style={{ fontSize: '12px', opacity: 0.6 }}>{weapon.itemId}</code>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </section>
     </main>
   );
